@@ -1,0 +1,16 @@
+{
+    "version": "0.1.0",
+    "history": [
+        {
+            "version": "0.1.0",
+            "date": "2025-12-30",
+            "author": "Jason",
+            "changes": [
+                "Initial MVP release",
+                "Implemented Email/Password Authentication",
+                "Integrated Gemini 2.5 Flash for AI Companion",
+                "configured default ports to 4000/4001"
+            ]
+        }
+    ]
+}
