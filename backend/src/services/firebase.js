@@ -1,22 +1,33 @@
 const admin = require('firebase-admin');
 
+let isReady = false;
+
 if (!admin.apps.length) {
     try {
         const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT
             ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
             : {};
 
-        admin.initializeApp({
-            credential: admin.credential.cert(serviceAccount)
-        });
-        console.log('Firebase Admin initialized successfully');
+        // basic check to avoid trying to init with empty object if parse returned empty
+        if (Object.keys(serviceAccount).length > 0) {
+            admin.initializeApp({
+                credential: admin.credential.cert(serviceAccount)
+            });
+            console.log('Firebase Admin initialized successfully');
+            isReady = true;
+        } else {
+            console.warn('Firebase Service Account is empty. Skipping initialization.');
+        }
+
     } catch (error) {
         console.error('Firebase Admin initialization failed:', error.message);
         console.warn('Backend will start but Firebase features will fail.');
     }
+} else {
+    isReady = true;
 }
 
-const db = admin.firestore();
+const db = admin.firestore(); // This might warn if not initialized, but we handle isReady downstream
 const auth = admin.auth();
 
-module.exports = { admin, db, auth };
+module.exports = { admin, db, auth, isReady };

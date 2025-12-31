@@ -1,6 +1,19 @@
 {
-    "version": "0.1.0",
+    "version": "0.1.1",
     "history": [
+        {
+            "version": "0.1.1",
+            "date": "2025-12-31",
+            "author": "Antigravity",
+            "changes": [
+                "Feature: Set Daily Goal Modal",
+                "Feature: Configurable Avg Cost and Calories in Settings",
+                "Refactor: Login Page with Design System",
+                "UI: Updated Chart Colors to Blue Palette",
+                "Fix: Dry Streak logic",
+                "Fix: Home Page Layout reordering"
+            ]
+        },
         {
             "version": "0.1.0",
             "date": "2025-12-30",

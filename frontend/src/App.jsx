@@ -1,47 +1,35 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import Login from './pages/Login';
+import { Routes, Route } from 'react-router-dom';
+import Layout from './components/Layout';
 import Home from './pages/Home';
 import Companion from './pages/Companion';
-import './index.css';
+import Insights from './pages/Insights';
+import Login from './pages/Login';
+import Settings from './pages/Settings';
+import { AuthProvider } from './contexts/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
 
-const PrivateRoute = ({ children }) => {
-  const { user, loading } = useAuth();
-
-  if (loading) return <div>Loading...</div>;
-  if (!user) return <Navigate to="/login" />;
-
-  return children;
-};
+import { UserPreferencesProvider } from './contexts/UserPreferencesContext';
 
 function App() {
   return (
-    <Router>
-      <AuthProvider>
-        <div className="app-container">
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route
-              path="/"
-              element={
-                <PrivateRoute>
-                  <Home />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/companion"
-              element={
-                <PrivateRoute>
-                  <Companion />
-                </PrivateRoute>
-              }
-            />
-          </Routes>
-        </div>
-      </AuthProvider>
-    </Router>
+    <AuthProvider>
+      <UserPreferencesProvider>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+
+          <Route path="/" element={
+            <ProtectedRoute>
+              <Layout />
+            </ProtectedRoute>
+          }>
+            <Route index element={<Home />} />
+            <Route path="companion" element={<Companion />} />
+            <Route path="insights" element={<Insights />} />
+            <Route path="settings" element={<Settings />} />
+          </Route>
+        </Routes>
+      </UserPreferencesProvider>
+    </AuthProvider>
   );
 }
 

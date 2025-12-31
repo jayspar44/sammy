@@ -1,78 +1,225 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { format } from 'date-fns';
+import { Sparkles, TrendingUp, Plus } from 'lucide-react';
+import Button from '../components/ui/Button';
+import Card from '../components/ui/Card';
+import SunProgress from '../components/ui/SunProgress';
+import { cn } from '../utils/cn';
+import { useNavigate } from 'react-router-dom';
+import { LogDrinkModal } from '../components/common/LogDrinkModal';
+import { SetGoalModal } from '../components/common/SetGoalModal';
+import { api } from '../api/services';
 import { useAuth } from '../contexts/AuthContext';
-import api from '../api/client';
-import { Link } from 'react-router-dom';
+import { useUserPreferences } from '../contexts/UserPreferencesContext';
 
-const Home = () => {
-    const { user } = useAuth();
-    const [logs, setLogs] = useState([]);
-    const [todayLog, setTodayLog] = useState({ count: 0 });
+const WeeklyTrend = ({ data = [], currentDateStr }) => {
+    // Generate last 7 days including today (currentDateStr)
+    // Order: [Today-6, Today-5, ..., Today]
+    const chartData = Array.from({ length: 7 }, (_, i) => {
+        // Parse strictly as local midnight to avoid UTC shifts
+        // Assuming currentDateStr is YYYY-MM-DD
+        const anchor = currentDateStr ? new Date(currentDateStr + 'T00:00:00') : new Date();
+        const d = new Date(anchor);
+        d.setDate(anchor.getDate() - (6 - i));
 
-    useEffect(() => {
-        fetchLogs();
-    }, []);
+        const dStr = format(d, 'yyyy-MM-dd');
+        const dayLabel = format(d, 'EEEEE'); // 'M', 'T', 'W'...
 
-    const fetchLogs = async () => {
-        try {
-            const res = await api.get('/logs');
-            setLogs(res.data);
-
-            const today = new Date().toISOString().split('T')[0];
-            const todayEntry = res.data.find(l => l.date === today);
-            if (todayEntry) {
-                setTodayLog(todayEntry.habits?.drinking || { count: 0 });
-            }
-        } catch (error) {
-            console.error('Error fetching logs:', error);
+        const log = data.find(l => l.date === dStr);
+        // Distinguish between 0 (logged 0) and null (no log)
+        // Adjust logic: If we want to treat "no record" as "no bar", we pass null.
+        // If we want "no record" to IMPLIED 0, we'd use 0. 
+        // User requested explicit difference. 
+        // Assuming API returns 'undefined' for missing days in 'data' array.
+        let val = null;
+        if (log) {
+            val = log.count;
         }
-    };
 
-    const updateLog = async (delta) => {
-        const today = new Date().toISOString().split('T')[0];
-        const newCount = Math.max(0, (todayLog.count || 0) + delta);
+        return {
+            val,
+            label: dayLabel,
+            isToday: i === 6
+        };
+    });
 
-        try {
-            await api.post('/logs', {
-                date: today,
-                habits: {
-                    drinking: { count: newCount }
-                }
-            });
-            setTodayLog(prev => ({ ...prev, count: newCount }));
-            fetchLogs(); // refresh list
-        } catch (error) {
-            console.error('Error updating log:', error);
-        }
-    };
+    const maxVal = Math.max(...chartData.map(d => d.val || 0), 5); // Minimum scale of 5
 
     return (
-        <div>
-            <div className="card">
-                <h2>Hello, {user.displayName}</h2>
-                <p>Today's Count</p>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '20px' }}>
-                    <button onClick={() => updateLog(-1)}>-</button>
-                    <span style={{ fontSize: '24px', fontWeight: 'bold' }}>{todayLog.count || 0}</span>
-                    <button onClick={() => updateLog(1)}>+</button>
+        <div className="mb-4">
+            <div className="flex items-center justify-between mb-4 px-2">
+                <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2 tracking-tight">
+                    Weekly Trend
+                </h3>
+            </div>
+
+            <div className="flex gap-2 h-32 px-2">
+                {/* Y-Axis */}
+                <div className="flex flex-col justify-between text-xs text-slate-400 font-medium py-1">
+                    <span>{Math.ceil(maxVal)}</span>
+                    <span>{Math.ceil(maxVal / 2)}</span>
+                    <span>0</span>
+                </div>
+
+                {/* Chart Area */}
+                <div className="flex-1 flex justify-between items-end gap-3 h-full">
+                    {chartData.map((d, i) => {
+                        let barColor = "bg-slate-200"; // Default (null/no data placeholder?)
+                        let height = "0%";
+
+                        if (d.val === null) {
+                            // No Record -> No bar
+                            height = "0px";
+                        } else if (d.val === 0) {
+                            // Zero drinks -> Primary Blue (Goal)
+                            barColor = "bg-primary";
+                            height = "8px";
+                        } else {
+                            // Positive value -> Pale Blue
+                            barColor = "bg-sky-200";
+                            height = `${Math.min((d.val / maxVal) * 100, 100)}%`;
+                        }
+
+                        return (
+                            <div key={i} className="flex-1 h-full flex flex-col justify-end items-center gap-2 group cursor-pointer relative">
+                                {d.val === 0 && (
+                                    <span className="text-[10px] font-bold text-primary animate-fadeIn -mb-1">0</span>
+                                )}
+                                {/* Bar */}
+                                <div
+                                    className={cn(
+                                        "w-full rounded-t-sm transition-all duration-500 relative",
+                                        barColor
+                                    )}
+                                    style={{ height }}
+                                />
+
+                                {/* Label */}
+                                <span className={cn(
+                                    "text-xs font-bold",
+                                    d.isToday ? "text-primary" : "text-slate-400"
+                                )}>
+                                    {d.label}
+                                </span>
+                            </div>
+                        );
+                    })}
                 </div>
             </div>
-
-            <div className="card">
-                <h3>History</h3>
-                {logs.slice(0, 5).map(log => (
-                    <div key={log.date} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0' }}>
-                        <span>{log.date}</span>
-                        <span>{log.habits?.drinking?.count || 0}</span>
-                    </div>
-                ))}
-            </div>
-
-            <nav className="nav-bar">
-                <Link to="/">Home</Link>
-                <Link to="/companion">Companion</Link>
-            </nav>
         </div>
     );
 };
 
-export default Home;
+export default function Home() {
+    const navigate = useNavigate();
+    const { user } = useAuth();
+    const { manualDate } = useUserPreferences();
+    const [stats, setStats] = useState({ count: 0, limit: 2 });
+    const [trends, setTrends] = useState([]);
+    const [showLogModal, setShowLogModal] = useState(false);
+    const [showGoalModal, setShowGoalModal] = useState(false);
+    const [loading, setLoading] = useState(true);
+
+    const fetchStats = async () => {
+        try {
+            // Ensure we use the same date string for the chart prop
+            const todayStr = manualDate || format(new Date(), 'yyyy-MM-dd');
+
+            const data = await api.getStats(todayStr);
+            if (data.today) {
+                setStats({ count: data.today.count, limit: data.today.limit });
+            }
+            if (data.trends) {
+                setTrends(data.trends);
+            }
+        } catch (err) {
+            console.error("Failed to fetch stats", err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (user) {
+            fetchStats();
+        }
+    }, [user, manualDate]);
+
+    const handleLogDrink = async (count) => {
+        const date = manualDate || format(new Date(), 'yyyy-MM-dd');
+        try {
+            await api.logDrink(date, count);
+            setShowLogModal(false);
+            fetchStats(); // Refresh
+        } catch (err) {
+            console.error("Failed to log drink", err);
+            alert("Failed to log drink");
+        }
+    };
+
+    const handleSetGoal = async (newGoal) => {
+        try {
+            const date = manualDate || format(new Date(), 'yyyy-MM-dd');
+            await api.updateUserProfile({ dailyGoal: newGoal, date });
+            setShowGoalModal(false);
+            fetchStats(); // Refresh to see new limit
+        } catch (err) {
+            console.error("Failed to set goal", err);
+            alert("Failed to set goal");
+        }
+    };
+
+    return (
+        <div className="p-6 pt-8 pb-24 animate-fadeIn">
+            {/* Hero */}
+            {/* Hero */}
+            <div className="mb-8 animate-slideUp">
+                <div onClick={() => setShowGoalModal(true)} className="cursor-pointer active:scale-95 transition-transform">
+                    <SunProgress current={stats.count} goal={stats.limit} />
+                </div>
+            </div>
+
+            {/* EXPICIT ACTION BUTTONS - Moved Above Weekly Trend */}
+            <div className="mb-10 animate-slideUp" style={{ animationDelay: '200ms' }}>
+                <Button
+                    variant="primary"
+                    className="w-full shadow-xl shadow-sky-200 py-4 text-lg mb-3"
+                    onClick={() => handleLogDrink(0)}
+                >
+                    <Sparkles className="w-5 h-5 mr-2" />
+                    I stayed dry today
+                </Button>
+
+                <Button
+                    variant="ghost"
+                    className="w-full bg-sky-100 text-sky-700 hover:bg-sky-200 py-3"
+                    onClick={() => setShowLogModal(true)}
+                >
+                    <Plus className="w-5 h-5 mr-2" />
+                    Log Drink
+                </Button>
+            </div>
+
+            {/* Weekly Trend - Moved Below */}
+            <div className="animate-slideUp" style={{ animationDelay: '300ms' }}>
+                <WeeklyTrend data={trends} currentDateStr={manualDate || format(new Date(), 'yyyy-MM-dd')} />
+            </div>
+
+            {/* EXPICIT ACTION BUTTON */}
+
+
+            <LogDrinkModal
+                isOpen={showLogModal}
+                onClose={() => setShowLogModal(false)}
+                onConfirm={handleLogDrink}
+            />
+
+            <SetGoalModal
+                isOpen={showGoalModal}
+                onClose={() => setShowGoalModal(false)}
+                onConfirm={handleSetGoal}
+                currentGoal={stats.limit}
+            />
+        </div>
+    );
+}

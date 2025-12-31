@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import Card from '../components/ui/Card';
+import Button from '../components/ui/Button';
+import { Sparkles, ArrowRight } from 'lucide-react';
 
 const Login = () => {
     const { loginEmail, signup, user } = useAuth();
@@ -31,7 +34,6 @@ const Login = () => {
             }
         } catch (err) {
             console.error("Auth error:", err);
-            // Improve error messages
             if (err.code === 'auth/invalid-credential') {
                 setError('Invalid email or password.');
             } else if (err.code === 'auth/email-already-in-use') {
@@ -46,47 +48,69 @@ const Login = () => {
         setLoading(false);
     };
 
-
-
     return (
-        <div className="card" style={{ maxWidth: '400px', margin: '50px auto', textAlign: 'center' }}>
-            <h1>Sammy</h1>
-            <p className="subtitle">Your AI Habit Companion</p>
+        <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50 animate-fadeIn">
+            <Card className="w-full max-w-md p-8 shadow-xl bg-white border-slate-100">
+                <div className="text-center mb-8">
+                    <div className="w-16 h-16 bg-gradient-to-br from-primary to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-sky-200">
+                        <Sparkles className="w-8 h-8 text-white" />
+                    </div>
+                    <h1 className="text-3xl font-bold text-slate-800 tracking-tight mb-2">Sammy</h1>
+                    <p className="text-slate-500 font-medium">Your AI Habit Companion</p>
+                </div>
 
-            {error && <div style={{ color: 'var(--error)', marginBottom: '1rem', padding: '0.5rem', background: '#ffebee', borderRadius: '4px' }}>{error}</div>}
+                {error && (
+                    <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-xl text-red-600 text-sm font-medium">
+                        {error}
+                    </div>
+                )}
 
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <input
-                    type="email"
-                    placeholder="Email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    style={{ padding: '0.8rem', borderRadius: '4px', border: '1px solid #ddd' }}
-                />
-                <input
-                    type="password"
-                    placeholder="Password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    style={{ padding: '0.8rem', borderRadius: '4px', border: '1px solid #ddd' }}
-                />
+                <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                    <div>
+                        <input
+                            type="email"
+                            placeholder="Email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            required
+                            className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-medium"
+                        />
+                    </div>
+                    <div>
+                        <input
+                            type="password"
+                            placeholder="Password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required
+                            className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-medium"
+                        />
+                    </div>
 
-                <button type="submit" disabled={loading} style={{ background: 'var(--primary)', color: 'white' }}>
-                    {loading ? 'Processing...' : (isSignup ? 'Sign Up' : 'Log In')}
-                </button>
-            </form>
+                    <Button
+                        type="submit"
+                        variant="primary"
+                        className="w-full h-12 mt-2 shadow-lg shadow-sky-200 text-lg"
+                        disabled={loading}
+                    >
+                        {loading ? 'Processing...' : (isSignup ? 'Create Account' : 'Sign In')}
+                        {!loading && <ArrowRight className="w-5 h-5 ml-2" />}
+                    </Button>
+                </form>
 
-            <div style={{ marginTop: '1rem', fontSize: '0.9rem' }}>
-                {isSignup ? 'Already have an account? ' : "Don't have an account? "}
-                <button
-                    onClick={() => setIsSignup(!isSignup)}
-                    style={{ background: 'none', color: 'var(--primary)', border: 'none', padding: 0, textDecoration: 'underline', cursor: 'pointer', fontSize: 'inherit' }}
-                >
-                    {isSignup ? 'Log In' : 'Sign Up'}
-                </button>
-            </div>
+                <div className="mt-8 pt-6 border-t border-slate-100 text-center">
+                    <p className="text-slate-500 text-sm mb-3">
+                        {isSignup ? 'Already have an account?' : "Don't have an account?"}
+                    </p>
+                    <Button
+                        variant="ghost"
+                        className="w-full hover:bg-slate-50 text-slate-600"
+                        onClick={() => setIsSignup(!isSignup)}
+                    >
+                        {isSignup ? 'Sign In' : 'Create Account'}
+                    </Button>
+                </div>
+            </Card>
         </div>
     );
 };

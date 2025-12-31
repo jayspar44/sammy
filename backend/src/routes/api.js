@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const { verifyToken } = require('../controllers/authController');
-const { getLogs, upsertLog } = require('../controllers/logController');
-const { chat } = require('../controllers/chatController');
+const { logDrink, getStats } = require('../controllers/logController');
+
 
 // Health check
 router.get('/health', (req, res) => res.send('OK'));
@@ -10,11 +10,19 @@ router.get('/health', (req, res) => res.send('OK'));
 // Protected Routes
 router.use(verifyToken);
 
-// Logs
-router.get('/logs', getLogs);
-router.post('/logs', upsertLog);
+// Logs & Stats
+router.post('/log', logDrink);
+router.get('/stats', getStats);
+
+// User Profile
+const { updateProfile, getProfile } = require('../controllers/userController');
+router.post('/user/profile', updateProfile);
+router.get('/user/profile', getProfile);
 
 // Chat
-router.post('/chat', chat);
+const { handleMessage, getChatHistory, deleteChatHistory } = require('../controllers/chatController');
+router.post('/chat', handleMessage);
+router.get('/chat/history', getChatHistory);
+router.delete('/chat/history', deleteChatHistory);
 
 module.exports = router;

@@ -1,21 +1,17 @@
 import axios from 'axios';
 import { getAuth } from 'firebase/auth';
 
-const api = axios.create({
-    baseURL: '/api'
+const client = axios.create({
+    baseURL: import.meta.env.VITE_API_URL || '/api',
 });
 
-// Add token to requests
-api.interceptors.request.use(async (config) => {
+client.interceptors.request.use(async (config) => {
     const auth = getAuth();
-    const user = auth.currentUser;
-
-    if (user) {
-        const token = await user.getIdToken();
+    if (auth.currentUser) {
+        const token = await auth.currentUser.getIdToken();
         config.headers.Authorization = `Bearer ${token}`;
     }
-
     return config;
 });
 
-export default api;
+export default client;
