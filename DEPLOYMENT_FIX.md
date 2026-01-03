@@ -56,48 +56,83 @@ The exposed key has been removed from git history via force push, but GitHub/oth
 
 ## Next Steps (REQUIRED)
 
-Before the next deployment, you MUST run the setup script to configure Firebase hosting sites and GCP secrets:
+The `develop` branch already has the Firebase config secret configured in `cloudbuild.yaml`. You just need to:
+
+### 1. Create Firebase Hosting Sites (One-Time Setup)
 
 ```bash
-# Make sure you're authenticated with Firebase and gcloud
+# Authenticate
 firebase login
 gcloud auth login
 gcloud config set project sammy-658
 
-# Set your Firebase client config (get from Firebase Console > Project Settings)
-export FIREBASE_CONFIG='{"apiKey":"YOUR_API_KEY","authDomain":"sammy-658.firebaseapp.com","projectId":"sammy-658","storageBucket":"sammy-658.firebasestorage.app","messagingSenderId":"YOUR_SENDER_ID","appId":"YOUR_APP_ID","measurementId":"YOUR_MEASUREMENT_ID"}'
+# Create the dev hosting site
+firebase hosting:sites:create sammy-dev --project sammy-658
 
-# Run the setup script (ONE TIME ONLY)
+# Configure targets
+firebase target:apply hosting dev sammy-dev --project sammy-658
+firebase target:apply hosting prod sammy-658 --project sammy-658
+```
+
+### 2. Create/Update the Firebase Secret in GCP
+
+After rotating your API key, update the secret:
+
+```bash
+# Get your new Firebase config from Firebase Console > Project Settings
+export FIREBASE_CONFIG='{"apiKey":"YOUR_NEW_KEY","authDomain":"sammy-658.firebaseapp.com","projectId":"sammy-658","storageBucket":"sammy-658.firebasestorage.app","messagingSenderId":"607940169476","appId":"1:607940169476:web:a57e80f036008d93aeca51","measurementId":"G-L3FB33R0KB"}'
+
+# Create or update the secret
+echo "$FIREBASE_CONFIG" | gcloud secrets create FIREBASE_CLIENT_CONFIG \
+  --data-file=- \
+  --replication-policy="automatic" \
+  --project=sammy-658
+
+# If it already exists, update it instead:
+echo "$FIREBASE_CONFIG" | gcloud secrets versions add FIREBASE_CLIENT_CONFIG \
+  --data-file=- \
+  --project=sammy-658
+
+# Grant Cloud Build access
+PROJECT_NUMBER=$(gcloud projects describe sammy-658 --format='value(projectNumber)')
+gcloud secrets add-iam-policy-binding FIREBASE_CLIENT_CONFIG \
+  --member="serviceAccount:${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor" \
+  --project=sammy-658
+```
+
+**OR** use the automated setup script:
+
+```bash
+export FIREBASE_CONFIG='{"apiKey":"YOUR_NEW_KEY",...}'
 ./scripts/setup-deployment.sh
 ```
 
-This script will:
-1. Create Firebase hosting site `sammy-dev`
-2. Configure hosting targets (dev → sammy-dev, prod → sammy-658)
-3. Create GCP Secret `FIREBASE_CLIENT_CONFIG`
-4. Grant Cloud Build access to the secret
-
 ## Testing
 
-After running the setup script, test the deployment:
+### 3. Deploy to Dev
 
-### Test Dev Deployment
+The develop branch already has all the fixes. Just merge this branch and push:
+
 ```bash
 git checkout develop
 git merge claude/fix-deployment-issues-JMQar
 git push origin develop
 ```
 
-This will trigger Cloud Build which will:
-1. Deploy backend to Cloud Run (sammy-backend-dev)
-2. Build frontend with proper Firebase config
-3. Deploy to https://sammy-dev.web.app
+This triggers Cloud Build which will:
+1. Deploy backend to Cloud Run with updated CORS (sammy-backend-dev)
+2. Fetch Firebase config from the secret
+3. Build frontend with `VITE_API_URL` and `VITE_FIREBASE_CONFIG`
+4. Deploy to **https://sammy-dev.web.app** (separate dev URL!)
 
-### Verify
-1. Visit https://sammy-dev.web.app
-2. Check browser console for errors
-3. Try logging in (Firebase Auth should work now)
-4. Verify API calls reach the dev backend
+### 4. Verify the Fix
+
+1. Visit **https://sammy-dev.web.app**
+2. ✅ No blank page
+3. ✅ Login works (Firebase Auth initializes)
+4. ✅ API calls succeed
+5. Check browser console for any errors
 
 ## Environment URLs
 
