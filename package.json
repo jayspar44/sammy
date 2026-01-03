@@ -16,6 +16,7 @@
     "dev:frontend": "cd frontend && npm start",
     "build:frontend": "cd frontend && npm run build",
     "test:frontend": "cd frontend && npm test",
+    "setup:env": "node scripts/setup-env.js",
     "validate-env": "node scripts/validate-env.js",
     "version:get": "node scripts/get-version.js",
     "version:bump": "node scripts/bump-version-auto.js",
