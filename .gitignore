@@ -101,3 +101,7 @@ dist
 .vscode
 *.swp
 *.swo
+
+# Capacitor native projects (generated, not committed)
+android/
+ios/

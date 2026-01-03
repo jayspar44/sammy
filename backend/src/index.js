@@ -24,14 +24,16 @@ const limiter = rateLimit({
 app.use('/api', limiter);
 
 // CORS Configuration
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
+    : [
+        'http://localhost:4000',
+        'http://localhost:5173',
+        'capacitor://localhost'
+    ];
+
 app.use(cors({
-    origin: [
-        'https://sammy-658.ue.r.appspot.com',
-        'https://dev-dot-sammy-658.ue.r.appspot.com',
-        'capacitor://localhost',
-        'http://localhost:4000', // Local frontend dev
-        'http://localhost:5173'  // Vite local default
-    ],
+    origin: allowedOrigins,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
 }));
