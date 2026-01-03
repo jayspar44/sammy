@@ -18,7 +18,11 @@
     "test:frontend": "cd frontend && npm test",
     "validate-env": "node scripts/validate-env.js",
     "version:get": "node scripts/get-version.js",
-    "version:bump": "node scripts/bump-version.js",
+    "version:bump": "node scripts/bump-version-auto.js",
+    "version:bump:interactive": "node scripts/bump-version.js",
+    "version:patch": "node scripts/bump-version-auto.js patch",
+    "version:minor": "node scripts/bump-version-auto.js minor",
+    "version:major": "node scripts/bump-version-auto.js major",
     "postinstall": "echo 'Setup complete! Run npm run dev:local to start development servers.'"
   },
   "dependencies": {
