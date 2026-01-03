@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Layout } from './components/layout/Layout';
 import Home from './pages/Home';
@@ -7,10 +8,17 @@ import Login from './pages/Login';
 import Settings from './pages/Settings';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
-
 import { UserPreferencesProvider } from './contexts/UserPreferencesContext';
+import { getEnvironment } from './utils/appConfig';
 
 function App() {
+  // Set dynamic page title based on environment
+  useEffect(() => {
+    const env = getEnvironment();
+    const envSuffix = env === 'prod' ? '' : ` (${env})`;
+    document.title = `Sammy${envSuffix}`;
+  }, []);
+
   return (
     <AuthProvider>
       <UserPreferencesProvider>
