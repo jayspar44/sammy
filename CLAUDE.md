@@ -121,19 +121,6 @@ All endpoints (except health) require Firebase Auth token in `Authorization: Bea
 
 The app uses Capacitor for native mobile builds.
 
-### Mobile Development & Testing
-
-For comprehensive mobile development instructions, including:
-- Testing on real Android devices
-- Capacitor live reload setup
-- Running dev server on your phone with Termux
-- Troubleshooting mobile issues
-
-See **[Mobile Development Guide](docs/MOBILE_DEVELOPMENT.md)** or run:
-```bash
-./scripts/setup-mobile-dev.sh
-```
-
 ### Build for Android
 
 ```bash
