@@ -101,3 +101,16 @@ dist
 .vscode
 *.swp
 *.swo
+
+# Capacitor native projects (generated, not committed)
+android/
+ios/
+
+# Claude Code local settings
+.claude/
+
+# Firebase cache
+.firebase/
+
+# Windows artifacts
+nul
