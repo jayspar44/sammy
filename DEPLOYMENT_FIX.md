@@ -1,5 +1,16 @@
 # Deployment Fix Summary
 
+## ⚠️ SECURITY NOTE
+
+**IMPORTANT**: The Firebase client API key was temporarily exposed in git history and has been removed. While Firebase web API keys are designed to be public-facing (they're exposed in your frontend code), you should consider rotating it as a best practice:
+
+1. Go to [Google Cloud Console > APIs & Services > Credentials](https://console.cloud.google.com/apis/credentials?project=sammy-658)
+2. Find the API key for your web app
+3. Regenerate it or create a new one
+4. Update the `FIREBASE_CONFIG` secret in GCP Secret Manager
+
+The exposed key has been removed from git history via force push, but GitHub/others may have cached it.
+
 ## Issues Fixed
 
 ### 1. Blank Page Issue
@@ -52,6 +63,9 @@ Before the next deployment, you MUST run the setup script to configure Firebase 
 firebase login
 gcloud auth login
 gcloud config set project sammy-658
+
+# Set your Firebase client config (get from Firebase Console > Project Settings)
+export FIREBASE_CONFIG='{"apiKey":"YOUR_API_KEY","authDomain":"sammy-658.firebaseapp.com","projectId":"sammy-658","storageBucket":"sammy-658.firebasestorage.app","messagingSenderId":"YOUR_SENDER_ID","appId":"YOUR_APP_ID","measurementId":"YOUR_MEASUREMENT_ID"}'
 
 # Run the setup script (ONE TIME ONLY)
 ./scripts/setup-deployment.sh
