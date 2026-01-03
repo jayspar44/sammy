@@ -36,7 +36,8 @@ const updateProfile = async (req, res) => {
 
         // If dailyGoal was updated, also update today's log to reflect this goal historically
         if (req.body.dailyGoal !== undefined) {
-            const todayStr = new Date().toISOString().split('T')[0];
+            // Use the client-provided date to avoid timezone mismatches
+            const todayStr = req.body.date || new Date().toISOString().split('T')[0];
             const logRef = db.collection('users').doc(uid).collection('logs').doc(todayStr);
 
             // We use merge: true to create if not exists, or update if exists
@@ -78,9 +79,9 @@ const getProfile = async (req, res) => {
         res.json({
             firstName: data.firstName || '',
             email: data.email || req.user.email,
-            dailyGoal: data.dailyGoal || 2,
-            avgDrinkCost: data.avgDrinkCost || 10,
-            avgDrinkCals: data.avgDrinkCals || 150,
+            dailyGoal: data.dailyGoal ?? 2,
+            avgDrinkCost: data.avgDrinkCost ?? 10,
+            avgDrinkCals: data.avgDrinkCals ?? 150,
             chatHistoryEnabled: data.chatHistoryEnabled !== undefined ? data.chatHistoryEnabled : true
         });
 

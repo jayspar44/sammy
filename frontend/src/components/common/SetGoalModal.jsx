@@ -49,7 +49,7 @@ export const SetGoalModal = ({ isOpen, onClose, onConfirm, currentGoal = 2 }) =>
                 <div className="flex flex-col items-center justify-center mb-8">
                     <div className="flex items-center gap-6">
                         <button
-                            onClick={() => setGoal(Math.max(1, goal - 1))}
+                            onClick={() => setGoal(Math.max(0, goal - 1))}
                             className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200 transition-colors active:scale-95"
                         >
                             <Minus className="w-8 h-8" />

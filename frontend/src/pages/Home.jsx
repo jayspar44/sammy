@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { Sparkles, TrendingUp, Plus } from 'lucide-react';
+import { Sparkles, TrendingUp, Plus, Calendar } from 'lucide-react';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import SunProgress from '../components/ui/SunProgress';
@@ -8,6 +8,7 @@ import { cn } from '../utils/cn';
 import { useNavigate } from 'react-router-dom';
 import { LogDrinkModal } from '../components/common/LogDrinkModal';
 import { SetGoalModal } from '../components/common/SetGoalModal';
+import { EditHistoricCountModal } from '../components/common/EditHistoricCountModal';
 import { api } from '../api/services';
 import { useAuth } from '../contexts/AuthContext';
 import { useUserPreferences } from '../contexts/UserPreferencesContext';
@@ -118,6 +119,7 @@ export default function Home() {
     const [trends, setTrends] = useState([]);
     const [showLogModal, setShowLogModal] = useState(false);
     const [showGoalModal, setShowGoalModal] = useState(false);
+    const [showEditModal, setShowEditModal] = useState(false);
     const [loading, setLoading] = useState(true);
 
     const fetchStats = async () => {
@@ -170,7 +172,7 @@ export default function Home() {
     };
 
     return (
-        <div className="p-6 pt-8 pb-24 animate-fadeIn">
+        <div className="p-6 pt-8 animate-fadeIn">
             {/* Hero */}
             {/* Hero */}
             <div className="mb-8 animate-slideUp">
@@ -203,6 +205,16 @@ export default function Home() {
             {/* Weekly Trend - Moved Below */}
             <div className="animate-slideUp" style={{ animationDelay: '300ms' }}>
                 <WeeklyTrend data={trends} currentDateStr={manualDate || format(new Date(), 'yyyy-MM-dd')} />
+
+                {/* Edit History Button */}
+                <Button
+                    variant="ghost"
+                    className="w-full mt-4 bg-slate-50 text-slate-600 hover:bg-slate-100 py-2.5"
+                    onClick={() => setShowEditModal(true)}
+                >
+                    <Calendar className="w-4 h-4 mr-2" />
+                    Edit History
+                </Button>
             </div>
 
             {/* EXPICIT ACTION BUTTON */}
@@ -219,6 +231,13 @@ export default function Home() {
                 onClose={() => setShowGoalModal(false)}
                 onConfirm={handleSetGoal}
                 currentGoal={stats.limit}
+            />
+
+            <EditHistoricCountModal
+                isOpen={showEditModal}
+                onClose={() => setShowEditModal(false)}
+                onSave={fetchStats}
+                currentDate={manualDate || format(new Date(), 'yyyy-MM-dd')}
             />
         </div>
     );

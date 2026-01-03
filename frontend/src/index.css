@@ -32,6 +32,16 @@
 }
 
 @layer base {
+
+  html,
+  body,
+  #root {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+  }
+
   body {
     /* Use the standard utility class generated from the theme variable */
     @apply bg-background text-slate-800 font-sans antialiased;

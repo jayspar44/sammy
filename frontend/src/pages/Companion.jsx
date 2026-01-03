@@ -1,12 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { Send } from 'lucide-react';
 import Button from '../components/ui/Button';
-import { NavLink } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { useUserPreferences } from '../contexts/UserPreferencesContext';
 import { cn } from '../utils/cn';
 import { api } from '../api/services';
 import { format } from 'date-fns';
+import { TopBar } from '../components/layout/TopBar';
 
 const Message = ({ text, sender }) => {
     const isUser = sender === 'user';
@@ -26,10 +25,6 @@ const Message = ({ text, sender }) => {
 
 export default function Companion() {
     const { user } = useAuth();
-    const { firstName } = useUserPreferences();
-
-    // User Profile Button Logic
-    const initial = firstName ? firstName[0].toUpperCase() : (user?.email ? user.email[0].toUpperCase() : 'U');
 
     const bottomRef = useRef(null);
     const [input, setInput] = useState('');
@@ -91,39 +86,11 @@ export default function Companion() {
     };
 
     return (
-        <div className="flex flex-col h-full relative min-h-screen bg-neutral-50">
-            {/* Sticky Header */}
-            <header className="sticky top-0 z-20 bg-white/80 backdrop-blur-md border-b border-slate-100 p-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <div className="relative">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-sky-400 to-indigo-500 flex items-center justify-center text-white font-bold shadow-sm">
-                            S
-                        </div>
-                        <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full"></div>
-                    </div>
-                    <div>
-                        <h1 className="font-bold text-slate-800 text-sm">Sammy</h1>
-                        <p className="text-xs text-slate-500 font-medium">AI Companion</p>
-                    </div>
-                </div>
-
-                {/* Right Side: Settings Link (Mirrors TopBar) */}
-                <NavLink to="/settings" className="relative group">
-                    <div className={cn(
-                        "w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-md transition-transform active:scale-95",
-                        "bg-gradient-to-tr from-sky-400 to-indigo-500 shadow-sky-200"
-                    )}>
-                        {user?.photoURL ? (
-                            <img src={user.photoURL} alt="Avatar" className="w-full h-full rounded-full object-cover" />
-                        ) : (
-                            initial
-                        )}
-                    </div>
-                </NavLink>
-            </header>
+        <div className="flex flex-col h-full relative bg-neutral-50">
+            <TopBar />
 
             {/* Messages */}
-            <div className="flex-1 p-4 pb-20">
+            <div className="flex-1 overflow-y-auto p-4 pb-40">
                 {messages.map(msg => (
                     <Message key={msg.id} {...msg} />
                 ))}
@@ -139,9 +106,9 @@ export default function Companion() {
                 <div ref={bottomRef} />
             </div>
 
-            {/* Sticky Input Area */}
-            <div className="sticky bottom-[80px] left-0 right-0 bg-transparent p-4 pointer-events-none">
-                <div className="bg-white/90 backdrop-blur-md border border-slate-100 p-2 rounded-[2rem] shadow-xl flex gap-2 pointer-events-auto">
+            {/* Fixed Input Area - positioned above navbar */}
+            <div className="fixed bottom-[104px] left-0 right-0 bg-transparent p-4 pointer-events-none z-10">
+                <div className="bg-white/95 backdrop-blur-md border border-slate-200 p-2 rounded-[2rem] shadow-xl flex gap-2 pointer-events-auto max-w-screen-md mx-auto">
                     <input
                         type="text"
                         value={input}

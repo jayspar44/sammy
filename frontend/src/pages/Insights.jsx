@@ -85,7 +85,7 @@ export default function Insights() {
     const maxVal = Math.max(...monthlyData.map(d => d.val || 0), 5);
 
     return (
-        <div className="p-6 pt-8 pb-24 animate-fadeIn">
+        <div className="p-6 pt-8 animate-fadeIn">
             <header className="mb-8">
                 <h1 className="text-3xl font-bold text-slate-800 tracking-tight mb-1">Your Progress</h1>
                 <p className="text-slate-500 font-medium">Keep up the momentum!</p>

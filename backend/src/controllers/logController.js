@@ -25,9 +25,9 @@ const logDrink = async (req, res) => {
 
             // Get current user limits/costs for stats
             const userData = userDoc.exists ? userDoc.data() : {};
-            const dailyGoal = userData.dailyGoal || 2;
-            const costPerDrink = userData.avgDrinkCost || 10;
-            const calsPerDrink = userData.avgDrinkCals || 150;
+            const dailyGoal = userData.dailyGoal ?? 2;
+            const costPerDrink = userData.avgDrinkCost ?? 10;
+            const calsPerDrink = userData.avgDrinkCals ?? 150;
 
             const existingData = doc.exists ? doc.data() : {};
 
@@ -114,4 +114,67 @@ const getStats = async (req, res) => {
     }
 };
 
-module.exports = { logDrink, getStats };
+const updateLog = async (req, res) => {
+    const { uid } = req.user;
+    const { date, newCount } = req.body;
+
+    if (!date || newCount === undefined) {
+        return res.status(400).json({ error: 'Date and newCount are required' });
+    }
+
+    // Validate that date is not in the future
+    const requestedDate = new Date(date + 'T00:00:00');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (requestedDate > today) {
+        return res.status(400).json({ error: 'Cannot edit future dates' });
+    }
+
+    // Check DB readiness
+    if (!isReady) {
+        return res.status(503).json({ error: 'Database not connected' });
+    }
+
+    try {
+        const userRef = db.collection('users').doc(uid);
+        const logRef = userRef.collection('logs').doc(date);
+
+        await db.runTransaction(async (t) => {
+            const userDoc = await t.get(userRef);
+            const logDoc = await t.get(logRef);
+
+            // Get current user settings for this update
+            const userData = userDoc.exists ? userDoc.data() : {};
+            const dailyGoal = userData.dailyGoal ?? 2;
+            const costPerDrink = userData.avgDrinkCost ?? 10;
+            const calsPerDrink = userData.avgDrinkCals ?? 150;
+
+            const existingData = logDoc.exists ? logDoc.data() : {};
+            const habitsData = existingData.habits || {};
+
+            // Set the new count (absolute value, not increment)
+            habitsData.drinking = {
+                count: parseInt(newCount),
+                goal: dailyGoal,
+                cost: costPerDrink,
+                cals: calsPerDrink,
+                updatedAt: new Date().toISOString()
+            };
+
+            t.set(logRef, {
+                userId: uid,
+                date,
+                habits: habitsData,
+                timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            }, { merge: true });
+        });
+
+        res.json({ success: true, message: "Count updated successfully" });
+    } catch (error) {
+        console.error('Error updating log:', error);
+        res.status(500).json({ error: 'Failed to update log' });
+    }
+};
+
+module.exports = { logDrink, getStats, updateLog };

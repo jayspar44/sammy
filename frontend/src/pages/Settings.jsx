@@ -54,9 +54,7 @@ export default function Settings() {
     };
 
     return (
-        <div className="p-6 pb-24 space-y-6 animate-fadeIn">
-            <h2 className="text-2xl font-bold text-slate-800">Settings</h2>
-
+        <div className="p-6 pb-8 space-y-6 animate-fadeIn">
             {/* Profile Section */}
             <section className="space-y-4">
                 <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Profile</h3>
@@ -213,6 +211,6 @@ export default function Settings() {
                     Log Out
                 </Button>
             </section>
-        </div >
+        </div>
     );
 }

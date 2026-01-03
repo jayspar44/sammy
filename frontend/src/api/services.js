@@ -68,6 +68,15 @@ export const api = {
         return response.data;
     },
 
+    updateHistoricCount: async (date, newCount) => {
+        if (IS_SPOOF_DB()) {
+            console.log(`[SPOOF] Update Historic: ${date} - ${newCount}`);
+            return { success: true };
+        }
+        const response = await client.put('/log', { date, newCount });
+        return response.data;
+    },
+
     getStats: async (date) => {
         let dateStr = date;
         if (!dateStr) {

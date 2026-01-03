@@ -6,7 +6,8 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: parseInt(process.env.PORT) || 4000,
-    host: true, // Listen on all addresses
+    host: '0.0.0.0', // Explicitly bind to all interfaces
+    strictPort: true,
     proxy: {
       '/api': {
         target: 'http://localhost:4001',

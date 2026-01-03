@@ -12,9 +12,10 @@ const calculateStats = async (userId, anchorDate) => {
     const userData = userDoc.exists ? userDoc.data() : {};
 
     // Default global settings
-    const globalLimit = userData.dailyGoal || 2;
-    const globalDrinkCost = userData.avgDrinkCost || 10;
-    const globalDrinkCals = userData.avgDrinkCals || 150;
+    // Use nullish coalescing (??) instead of || to allow 0 as valid value
+    const globalLimit = userData.dailyGoal ?? 2;
+    const globalDrinkCost = userData.avgDrinkCost ?? 10;
+    const globalDrinkCals = userData.avgDrinkCals ?? 150;
 
     // Fetch logs for last 30 days (includes today)
     const thirtyDaysAgo = new Date(anchorDate);
@@ -110,7 +111,7 @@ const calculateStats = async (userId, anchorDate) => {
     return {
         today: {
             count: todaysLog.count,
-            limit: globalLimit,
+            limit: todaysLog.limit,  // Use the actual log's limit, not globalLimit
         },
         trends: trendData,
         insights: {
