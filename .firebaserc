@@ -6,7 +6,7 @@
     "sammy-658": {
       "hosting": {
         "dev": [
-          "sammy-dev"
+          "sammy-658-dev"
         ],
         "prod": [
           "sammy-658"

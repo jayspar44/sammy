@@ -26,7 +26,7 @@ The exposed key has been removed from git history via force push, but GitHub/oth
 
 **Solution**:
 - Created separate Firebase Hosting sites using targets
-- Dev: https://sammy-dev.web.app
+- Dev: https://sammy-658-dev.web.app
 - Prod: https://sammy-658.web.app
 - Updated `firebase.json` to support multiple hosting targets
 - Updated `.firebaserc` with target mappings
@@ -42,7 +42,7 @@ The exposed key has been removed from git history via force push, but GitHub/oth
    - Changed from single hosting config to array with dev/prod targets
 
 3. **.firebaserc**
-   - Added hosting target mappings (dev → sammy-dev, prod → sammy-658)
+   - Added hosting target mappings (dev → sammy-658-dev, prod → sammy-658)
 
 4. **CLAUDE.md**
    - Updated environment table with correct URLs
@@ -67,10 +67,10 @@ gcloud auth login
 gcloud config set project sammy-658
 
 # Create the dev hosting site
-firebase hosting:sites:create sammy-dev --project sammy-658
+firebase hosting:sites:create sammy-658-dev --project sammy-658
 
 # Configure targets
-firebase target:apply hosting dev sammy-dev --project sammy-658
+firebase target:apply hosting dev sammy-658-dev --project sammy-658
 firebase target:apply hosting prod sammy-658 --project sammy-658
 ```
 
@@ -124,11 +124,11 @@ This triggers Cloud Build which will:
 1. Deploy backend to Cloud Run with updated CORS (sammy-backend-dev)
 2. Fetch Firebase config from the secret
 3. Build frontend with `VITE_API_URL` and `VITE_FIREBASE_CONFIG`
-4. Deploy to **https://sammy-dev.web.app** (separate dev URL!)
+4. Deploy to **https://sammy-658-dev.web.app** (separate dev URL!)
 
 ### 4. Verify the Fix
 
-1. Visit **https://sammy-dev.web.app**
+1. Visit **https://sammy-658-dev.web.app**
 2. ✅ No blank page
 3. ✅ Login works (Firebase Auth initializes)
 4. ✅ API calls succeed
@@ -138,7 +138,7 @@ This triggers Cloud Build which will:
 
 | Environment | Backend | Frontend |
 |-------------|---------|----------|
-| Dev | https://sammy-backend-dev-607940169476.us-central1.run.app | https://sammy-dev.web.app |
+| Dev | https://sammy-backend-dev-607940169476.us-central1.run.app | https://sammy-658-dev.web.app |
 | Prod | https://sammy-backend-prod-607940169476.us-central1.run.app | https://sammy-658.web.app |
 
 ## Rollback Plan
@@ -147,7 +147,7 @@ If issues occur, you can quickly rollback:
 
 ```bash
 # Revert to previous Firebase deployment
-firebase hosting:clone sammy-dev:previous sammy-dev:current
+firebase hosting:clone sammy-658-dev:previous sammy-658-dev:current
 
 # Revert backend
 gcloud run services update-traffic sammy-backend-dev \

@@ -57,8 +57,8 @@ echo "✅ gcloud authenticated"
 # Step 1: Create Firebase hosting sites
 echo ""
 echo "📦 Step 1: Creating Firebase hosting sites..."
-echo "Creating dev site (sammy-dev)..."
-firebase hosting:sites:create sammy-dev --project $PROJECT_ID 2>&1 | grep -v "already exists" || echo "  → Dev site already exists or created successfully"
+echo "Creating dev site (sammy-658-dev)..."
+firebase hosting:sites:create sammy-658-dev --project $PROJECT_ID 2>&1 | grep -v "already exists" || echo "  → Dev site already exists or created successfully"
 
 echo ""
 echo "Note: The default site 'sammy-658' is already available for production"
@@ -66,8 +66,8 @@ echo "Note: The default site 'sammy-658' is already available for production"
 # Step 2: Configure Firebase hosting targets
 echo ""
 echo "🎯 Step 2: Configuring hosting targets..."
-firebase target:apply hosting dev sammy-dev --project $PROJECT_ID
-echo "  → Configured dev target → sammy-dev"
+firebase target:apply hosting dev sammy-658-dev --project $PROJECT_ID
+echo "  → Configured dev target → sammy-658-dev"
 firebase target:apply hosting prod sammy-658 --project $PROJECT_ID
 echo "  → Configured prod target → sammy-658"
 
@@ -110,7 +110,7 @@ echo "✅ Setup complete!"
 echo ""
 echo "📋 Verification:"
 echo "1. Firebase hosting sites:"
-firebase hosting:sites:list --project=$PROJECT_ID | grep -E "(sammy-dev|sammy-658)"
+firebase hosting:sites:list --project=$PROJECT_ID | grep -E "(sammy-658-dev|sammy-658)"
 echo ""
 echo "2. Firebase targets:"
 cat .firebaserc | grep -A 10 targets
@@ -120,7 +120,7 @@ gcloud secrets describe FIREBASE_CLIENT_CONFIG --project=$PROJECT_ID --format="t
 
 echo ""
 echo "🎉 All set! Your environment URLs:"
-echo "  Dev:  https://sammy-dev.web.app"
+echo "  Dev:  https://sammy-658-dev.web.app"
 echo "  Prod: https://sammy-658.web.app"
 echo ""
 echo "📌 Next steps:"
