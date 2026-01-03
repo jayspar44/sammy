@@ -3,20 +3,15 @@
     "default": "sammy-658"
   },
   "targets": {
-    "sammy-658-dev": {
-      "hosting": {
-        "dev": [
-          "sammy-dev"
-        ]
-      }
-    },
     "sammy-658": {
       "hosting": {
+        "dev": [
+          "sammy-658-dev"
+        ],
         "prod": [
           "sammy-658"
         ]
       }
     }
-  },
-  "etags": {}
+  }
 }
