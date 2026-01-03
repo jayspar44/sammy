@@ -1,6 +1,17 @@
 {
-    "version": "0.1.1",
+    "version": "0.2.0",
     "history": [
+        {
+            "version": "0.2.0",
+            "date": "2026-01-03",
+            "author": "Developer",
+            "changes": [
+                "Add version and environment display in page header",
+                "Add dynamic page title based on environment",
+                "Add automated version bump scripts with semantic versioning",
+                "Add comprehensive version management documentation"
+            ]
+        },
         {
             "version": "0.1.1",
             "date": "2025-12-31",
