@@ -25,6 +25,7 @@ export const UserPreferencesProvider = ({ children }) => {
 
     // -- Backend User Profile --
     const [firstName, setFirstName] = useState('');
+    const [registeredDate, setRegisteredDate] = useState(null);
     const [avgDrinkCost, setAvgDrinkCost] = useState(10);
     const [avgDrinkCals, setAvgDrinkCals] = useState(150);
     const [chatHistoryEnabled, setChatHistoryEnabled] = useState(true);
@@ -57,17 +58,12 @@ export const UserPreferencesProvider = ({ children }) => {
                     const data = await api.getUserProfile();
                     console.log("[DEBUG] Profile Data Received:", data);
 
-                    if (data && data.firstName !== undefined) {
-                        setFirstName(data.firstName);
-                    }
-                    if (data && data.avgDrinkCost !== undefined) {
-                        setAvgDrinkCost(data.avgDrinkCost);
-                    }
-                    if (data && data.avgDrinkCals !== undefined) {
-                        setAvgDrinkCals(data.avgDrinkCals);
-                    }
-                    if (data && data.chatHistoryEnabled !== undefined) {
-                        setChatHistoryEnabled(data.chatHistoryEnabled);
+                    if (data) {
+                        if (data.firstName !== undefined) setFirstName(data.firstName);
+                        if (data.registeredDate) setRegisteredDate(data.registeredDate);
+                        if (data.avgDrinkCost !== undefined) setAvgDrinkCost(data.avgDrinkCost);
+                        if (data.avgDrinkCals !== undefined) setAvgDrinkCals(data.avgDrinkCals);
+                        if (data.chatHistoryEnabled !== undefined) setChatHistoryEnabled(data.chatHistoryEnabled);
                     }
                 } catch (error) {
                     console.error("Failed to load user profile", error);
@@ -76,6 +72,7 @@ export const UserPreferencesProvider = ({ children }) => {
                 }
             } else {
                 setFirstName('');
+                setRegisteredDate(null);
             }
         };
 
@@ -97,6 +94,7 @@ export const UserPreferencesProvider = ({ children }) => {
         try {
             await api.updateUserProfile(updates);
             if (updates.firstName !== undefined) setFirstName(updates.firstName);
+            if (updates.registeredDate !== undefined) setRegisteredDate(updates.registeredDate);
             if (updates.avgDrinkCost !== undefined) setAvgDrinkCost(updates.avgDrinkCost);
             if (updates.avgDrinkCals !== undefined) setAvgDrinkCals(updates.avgDrinkCals);
             if (updates.chatHistoryEnabled !== undefined) setChatHistoryEnabled(updates.chatHistoryEnabled);
@@ -115,6 +113,7 @@ export const UserPreferencesProvider = ({ children }) => {
         manualDate,
         setManualDate,
         firstName,
+        registeredDate,
         saveFirstName,
         avgDrinkCost,
         avgDrinkCals,

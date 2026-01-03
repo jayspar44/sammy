@@ -13,6 +13,36 @@ const handleMessage = async (req, res) => {
         return res.status(400).json({ error: 'Message is required' });
     }
 
+    // DAILY USAGE LIMIT CHECK (25 messages/day)
+    const todayStr = date || new Date().toISOString().split('T')[0];
+    const userLogRef = db.collection('users').doc(uid).collection('logs').doc(todayStr);
+
+    let allowed = false;
+    try {
+        await db.runTransaction(async (t) => {
+            const doc = await t.get(userLogRef);
+            const data = doc.exists ? doc.data() : {};
+            const currentCount = data.chatCount || 0;
+
+            if (currentCount < 25) {
+                t.set(userLogRef, { chatCount: currentCount + 1 }, { merge: true });
+                allowed = true;
+            }
+        });
+    } catch (error) {
+        console.error('Error checking chat limit:', error);
+        // Default to allowed on error to avoid blocking valid users during glitches
+        allowed = true;
+    }
+
+    if (!allowed) {
+        return res.json({
+            text: "I've reached my daily energy limit for chatting today (25 messages). I'll be fully recharged and ready to talk again tomorrow! 🌙",
+            sender: 'sammy',
+            timestamp: new Date()
+        });
+    }
+
     try {
         const userRef = db.collection('users').doc(uid);
         const userDoc = await userRef.get();

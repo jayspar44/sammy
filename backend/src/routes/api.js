@@ -13,7 +13,10 @@ router.use(verifyToken);
 // Logs & Stats
 router.post('/log', logDrink);
 router.put('/log', updateLog);
+router.put('/log', updateLog);
 router.get('/stats', getStats);
+const { getStatsRange } = require('../controllers/logController');
+router.get('/stats/range', getStatsRange);
 
 // User Profile
 const { updateProfile, getProfile } = require('../controllers/userController');

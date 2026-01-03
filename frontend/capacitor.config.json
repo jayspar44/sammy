@@ -1,5 +1,8 @@
 {
   "appId": "io.sammy.app",
   "appName": "Sammy",
-  "webDir": "dist"
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  }
 }

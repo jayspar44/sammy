@@ -10,6 +10,16 @@ const logDrink = async (req, res) => {
         return res.status(400).json({ error: 'Date and count are required' });
     }
 
+    // Validate date format YYYY-MM-DD
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
+    }
+
+    // Validate count
+    if (typeof count !== 'number' || count < 0) {
+        return res.status(400).json({ error: 'Count must be a non-negative number' });
+    }
+
     // Check DB readiness
     if (!isReady) {
         return res.status(503).json({ error: 'Database not connected' });
@@ -116,10 +126,10 @@ const getStats = async (req, res) => {
 
 const updateLog = async (req, res) => {
     const { uid } = req.user;
-    const { date, newCount } = req.body;
+    const { date, newCount, newGoal } = req.body;
 
-    if (!date || newCount === undefined) {
-        return res.status(400).json({ error: 'Date and newCount are required' });
+    if (!date || (newCount === undefined && newGoal === undefined)) {
+        return res.status(400).json({ error: 'Date and either newCount or newGoal are required' });
     }
 
     // Validate that date is not in the future
@@ -153,10 +163,26 @@ const updateLog = async (req, res) => {
             const existingData = logDoc.exists ? logDoc.data() : {};
             const habitsData = existingData.habits || {};
 
+            // Determine values to save
+            const currentDrinking = habitsData.drinking || {};
+
+            // If newCount is provided, use it, otherwise keep existing
+            const countToSave = newCount !== undefined ? parseInt(newCount) : (currentDrinking.count || 0);
+
+            // If newGoal is provided, use it, otherwise keep existing OR fall back to dailyGoal
+            let goalToSave;
+            if (newGoal !== undefined) {
+                goalToSave = parseInt(newGoal);
+            } else if (currentDrinking.goal !== undefined) {
+                goalToSave = currentDrinking.goal;
+            } else {
+                goalToSave = dailyGoal;
+            }
+
             // Set the new count (absolute value, not increment)
             habitsData.drinking = {
-                count: parseInt(newCount),
-                goal: dailyGoal,
+                count: countToSave,
+                goal: goalToSave,
                 cost: costPerDrink,
                 cals: calsPerDrink,
                 updatedAt: new Date().toISOString()
@@ -170,11 +196,91 @@ const updateLog = async (req, res) => {
             }, { merge: true });
         });
 
-        res.json({ success: true, message: "Count updated successfully" });
+        res.json({ success: true, message: "Log updated successfully" });
     } catch (error) {
         console.error('Error updating log:', error);
         res.status(500).json({ error: 'Failed to update log' });
     }
 };
 
-module.exports = { logDrink, getStats, updateLog };
+const getStatsRange = async (req, res) => {
+    const { uid } = req.user;
+    const { startDate, endDate } = req.query; // YYYY-MM-DD strings
+
+    if (!startDate || !endDate) {
+        return res.status(400).json({ error: 'Start date and end date are required' });
+    }
+
+    // Check DB readiness
+    if (!isReady) {
+        // Mock data for range
+        const mockData = {};
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+            const dateStr = d.toISOString().split('T')[0];
+            mockData[dateStr] = {
+                today: { count: Math.floor(Math.random() * 5), limit: 2 },
+                // Add trends/insights if needed for the modal, but modal primarily needs today's count & limit per day
+                trends: []
+            };
+        }
+        return res.json(mockData);
+    }
+
+    try {
+        const userRef = db.collection('users').doc(uid);
+        const logsRef = userRef.collection('logs');
+
+        // Query range - limit to reasonably expected range size (e.g. 1-2 weeks)
+        const snapshot = await logsRef
+            .where('date', '>=', startDate)
+            .where('date', '<=', endDate)
+            .get();
+
+        const userDoc = await userRef.get();
+        const userData = userDoc.exists ? userDoc.data() : {};
+
+        // Default values
+        const goal = userData.dailyGoal ?? 2;
+
+        const results = {};
+
+        // Initialize all days in range with 0/default if no log exists? 
+        // Or just return found logs and let frontend handle gaps.
+        // Frontend likely easier if we return what we found, and it defaults valid days.
+        // But let's build a map of date -> stats
+
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            const date = data.date;
+
+            let count = 0;
+            let dayGoal = goal; // Could be historical goal if we stored it
+
+            if (data.habits && data.habits.drinking) {
+                count = data.habits.drinking.count || 0;
+                if (data.habits.drinking.goal) dayGoal = data.habits.drinking.goal;
+            } else if (data.count !== undefined) {
+                count = data.count;
+            }
+
+            results[date] = {
+                today: { count, limit: dayGoal },
+                // Modal check 'hasRecord' based on trends presence in old code. 
+                // We should explicitly signal if a record exists.
+                hasRecord: true,
+                trends: [{ date: date, count }] // Mimic structure if needed, or simplify frontend
+            };
+        });
+
+        res.json(results);
+
+    } catch (error) {
+        console.error('Error fetching stats range:', error);
+        res.status(500).json({ error: 'Failed to fetch stats range' });
+    }
+};
+
+module.exports = { logDrink, getStats, updateLog, getStatsRange };

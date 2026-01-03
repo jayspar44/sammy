@@ -9,27 +9,40 @@ const updateProfile = async (req, res) => {
             return res.status(400).json({ error: 'User ID missing from token' });
         }
 
-        // Store/Update user data
-        // We always ensure email is sync'd from the token in case it changed or wasn't set
+        // Check if user exists to set registeredDate only on creation
+        const userDoc = await db.collection('users').doc(uid).get();
         const userData = {
             email,
             updatedAt: new Date().toISOString()
         };
 
+        if (!userDoc.exists) {
+            userData.registeredDate = new Date().toISOString();
+        }
+
         if (firstName !== undefined) {
             userData.firstName = firstName;
         }
         if (req.body.dailyGoal !== undefined) {
-            userData.dailyGoal = parseInt(req.body.dailyGoal);
+            const val = parseInt(req.body.dailyGoal);
+            if (isNaN(val) || val < 0) return res.status(400).json({ error: 'Invalid daily goal' });
+            userData.dailyGoal = val;
         }
         if (req.body.avgDrinkCost !== undefined) {
-            userData.avgDrinkCost = parseFloat(req.body.avgDrinkCost);
+            const val = parseFloat(req.body.avgDrinkCost);
+            if (isNaN(val) || val < 0) return res.status(400).json({ error: 'Invalid drink cost' });
+            userData.avgDrinkCost = val;
         }
         if (req.body.avgDrinkCals !== undefined) {
-            userData.avgDrinkCals = parseInt(req.body.avgDrinkCals);
+            const val = parseInt(req.body.avgDrinkCals);
+            if (isNaN(val) || val < 0) return res.status(400).json({ error: 'Invalid calories' });
+            userData.avgDrinkCals = val;
         }
         if (req.body.chatHistoryEnabled !== undefined) {
             userData.chatHistoryEnabled = req.body.chatHistoryEnabled;
+        }
+        if (req.body.registeredDate !== undefined) {
+            userData.registeredDate = req.body.registeredDate;
         }
 
         await db.collection('users').doc(uid).set(userData, { merge: true });
@@ -71,7 +84,8 @@ const getProfile = async (req, res) => {
             return res.json({
                 firstName: '',
                 email: req.user.email,
-                chatHistoryEnabled: true
+                chatHistoryEnabled: true,
+                registeredDate: new Date().toISOString() // Return curr time as fallback/start
             });
         }
 
@@ -82,7 +96,8 @@ const getProfile = async (req, res) => {
             dailyGoal: data.dailyGoal ?? 2,
             avgDrinkCost: data.avgDrinkCost ?? 10,
             avgDrinkCals: data.avgDrinkCals ?? 150,
-            chatHistoryEnabled: data.chatHistoryEnabled !== undefined ? data.chatHistoryEnabled : true
+            chatHistoryEnabled: data.chatHistoryEnabled !== undefined ? data.chatHistoryEnabled : true,
+            registeredDate: data.registeredDate || data.updatedAt || new Date().toISOString() // Fallback to updated or now
         });
 
     } catch (error) {

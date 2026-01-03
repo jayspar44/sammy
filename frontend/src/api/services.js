@@ -22,6 +22,22 @@ const generateMockTrends = (baseDateStr) => {
     return trends;
 };
 
+// Helper to generate mock range stats
+const generateMockRangeStats = (startDate, endDate) => {
+    const mockData = {};
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        const dateStr = d.toISOString().split('T')[0];
+        mockData[dateStr] = {
+            today: { count: Math.floor(Math.random() * 5), limit: 2 },
+            hasRecord: Math.random() > 0.3,
+            trends: [{ date: dateStr, count: Math.floor(Math.random() * 5) }]
+        };
+    }
+    return mockData;
+};
+
 const MOCK_STATS_BASE = {
     today: { count: 3, limit: 12 }, // Fixed today count
     insights: {
@@ -68,12 +84,20 @@ export const api = {
         return response.data;
     },
 
-    updateHistoricCount: async (date, newCount) => {
+    updateHistoricCount: async (date, newCountOrPayload) => {
         if (IS_SPOOF_DB()) {
-            console.log(`[SPOOF] Update Historic: ${date} - ${newCount}`);
+            console.log(`[SPOOF] Update Historic: ${date}`, newCountOrPayload);
             return { success: true };
         }
-        const response = await client.put('/log', { date, newCount });
+
+        let payload = { date };
+        if (typeof newCountOrPayload === 'object') {
+            payload = { ...payload, ...newCountOrPayload };
+        } else {
+            payload.newCount = newCountOrPayload;
+        }
+
+        const response = await client.put('/log', payload);
         return response.data;
     },
 
@@ -113,6 +137,15 @@ export const api = {
         }
 
         const response = await client.get(`/stats?date=${dateStr}`);
+        return response.data;
+    },
+
+    getStatsRange: async (startDate, endDate) => {
+        if (IS_SPOOF_DB()) {
+            console.log(`[SPOOF] Get Stats Range ${startDate} to ${endDate}`);
+            return generateMockRangeStats(startDate, endDate);
+        }
+        const response = await client.get(`/stats/range`, { params: { startDate, endDate } });
         return response.data;
     },
 

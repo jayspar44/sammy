@@ -5,12 +5,16 @@ import { clsx } from 'clsx';
 import { createPortal } from 'react-dom';
 import { format, subDays, addDays, startOfWeek, isSameWeek } from 'date-fns';
 import { api } from '../../api/services';
+import { useUserPreferences } from '../../contexts/UserPreferencesContext';
 
 export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate }) => {
+    const { registeredDate } = useUserPreferences();
     const [weekStartDate, setWeekStartDate] = useState(null);
     const [weekData, setWeekData] = useState([]);
     const [weekDataCache, setWeekDataCache] = useState({}); // Cache fetched week data
     const [modifiedCounts, setModifiedCounts] = useState({});
+    const [modifiedGoals, setModifiedGoals] = useState({});
+    const [editMode, setEditMode] = useState('count'); // 'count' or 'target'
     const [isVisible, setIsVisible] = useState(false);
     const [loading, setLoading] = useState(false);
     const [loadingData, setLoadingData] = useState(false);
@@ -27,6 +31,8 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
             const weekStart = startOfWeek(referenceDate, { weekStartsOn: 1 }); // Monday
             setWeekStartDate(weekStart);
             setModifiedCounts({});
+            setModifiedGoals({});
+            setEditMode('count');
         } else {
             setTimeout(() => setIsVisible(false), 300);
         }
@@ -56,33 +62,40 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
             const dateInfos = [];
             for (let i = 0; i < 7; i++) {
                 const date = addDays(startDate, i);
-                const dateStr = format(date, 'yyyy-MM-dd');
                 dateInfos.push({
                     date,
-                    dateStr,
+                    dateStr: format(date, 'yyyy-MM-dd'),
                     dayLabel: format(date, 'EEE'),
                     dateLabel: format(date, 'MMM d'),
                     isFuture: date > today
                 });
             }
 
-            // Batch fetch all stats in parallel
-            const statsPromises = dateInfos.map(info =>
-                info.isFuture ? Promise.resolve(null) : api.getStats(info.dateStr)
+            // Batch fetch all stats
+            const weekEndDate = addDays(startDate, 6);
+            const rangeStats = await api.getStatsRange(
+                format(startDate, 'yyyy-MM-dd'),
+                format(weekEndDate, 'yyyy-MM-dd')
             );
-            const statsResults = await Promise.all(statsPromises);
 
             // Combine data
-            const days = dateInfos.map((info, i) => {
-                const hasRecord = !info.isFuture && statsResults[i]?.today !== undefined;
+            const days = dateInfos.map((info) => {
+                const dayStats = rangeStats[info.dateStr] || {};
+
+                // Fallback if dayStats is empty (e.g. no record found)
+                const count = dayStats.today?.count ?? 0;
+                const limit = dayStats.today?.limit ?? 2;
+                const hasRecord = dayStats.hasRecord ?? false;
+
                 return {
                     date: info.dateStr,
                     dayLabel: info.dayLabel,
                     dateLabel: info.dateLabel,
-                    count: info.isFuture ? null : (statsResults[i]?.today?.count ?? 0),
-                    limit: info.isFuture ? null : (statsResults[i]?.today?.limit ?? 2),
+                    count: info.isFuture ? null : count,
+                    limit: info.isFuture ? null : limit,
                     isFuture: info.isFuture,
-                    hasRecord: hasRecord
+                    isBeforeRegistered: registeredDate ? info.dateStr < registeredDate.split('T')[0] : false,
+                    hasRecord: !info.isFuture && hasRecord
                 };
             });
 
@@ -118,23 +131,39 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
         const day = weekData.find(d => d.date === date);
         if (!day || day.isFuture) return;
 
-        const currentCount = modifiedCounts[date] ?? day.count;
-        const newCount = Math.max(0, currentCount + delta);
+        if (editMode === 'target') {
+            const currentGoal = modifiedGoals[date] ?? day.limit;
+            const newGoal = Math.max(1, currentGoal + delta); // Min goal 1? Or 0? Let's say 1 for logic.
 
-        setModifiedCounts(prev => ({
-            ...prev,
-            [date]: newCount
-        }));
+            setModifiedGoals(prev => ({
+                ...prev,
+                [date]: newGoal
+            }));
+        } else {
+            const currentCount = modifiedCounts[date] ?? day.count;
+            const newCount = Math.max(0, currentCount + delta);
+
+            setModifiedCounts(prev => ({
+                ...prev,
+                [date]: newCount
+            }));
+        }
     };
 
     const handleSaveAll = async () => {
         setLoading(true);
         try {
-            // Save all modified counts
-            const updates = Object.entries(modifiedCounts).map(([date, count]) =>
-                api.updateHistoricCount(date, count)
+            // Save modified counts
+            const countUpdates = Object.entries(modifiedCounts).map(([date, count]) =>
+                api.updateHistoricCount(date, { newCount: count })
             );
-            await Promise.all(updates);
+
+            // Save modified goals
+            const goalUpdates = Object.entries(modifiedGoals).map(([date, goal]) =>
+                api.updateHistoricCount(date, { newGoal: goal })
+            );
+
+            await Promise.all([...countUpdates, ...goalUpdates]);
             onSave?.();
             onClose();
         } catch (err) {
@@ -148,7 +177,7 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
     if (!isVisible && !isOpen) return null;
 
     const isCurrentWeek = weekStartDate && isSameWeek(weekStartDate, today, { weekStartsOn: 1 });
-    const hasChanges = Object.keys(modifiedCounts).length > 0;
+    const hasChanges = Object.keys(modifiedCounts).length > 0 || Object.keys(modifiedGoals).length > 0;
     const weekEndDate = weekStartDate ? addDays(weekStartDate, 6) : null;
 
     return createPortal(
@@ -249,7 +278,11 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
                                 const currentCount = modifiedCounts[day.date] ?? day.count;
                                 const isModified = day.date in modifiedCounts;
                                 const isToday = day.date === format(today, 'yyyy-MM-dd');
-                                const hasNoRecord = !day.hasRecord && !day.isFuture;
+
+                                // Show dash if no record exists and user hasn't modified it yet
+                                const shouldShowDash = !day.hasRecord && !day.isFuture && !isModified;
+                                const currentLimit = modifiedGoals[day.date] ?? day.limit;
+                                const isGoalModified = day.date in modifiedGoals;
 
                                 return (
                                     <div
@@ -258,13 +291,17 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
                                             "flex items-center justify-between p-4 rounded-xl border-2 transition-all",
                                             day.isFuture
                                                 ? "bg-slate-50 border-slate-100 opacity-50"
-                                                : hasNoRecord
-                                                    ? "bg-red-50 border-red-200 shadow-sm"
-                                                    : isModified
-                                                        ? "bg-sky-50 border-primary shadow-sm"
-                                                        : isToday
-                                                            ? "bg-slate-100 border-slate-300"
-                                                            : "bg-white border-slate-200"
+                                                : day.isBeforeRegistered
+                                                    ? "bg-slate-50 border-slate-100 opacity-75" // Keep neutral for pre-reg
+                                                    : shouldShowDash
+                                                        ? "bg-red-50 border-red-200 shadow-sm"
+                                                        : isModified
+                                                            ? "bg-sky-50 border-primary shadow-sm"
+                                                            : isGoalModified
+                                                                ? "bg-amber-50 border-amber-300 shadow-sm"
+                                                                : isToday
+                                                                    ? "bg-slate-100 border-slate-300"
+                                                                    : "bg-white border-slate-200"
                                         )}
                                     >
                                         {/* Day Info */}
@@ -279,15 +316,18 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
                                             <div className="flex items-center gap-4">
                                                 {/* Count Display */}
                                                 <div className="text-right min-w-[3rem]">
-                                                    {hasNoRecord ? (
+                                                    {shouldShowDash ? (
                                                         <>
-                                                            <span className="text-xl font-bold text-red-400">—</span>
-                                                            <span className="text-sm text-slate-400">/{day.limit}</span>
+                                                            <span className={clsx(
+                                                                "text-xl font-bold",
+                                                                day.isBeforeRegistered ? "text-slate-400" : "text-red-400"
+                                                            )}>-</span>
+                                                            <span className={clsx("text-sm", editMode === 'target' ? "text-amber-600 font-bold" : "text-slate-400")}>/{currentLimit}</span>
                                                         </>
                                                     ) : (
                                                         <>
-                                                            <span className="text-xl font-bold text-slate-800">{currentCount}</span>
-                                                            <span className="text-sm text-slate-400">/{day.limit}</span>
+                                                            <span className={clsx("text-xl font-bold text-slate-800", editMode === 'target' && "opacity-50")}>{currentCount}</span>
+                                                            <span className={clsx("text-sm", editMode === 'target' ? "text-amber-600 font-bold" : "text-slate-400")}>/{currentLimit}</span>
                                                         </>
                                                     )}
                                                 </div>
@@ -328,12 +368,19 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
                             disabled={!hasChanges || loading}
                         >
                             <Save className="w-5 h-5 mr-2" />
-                            {loading ? 'Saving...' : hasChanges ? `Save ${Object.keys(modifiedCounts).length} Change(s)` : 'No Changes'}
+                            {loading ? 'Saving...' : hasChanges ? `Save ${Object.keys(modifiedCounts).length + Object.keys(modifiedGoals).length} Change(s)` : 'No Changes'}
                         </Button>
+
+                        <button
+                            onClick={() => setEditMode(prev => prev === 'count' ? 'target' : 'count')}
+                            className="w-full mt-4 text-sm text-slate-400 font-medium hover:text-slate-600 transition-colors"
+                        >
+                            {editMode === 'count' ? 'Adjust Daily Targets' : 'Back to Editing Counts'}
+                        </button>
                     </>
                 )}
             </div>
-        </div>,
+        </div >,
         document.body
     );
 };

@@ -27,7 +27,8 @@ if (!admin.apps.length) {
     isReady = true;
 }
 
-const db = admin.firestore(); // This might warn if not initialized, but we handle isReady downstream
-const auth = admin.auth();
+// Export nulls if not ready to prevent crash on require
+const db = isReady ? admin.firestore() : null;
+const auth = isReady ? admin.auth() : null;
 
 module.exports = { admin, db, auth, isReady };

@@ -5,23 +5,22 @@ import { clsx } from 'clsx';
 const NavItem = ({ to, icon: Icon, label }) => (
     <NavLink
         to={to}
-        className={({ isActive }) =>
-            clsx(
-                "flex flex-col items-center justify-center p-2 rounded-2xl transition-all duration-200",
-                isActive ? "text-primary scale-105" : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"
-            )
-        }
+        className="group flex flex-col items-center justify-end gap-1 w-16"
     >
         {({ isActive }) => (
             <>
-                <Icon
-                    className={clsx(
-                        "w-6 h-6 mb-1 transition-all",
-                        isActive && "fill-current"
-                    )}
-                    strokeWidth={isActive ? 2.5 : 2}
-                />
-                <span className="text-[10px] font-medium tracking-wide">{label}</span>
+                <div className={clsx(
+                    "flex items-center justify-center w-12 h-12 rounded-full transition-all duration-300",
+                    isActive ? "bg-primary text-white shadow-md ring-4 ring-primary/20" : "text-slate-400 group-hover:bg-slate-50"
+                )}>
+                    <Icon
+                        className="w-6 h-6 transition-all"
+                        strokeWidth={2}
+                    />
+                </div>
+                <span className="text-[10px] font-medium tracking-wide transition-colors text-slate-400">
+                    {label}
+                </span>
             </>
         )}
     </NavLink>

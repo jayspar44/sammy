@@ -1,0 +1,32 @@
+steps:
+  # Install dependencies
+  - name: 'node:22'
+    entrypoint: 'npm'
+    args: ['install']
+    dir: 'backend'
+
+  # Deploy to Dev (on develop branch)
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        if [ "$BRANCH_NAME" = "develop" ]; then
+          cd backend
+          gcloud app deploy app.yaml --version=dev --no-promote --quiet
+        fi
+
+  # Deploy to Prod (on main branch)
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        if [ "$BRANCH_NAME" = "main" ]; then
+          cd backend
+          gcloud app deploy app.yaml --promote --quiet
+        fi
+
+timeout: '1200s'
+options:
+  logging: CLOUD_LOGGING_ONLY

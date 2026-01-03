@@ -1,10 +1,10 @@
 const { auth, isReady } = require('../services/firebase');
 
 const verifyToken = async (req, res, next) => {
-    // DEV/OFFLINE MODE: If Firebase isn't ready or we are in dev without a token, mock the user
-    if (!isReady || (process.env.NODE_ENV !== 'production' && !req.headers.authorization)) {
-        req.user = { uid: 'dev-user', email: 'dev@example.com' };
-        return next();
+    // Check if Firebase service is ready
+    if (!isReady) {
+        console.warn('Auth Service Unavailable: Firebase not initialized');
+        return res.status(503).json({ error: 'Auth service unavailable' });
     }
 
     const authHeader = req.headers.authorization;
@@ -12,14 +12,13 @@ const verifyToken = async (req, res, next) => {
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const token = authHeader.split('Bearer ')[1];
-
     try {
+        const token = authHeader.split('Bearer ')[1];
         const decodedToken = await auth.verifyIdToken(token);
         req.user = decodedToken;
         next();
     } catch (error) {
-        console.error('Error verifying token:', error);
+        console.error('Error verifying token:', error.message);
         res.status(401).json({ error: 'Invalid token' });
     }
 };
