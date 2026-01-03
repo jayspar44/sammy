@@ -90,7 +90,7 @@ export default function Companion() {
             <TopBar />
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 pb-40">
+            <div className="flex-1 overflow-y-auto p-4">
                 {messages.map(msg => (
                     <Message key={msg.id} {...msg} />
                 ))}
@@ -106,9 +106,9 @@ export default function Companion() {
                 <div ref={bottomRef} />
             </div>
 
-            {/* Fixed Input Area - positioned above navbar */}
-            <div className="fixed bottom-[104px] left-0 right-0 bg-transparent p-4 pointer-events-none z-10">
-                <div className="bg-white/95 backdrop-blur-md border border-slate-200 p-2 rounded-[2rem] shadow-xl flex gap-2 pointer-events-auto max-w-screen-md mx-auto">
+            {/* Input Area - in flex flow, above navbar */}
+            <div className="px-4 py-2 bg-neutral-50">
+                <div className="bg-white/95 backdrop-blur-md border border-slate-200 p-2 rounded-[2rem] shadow-xl flex gap-2">
                     <input
                         type="text"
                         value={input}

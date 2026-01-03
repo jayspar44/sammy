@@ -72,7 +72,7 @@ export const LogDrinkModal = ({ isOpen, onClose, onConfirm }) => {
                     onClick={() => onConfirm(count)}
                     icon={Beer}
                 >
-                    Confirm
+                    Add
                 </Button>
             </div>
         </div>,

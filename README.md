@@ -1,67 +1,84 @@
 # Sammy - AI Habit Companion
 
-Sammy is an AI-powered habit companion app designed to help users moderate or quit drinking and other habits. It features a daily log, trend insights, and a proactive AI companion.
+Sammy is an AI-powered habit companion app designed to help users moderate or quit drinking and build healthier habits. It features a daily log, trend insights, and a proactive AI companion.
 
 ## Architecture
 
 Sammy is a cross-platform application built with:
 
-- **Frontend**: React 18, Vite, Capacitor (for Android/iOS).
-- **Backend**: Node.js, Express.js.
-- **Database**: Firebase Firestore.
-- **Auth**: Firebase Authentication.
-- **AI**: Google Gemini.
+- **Frontend**: React 19, Vite, Tailwind CSS, Capacitor (Android/iOS)
+- **Backend**: Node.js 22, Express 5
+- **Database**: Firebase Firestore
+- **Auth**: Firebase Authentication
+- **AI**: Google Gemini 2.5 Flash
+- **Hosting**: Cloud Run (backend), Firebase Hosting (frontend)
 
-## Project Structure
-
-- `/frontend`: React + Vite application.
-- `/backend`: Node.js + Express API.
-- `/scripts`: Developer tooling and deployment scripts.
-
-## Getting Started
+## Quick Start
 
 ### Prerequisites
 
-- Node.js (v18+)
-- Firebase Project (configured with Auth and Firestore)
-- Google Cloud Project (for Gemini API)
+- Node.js 22+
+- npm
+- Firebase Project (with Auth and Firestore enabled)
+- Google Cloud Project (for Gemini API and Cloud Run)
 
-### Setup
+### Local Development
 
-1.  **Install Dependencies**:
-    ```bash
-    npm run install-all
-    ```
+1. **Install Dependencies**:
+   ```bash
+   npm run install-all
+   ```
 
-2.  **Environment Setup**:
-    - Backend: Copy `backend/.env.example` to `backend/.env` and fill in secrets.
-    - Frontend: Copy `frontend/.env.local.template` to `frontend/.env.local` and add Firebase config.
+2. **Environment Setup**:
+   ```bash
+   cp backend/.env.example backend/.env
+   cp frontend/.env.local.template frontend/.env.local
+   # Edit both files with your credentials
+   ```
 
-    Run validation:
-    ```bash
-    npm run validate-env
-    ```
-
-3.  **Run Locally**:
-    Start both frontend and backend with a single command:
-    ```bash
-    npm run dev:local
-    ```
-    - Frontend: http://localhost:4000
-    - Backend: http://localhost:4001
-
-## Mobile Development
-
-To run on Android:
-```bash
-cd frontend
-npx cap add android
-npx cap open android
-```
+3. **Run Locally**:
+   ```bash
+   npm run dev:local
+   ```
+   - Frontend: http://localhost:4000
+   - Backend: http://localhost:4001
 
 ## Deployment
 
-Deploy to Google Cloud App Engine:
+Deployment is automated via Cloud Build on push to GitHub:
+
+| Branch | Environment | Backend | Frontend |
+|--------|-------------|---------|----------|
+| `develop` | Dev | Cloud Run | Firebase Hosting |
+| `main` | Prod | Cloud Run | Firebase Hosting |
+
+### Manual Deployment
+
 ```bash
-npm run gcp:deploy:dev
+# Backend
+cd backend
+gcloud run deploy sammy-backend-dev --source . --region us-central1
+
+# Frontend
+cd frontend
+npm run build
+firebase deploy --only hosting
 ```
+
+## Mobile Development
+
+```bash
+cd frontend
+npm run build
+npx cap add android    # First time only
+npx cap sync android
+npx cap open android   # Opens Android Studio
+```
+
+## Documentation
+
+See [CLAUDE.md](CLAUDE.md) for detailed documentation including:
+- Project structure
+- Environment variables
+- API endpoints
+- GCP setup instructions
