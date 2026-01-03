@@ -40,8 +40,8 @@ sammy-1/
 | Environment | Branch    | Backend URL                              | Frontend              |
 |-------------|-----------|------------------------------------------|-----------------------|
 | Local       | any       | http://localhost:4001                    | http://localhost:4000 |
-| Dev (GCP)   | develop   | TBD                                      | TBD                   |
-| Prod (GCP)  | main      | TBD                                      | TBD                   |
+| Dev (GCP)   | develop   | https://sammy-backend-dev-607940169476.us-central1.run.app | https://sammy-658.web.app |
+| Prod (GCP)  | main      | https://sammy-backend-prod-607940169476.us-central1.run.app | https://sammy-658.web.app |
 
 ## Local Development
 
@@ -188,10 +188,12 @@ gcloud run deploy sammy-backend-dev \
   --region us-central1 \
   --allow-unauthenticated \
   --set-secrets="FIREBASE_SERVICE_ACCOUNT=FIREBASE_SERVICE_ACCOUNT:latest,GEMINI_API_KEY=GEMINI_API_KEY:latest" \
-  --set-env-vars="NODE_ENV=development,ALLOWED_ORIGINS=https://sammy-658.web.app,capacitor://localhost"
+  --set-env-vars="NODE_ENV=dev" \
+  --set-env-vars="^@^ALLOWED_ORIGINS=https://sammy-658.web.app,capacitor://localhost"
 
 # Frontend to Firebase Hosting
 cd frontend
+echo "VITE_API_URL=https://sammy-backend-dev-607940169476.us-central1.run.app/api" > .env.production
 npm run build
 firebase deploy --only hosting
 ```
