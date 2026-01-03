@@ -126,19 +126,21 @@ const getStats = async (req, res) => {
 
 const updateLog = async (req, res) => {
     const { uid } = req.user;
-    const { date, newCount, newGoal } = req.body;
+    const { date, newCount, newGoal, devMode } = req.body;
 
     if (!date || (newCount === undefined && newGoal === undefined)) {
         return res.status(400).json({ error: 'Date and either newCount or newGoal are required' });
     }
 
-    // Validate that date is not in the future
-    const requestedDate = new Date(date + 'T00:00:00');
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Validate that date is not in the future (unless devMode is enabled)
+    if (!devMode) {
+        const requestedDate = new Date(date + 'T00:00:00');
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
 
-    if (requestedDate > today) {
-        return res.status(400).json({ error: 'Cannot edit future dates' });
+        if (requestedDate > today) {
+            return res.status(400).json({ error: 'Cannot edit future dates' });
+        }
     }
 
     // Check DB readiness

@@ -89,15 +89,18 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
                 const limit = dayStats.today?.limit ?? 2;
                 const hasRecord = dayStats.hasRecord ?? false;
 
+                // In developer mode, allow future days to be edited
+                const isFutureAndNotDevMode = info.isFuture && !developerMode;
+
                 return {
                     date: info.dateStr,
                     dayLabel: info.dayLabel,
                     dateLabel: info.dateLabel,
-                    count: info.isFuture ? null : count,
-                    limit: info.isFuture ? null : limit,
+                    count: isFutureAndNotDevMode ? null : count,
+                    limit: isFutureAndNotDevMode ? null : limit,
                     isFuture: info.isFuture,
                     isBeforeRegistered: registeredDate ? info.dateStr < registeredDate.split('T')[0] : false,
-                    hasRecord: !info.isFuture && hasRecord
+                    hasRecord: developerMode ? hasRecord : (!info.isFuture && hasRecord)
                 };
             });
 
@@ -118,8 +121,8 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
 
     const handleNextWeek = () => {
         const nextWeek = addDays(weekStartDate, 7);
-        // Don't allow going into future weeks
-        if (nextWeek <= today) {
+        // Don't allow going into future weeks (unless devMode is enabled)
+        if (nextWeek <= today || developerMode) {
             setWeekStartDate(nextWeek);
         }
     };
@@ -131,7 +134,7 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
 
     const handleCountChange = (date, delta) => {
         const day = weekData.find(d => d.date === date);
-        if (!day || day.isFuture) return;
+        if (!day || (day.isFuture && !developerMode)) return;
 
         if (editMode === 'target') {
             const currentGoal = modifiedGoals[date] ?? day.limit;
@@ -190,12 +193,12 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
 
             // Save modified counts
             const countUpdates = Object.entries(modifiedCounts).map(([date, count]) =>
-                api.updateHistoricCount(date, { newCount: count })
+                api.updateHistoricCount(date, { newCount: count, devMode: developerMode })
             );
 
             // Save modified goals
             const goalUpdates = Object.entries(modifiedGoals).map(([date, goal]) =>
-                api.updateHistoricCount(date, { newGoal: goal })
+                api.updateHistoricCount(date, { newGoal: goal, devMode: developerMode })
             );
 
             await Promise.all([...deleteUpdates, ...countUpdates, ...goalUpdates]);
@@ -275,7 +278,7 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
                         <button
                             onClick={handleNextWeek}
                             className="p-2 hover:bg-white rounded-lg transition-colors"
-                            disabled={weekStartDate && addDays(weekStartDate, 7) > today}
+                            disabled={!developerMode && weekStartDate && addDays(weekStartDate, 7) > today}
                         >
                             <ChevronRight className="w-5 h-5 text-slate-600" />
                         </button>
@@ -327,7 +330,7 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
                                             "flex items-center justify-between p-4 rounded-xl border-2 transition-all",
                                             isDeleted
                                                 ? "bg-rose-100 border-rose-400 opacity-75"
-                                                : day.isFuture
+                                                : (day.isFuture && !developerMode)
                                                     ? "bg-slate-50 border-slate-100 opacity-50"
                                                     : day.isBeforeRegistered
                                                         ? "bg-slate-50 border-slate-100 opacity-75" // Keep neutral for pre-reg
@@ -339,16 +342,21 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
                                                                     ? "bg-amber-50 border-amber-300 shadow-sm"
                                                                     : isToday
                                                                         ? "bg-slate-100 border-slate-300"
-                                                                        : "bg-white border-slate-200"
+                                                                        : day.isFuture && developerMode
+                                                                            ? "bg-purple-50 border-purple-200 shadow-sm"
+                                                                            : "bg-white border-slate-200"
                                         )}
                                     >
                                         {/* Day Info */}
                                         <div className="flex flex-col">
                                             <p className="text-sm font-bold text-slate-700">{day.dayLabel}</p>
-                                            <p className="text-xs text-slate-500">{day.dateLabel}</p>
+                                            <p className="text-xs text-slate-500">
+                                                {day.dateLabel}
+                                                {day.isFuture && developerMode && <span className="ml-1 text-purple-600 text-[10px]">(Future)</span>}
+                                            </p>
                                         </div>
 
-                                        {day.isFuture ? (
+                                        {(day.isFuture && !developerMode) ? (
                                             <p className="text-sm text-slate-400">—</p>
                                         ) : isDeleted ? (
                                             <p className="text-sm text-rose-600 font-medium">Deleted</p>
