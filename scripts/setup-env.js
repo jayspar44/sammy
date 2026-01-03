@@ -8,15 +8,34 @@
  *   npm run setup:env
  *   or
  *   node scripts/setup-env.js
+ *
+ * Modes:
+ *   - GCP: Automatically fetch secrets from Google Cloud Secret Manager
+ *   - Interactive: Manual entry with prompts
+ *   - Templates: Copy templates for manual editing
  */
 
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
+const { exec } = require('child_process');
+const { promisify } = require('util');
+
+const execAsync = promisify(exec);
 
 const rootDir = path.join(__dirname, '..');
 const backendEnvPath = path.join(rootDir, 'backend', '.env');
 const frontendEnvPath = path.join(rootDir, 'frontend', '.env.local');
+
+// GCP Project ID
+const GCP_PROJECT_ID = 'sammy-658';
+
+// Secret names in GCP Secret Manager
+const SECRETS = {
+    FIREBASE_SERVICE_ACCOUNT: 'FIREBASE_SERVICE_ACCOUNT',
+    GEMINI_API_KEY: 'GEMINI_API_KEY',
+    FIREBASE_CLIENT_CONFIG: 'FIREBASE_CLIENT_CONFIG'
+};
 
 const rl = readline.createInterface({
     input: process.stdin,
@@ -35,6 +54,178 @@ function isValidJSON(str) {
         return true;
     } catch (e) {
         return false;
+    }
+}
+
+/**
+ * Check if gcloud CLI is installed and authenticated
+ */
+async function checkGcloudAvailable() {
+    try {
+        await execAsync('gcloud --version');
+        return true;
+    } catch (error) {
+        return false;
+    }
+}
+
+/**
+ * Check if user is authenticated with gcloud
+ */
+async function checkGcloudAuth() {
+    try {
+        const { stdout } = await execAsync('gcloud auth list --filter=status:ACTIVE --format="value(account)"');
+        return stdout.trim().length > 0;
+    } catch (error) {
+        return false;
+    }
+}
+
+/**
+ * Fetch a secret from GCP Secret Manager
+ */
+async function getGCPSecret(secretName) {
+    try {
+        const command = `gcloud secrets versions access latest --secret="${secretName}" --project="${GCP_PROJECT_ID}"`;
+        const { stdout } = await execAsync(command);
+        return stdout.trim();
+    } catch (error) {
+        throw new Error(`Failed to fetch secret "${secretName}": ${error.message}`);
+    }
+}
+
+/**
+ * Setup environment files from GCP Secret Manager
+ */
+async function setupFromGCP() {
+    console.log('\n☁️  GCP Secret Manager Setup');
+    console.log('================================\n');
+
+    // Check gcloud availability
+    console.log('Checking gcloud CLI...');
+    const gcloudAvailable = await checkGcloudAvailable();
+
+    if (!gcloudAvailable) {
+        console.log('\n❌ gcloud CLI not found!');
+        console.log('\nTo install gcloud CLI:');
+        console.log('  Visit: https://cloud.google.com/sdk/docs/install\n');
+        console.log('After installation, authenticate with:');
+        console.log('  gcloud auth login');
+        console.log('  gcloud config set project sammy-658\n');
+        return;
+    }
+
+    console.log('✅ gcloud CLI found');
+
+    // Check authentication
+    console.log('Checking gcloud authentication...');
+    const isAuthenticated = await checkGcloudAuth();
+
+    if (!isAuthenticated) {
+        console.log('\n❌ Not authenticated with gcloud!');
+        console.log('\nPlease authenticate first:');
+        console.log('  gcloud auth login');
+        console.log('  gcloud config set project sammy-658\n');
+        return;
+    }
+
+    console.log('✅ Authenticated with gcloud');
+    console.log(`✅ Using project: ${GCP_PROJECT_ID}\n`);
+
+    // Check if files exist
+    if (fs.existsSync(backendEnvPath)) {
+        const overwrite = await question('⚠️  backend/.env already exists. Overwrite? (y/N): ');
+        if (overwrite.toLowerCase() !== 'y') {
+            console.log('Skipping backend/.env');
+            return;
+        }
+    }
+
+    if (fs.existsSync(frontendEnvPath)) {
+        const overwrite = await question('⚠️  frontend/.env.local already exists. Overwrite? (y/N): ');
+        if (overwrite.toLowerCase() !== 'y') {
+            console.log('Skipping frontend/.env.local');
+            return;
+        }
+    }
+
+    console.log('Fetching secrets from GCP Secret Manager...\n');
+
+    try {
+        // Fetch backend secrets
+        console.log(`📥 Fetching ${SECRETS.FIREBASE_SERVICE_ACCOUNT}...`);
+        const firebaseServiceAccount = await getGCPSecret(SECRETS.FIREBASE_SERVICE_ACCOUNT);
+
+        console.log(`📥 Fetching ${SECRETS.GEMINI_API_KEY}...`);
+        const geminiApiKey = await getGCPSecret(SECRETS.GEMINI_API_KEY);
+
+        // Create backend .env
+        const backendEnvContent = `PORT=4001
+FIREBASE_SERVICE_ACCOUNT=${firebaseServiceAccount}
+GEMINI_API_KEY=${geminiApiKey}
+NODE_ENV=development
+# Comma-separated list of allowed origins for CORS
+# Local dev defaults to: localhost:4000, localhost:5173, capacitor://localhost
+# ALLOWED_ORIGINS=https://sammy-658-dev.web.app,https://sammy-658.web.app,capacitor://localhost
+`;
+
+        fs.writeFileSync(backendEnvPath, backendEnvContent);
+        console.log('✅ Created backend/.env');
+
+        // Fetch frontend secrets
+        let firebaseClientConfig = '';
+
+        try {
+            console.log(`\n📥 Fetching ${SECRETS.FIREBASE_CLIENT_CONFIG}...`);
+            firebaseClientConfig = await getGCPSecret(SECRETS.FIREBASE_CLIENT_CONFIG);
+
+            // Validate it's valid JSON
+            if (!isValidJSON(firebaseClientConfig)) {
+                throw new Error('Invalid JSON in Firebase client config');
+            }
+        } catch (error) {
+            console.log(`⚠️  Could not fetch ${SECRETS.FIREBASE_CLIENT_CONFIG} from GCP`);
+            console.log('   You may need to add this secret to Secret Manager or enter it manually.\n');
+
+            console.log('Enter Firebase Client Config JSON:');
+            console.log('Get from: Firebase Console → Project Settings → General → Your apps → Web app config\n');
+
+            while (!firebaseClientConfig) {
+                const input = await question('VITE_FIREBASE_CONFIG: ');
+                if (!input.trim()) {
+                    console.log('❌ Firebase config is required');
+                    continue;
+                }
+                if (!isValidJSON(input)) {
+                    console.log('❌ Invalid JSON. Please paste the entire config object on one line.');
+                    continue;
+                }
+                firebaseClientConfig = input.trim();
+            }
+        }
+
+        // Create frontend .env.local
+        const frontendEnvContent = `VITE_API_URL=/api
+VITE_FIREBASE_CONFIG=${firebaseClientConfig}
+`;
+
+        fs.writeFileSync(frontendEnvPath, frontendEnvContent);
+        console.log('✅ Created frontend/.env.local');
+
+        console.log('\n✨ Environment setup from GCP complete!');
+        console.log('\nNext steps:');
+        console.log('  1. Run: npm run dev:local');
+        console.log('  2. Open: http://localhost:4000\n');
+
+    } catch (error) {
+        console.error('\n❌ Error fetching secrets from GCP:');
+        console.error(`   ${error.message}\n`);
+        console.log('Make sure:');
+        console.log('  1. You have access to the sammy-658 project');
+        console.log('  2. Secret Manager API is enabled');
+        console.log('  3. Secrets exist in Secret Manager');
+        console.log('  4. You have permission to access secrets\n');
+        console.log('Try manual setup instead (option 2).\n');
     }
 }
 
@@ -213,14 +404,19 @@ async function main() {
     console.log('==========================\n');
 
     console.log('Choose setup method:');
-    console.log('1) Interactive (guided setup with prompts)');
-    console.log('2) From templates (copy templates, edit manually)');
-    console.log('3) Cancel\n');
+    console.log('1) GCP Secret Manager (automatic - requires gcloud CLI)');
+    console.log('2) Interactive (guided setup with prompts)');
+    console.log('3) From templates (copy templates, edit manually)');
+    console.log('4) Cancel\n');
 
-    const choice = await question('Enter choice [1-3]: ');
+    const choice = await question('Enter choice [1-4]: ');
 
     switch (choice.trim()) {
         case '1':
+            await setupFromGCP();
+            break;
+
+        case '2':
             await setupBackendEnv();
             await setupFrontendEnv();
             console.log('\n✨ Environment setup complete!');
@@ -230,7 +426,7 @@ async function main() {
             console.log('  3. Open: http://localhost:4000\n');
             break;
 
-        case '2':
+        case '3':
             await setupFromTemplates();
             console.log('\n✨ Template files created!');
             console.log('\nNext steps:');
@@ -240,7 +436,7 @@ async function main() {
             console.log('  4. Open: http://localhost:4000\n');
             break;
 
-        case '3':
+        case '4':
             console.log('Setup cancelled.');
             break;
 
