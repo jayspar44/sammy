@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Save, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, Save, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
 import Button from '../ui/Button';
 import { clsx } from 'clsx';
 import { createPortal } from 'react-dom';
@@ -8,12 +8,13 @@ import { api } from '../../api/services';
 import { useUserPreferences } from '../../contexts/UserPreferencesContext';
 
 export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate }) => {
-    const { registeredDate } = useUserPreferences();
+    const { registeredDate, developerMode } = useUserPreferences();
     const [weekStartDate, setWeekStartDate] = useState(null);
     const [weekData, setWeekData] = useState([]);
     const [weekDataCache, setWeekDataCache] = useState({}); // Cache fetched week data
     const [modifiedCounts, setModifiedCounts] = useState({});
     const [modifiedGoals, setModifiedGoals] = useState({});
+    const [deletedDates, setDeletedDates] = useState({});
     const [editMode, setEditMode] = useState('count'); // 'count' or 'target'
     const [isVisible, setIsVisible] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -32,6 +33,7 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
             setWeekStartDate(weekStart);
             setModifiedCounts({});
             setModifiedGoals({});
+            setDeletedDates({});
             setEditMode('count');
         } else {
             setTimeout(() => setIsVisible(false), 300);
@@ -150,9 +152,42 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
         }
     };
 
+    const handleDeleteLog = (date) => {
+        const day = weekData.find(d => d.date === date);
+        if (!day || day.isFuture || !day.hasRecord) return;
+
+        // Confirm deletion
+        if (!window.confirm(`Delete log entry for ${day.dateLabel}? This will completely remove the record from the database.`)) {
+            return;
+        }
+
+        // Mark as deleted
+        setDeletedDates(prev => ({
+            ...prev,
+            [date]: true
+        }));
+
+        // Remove from modified counts/goals if present
+        setModifiedCounts(prev => {
+            const newCounts = { ...prev };
+            delete newCounts[date];
+            return newCounts;
+        });
+        setModifiedGoals(prev => {
+            const newGoals = { ...prev };
+            delete newGoals[date];
+            return newGoals;
+        });
+    };
+
     const handleSaveAll = async () => {
         setLoading(true);
         try {
+            // Delete logs first
+            const deleteUpdates = Object.keys(deletedDates).map(date =>
+                api.deleteLog(date)
+            );
+
             // Save modified counts
             const countUpdates = Object.entries(modifiedCounts).map(([date, count]) =>
                 api.updateHistoricCount(date, { newCount: count })
@@ -163,7 +198,7 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
                 api.updateHistoricCount(date, { newGoal: goal })
             );
 
-            await Promise.all([...countUpdates, ...goalUpdates]);
+            await Promise.all([...deleteUpdates, ...countUpdates, ...goalUpdates]);
             onSave?.();
             onClose();
         } catch (err) {
@@ -177,7 +212,7 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
     if (!isVisible && !isOpen) return null;
 
     const isCurrentWeek = weekStartDate && isSameWeek(weekStartDate, today, { weekStartsOn: 1 });
-    const hasChanges = Object.keys(modifiedCounts).length > 0 || Object.keys(modifiedGoals).length > 0;
+    const hasChanges = Object.keys(modifiedCounts).length > 0 || Object.keys(modifiedGoals).length > 0 || Object.keys(deletedDates).length > 0;
     const weekEndDate = weekStartDate ? addDays(weekStartDate, 6) : null;
 
     return createPortal(
@@ -278,9 +313,10 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
                                 const currentCount = modifiedCounts[day.date] ?? day.count;
                                 const isModified = day.date in modifiedCounts;
                                 const isToday = day.date === format(today, 'yyyy-MM-dd');
+                                const isDeleted = deletedDates[day.date];
 
                                 // Show dash if no record exists and user hasn't modified it yet
-                                const shouldShowDash = !day.hasRecord && !day.isFuture && !isModified;
+                                const shouldShowDash = !day.hasRecord && !day.isFuture && !isModified && !isDeleted;
                                 const currentLimit = modifiedGoals[day.date] ?? day.limit;
                                 const isGoalModified = day.date in modifiedGoals;
 
@@ -289,19 +325,21 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
                                         key={day.date}
                                         className={clsx(
                                             "flex items-center justify-between p-4 rounded-xl border-2 transition-all",
-                                            day.isFuture
-                                                ? "bg-slate-50 border-slate-100 opacity-50"
-                                                : day.isBeforeRegistered
-                                                    ? "bg-slate-50 border-slate-100 opacity-75" // Keep neutral for pre-reg
-                                                    : shouldShowDash
-                                                        ? "bg-red-50 border-red-200 shadow-sm"
-                                                        : isModified
-                                                            ? "bg-sky-50 border-primary shadow-sm"
-                                                            : isGoalModified
-                                                                ? "bg-amber-50 border-amber-300 shadow-sm"
-                                                                : isToday
-                                                                    ? "bg-slate-100 border-slate-300"
-                                                                    : "bg-white border-slate-200"
+                                            isDeleted
+                                                ? "bg-rose-100 border-rose-400 opacity-75"
+                                                : day.isFuture
+                                                    ? "bg-slate-50 border-slate-100 opacity-50"
+                                                    : day.isBeforeRegistered
+                                                        ? "bg-slate-50 border-slate-100 opacity-75" // Keep neutral for pre-reg
+                                                        : shouldShowDash
+                                                            ? "bg-red-50 border-red-200 shadow-sm"
+                                                            : isModified
+                                                                ? "bg-sky-50 border-primary shadow-sm"
+                                                                : isGoalModified
+                                                                    ? "bg-amber-50 border-amber-300 shadow-sm"
+                                                                    : isToday
+                                                                        ? "bg-slate-100 border-slate-300"
+                                                                        : "bg-white border-slate-200"
                                         )}
                                     >
                                         {/* Day Info */}
@@ -312,6 +350,8 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
 
                                         {day.isFuture ? (
                                             <p className="text-sm text-slate-400">—</p>
+                                        ) : isDeleted ? (
+                                            <p className="text-sm text-rose-600 font-medium">Deleted</p>
                                         ) : (
                                             <div className="flex items-center gap-4">
                                                 {/* Count Display */}
@@ -334,6 +374,15 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
 
                                                 {/* +/- Buttons */}
                                                 <div className="flex gap-2">
+                                                    {developerMode && day.hasRecord && (
+                                                        <button
+                                                            onClick={() => handleDeleteLog(day.date)}
+                                                            className="w-10 h-10 rounded-lg bg-rose-100 hover:bg-rose-200 flex items-center justify-center text-rose-600 transition-colors active:scale-95"
+                                                            title="Delete log entry (Developer Mode)"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    )}
                                                     <button
                                                         onClick={() => handleCountChange(day.date, -1)}
                                                         disabled={currentCount === 0}
@@ -368,7 +417,7 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
                             disabled={!hasChanges || loading}
                         >
                             <Save className="w-5 h-5 mr-2" />
-                            {loading ? 'Saving...' : hasChanges ? `Save ${Object.keys(modifiedCounts).length + Object.keys(modifiedGoals).length} Change(s)` : 'No Changes'}
+                            {loading ? 'Saving...' : hasChanges ? `Save ${Object.keys(modifiedCounts).length + Object.keys(modifiedGoals).length + Object.keys(deletedDates).length} Change(s)` : 'No Changes'}
                         </Button>
 
                         <button

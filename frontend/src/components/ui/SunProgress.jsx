@@ -30,7 +30,7 @@ const SunProgress = ({ current, goal, label = "Daily Goal", hasLogged = false, d
                             )}
                         </div>
                         <div className="flex items-baseline gap-1">
-                            <span className="text-4xl font-bold tracking-tight">{current}</span>
+                            <span className="text-4xl font-bold tracking-tight">{hasLogged ? current : '-'}</span>
                             <span className="text-primary-light font-medium">/ {goal}</span>
                         </div>
                     </div>

@@ -203,6 +203,37 @@ const updateLog = async (req, res) => {
     }
 };
 
+const deleteLog = async (req, res) => {
+    const { uid } = req.user;
+    const { date } = req.query;
+
+    if (!date) {
+        return res.status(400).json({ error: 'Date is required' });
+    }
+
+    // Validate date format YYYY-MM-DD
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
+    }
+
+    // Check DB readiness
+    if (!isReady) {
+        return res.status(503).json({ error: 'Database not connected' });
+    }
+
+    try {
+        const userRef = db.collection('users').doc(uid);
+        const logRef = userRef.collection('logs').doc(date);
+
+        await logRef.delete();
+
+        res.json({ success: true, message: "Log deleted successfully" });
+    } catch (error) {
+        console.error('Error deleting log:', error);
+        res.status(500).json({ error: 'Failed to delete log' });
+    }
+};
+
 const getStatsRange = async (req, res) => {
     const { uid } = req.user;
     const { startDate, endDate } = req.query; // YYYY-MM-DD strings
@@ -283,4 +314,4 @@ const getStatsRange = async (req, res) => {
     }
 };
 
-module.exports = { logDrink, getStats, updateLog, getStatsRange };
+module.exports = { logDrink, getStats, updateLog, deleteLog, getStatsRange };
