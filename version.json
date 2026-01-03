@@ -1,6 +1,15 @@
 {
-    "version": "0.2.0",
+    "version": "0.2.1",
     "history": [
+        {
+            "version": "0.2.1",
+            "date": "2026-01-03",
+            "author": "Claude",
+            "changes": [
+                "Feature: Add checkmark logged indicator on Today's goal card",
+                "Feature: Add date format (Sat 3rd) to Today's goal card"
+            ]
+        },
         {
             "version": "0.2.0",
             "date": "2026-01-03",

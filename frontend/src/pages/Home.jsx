@@ -121,6 +121,7 @@ export default function Home() {
     const [showGoalModal, setShowGoalModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [hasLoggedToday, setHasLoggedToday] = useState(false);
 
     const fetchStats = async () => {
         try {
@@ -133,6 +134,9 @@ export default function Home() {
             }
             if (data.trends) {
                 setTrends(data.trends);
+                // Check if user has logged for today
+                const todayLog = data.trends.find(log => log.date === todayStr);
+                setHasLoggedToday(!!todayLog);
             }
         } catch (err) {
             console.error("Failed to fetch stats", err);
@@ -177,7 +181,12 @@ export default function Home() {
             {/* Hero */}
             <div className="mb-8 animate-slideUp">
                 <div onClick={() => setShowGoalModal(true)} className="cursor-pointer active:scale-95 transition-transform">
-                    <SunProgress current={stats.count} goal={stats.limit} />
+                    <SunProgress
+                        current={stats.count}
+                        goal={stats.limit}
+                        hasLogged={hasLoggedToday}
+                        date={manualDate || format(new Date(), 'yyyy-MM-dd')}
+                    />
                 </div>
             </div>
 
