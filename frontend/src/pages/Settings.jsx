@@ -3,10 +3,11 @@ import { useAuth } from '../contexts/AuthContext';
 import { useUserPreferences } from '../contexts/UserPreferencesContext';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
-import { User, Code, LogOut, Save } from 'lucide-react';
+import { User, Code, LogOut, Save, Info } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { api } from '../api/services';
 import { logger } from '../utils/logger';
+import { App } from '@capacitor/app';
 
 export default function Settings() {
     const { logout } = useAuth();
@@ -29,6 +30,7 @@ export default function Settings() {
     const [nameInput, setNameInput] = useState('');
     const [costInput, setCostInput] = useState(10);
     const [calsInput, setCalsInput] = useState(150);
+    const [appInfo, setAppInfo] = useState({ id: '', version: '', build: '' });
 
     useEffect(() => {
         logger.debug('Settings Sync:', { firstName, avgDrinkCost, avgDrinkCals });
@@ -36,6 +38,15 @@ export default function Settings() {
         setCostInput(avgDrinkCost || 10);
         setCalsInput(avgDrinkCals || 150);
     }, [firstName, avgDrinkCost, avgDrinkCals]);
+
+    useEffect(() => {
+        App.getInfo().then(info => {
+            setAppInfo({ id: info.id, version: info.version, build: info.build });
+        }).catch(() => {
+            // Web fallback
+            setAppInfo({ id: 'web', version: import.meta.env.VITE_APP_VERSION || 'unknown', build: '' });
+        });
+    }, []);
 
     const handleSaveProfile = async () => {
         await updateProfileConfig({
@@ -225,6 +236,42 @@ export default function Settings() {
                     <LogOut className="w-4 h-4 mr-2" />
                     Log Out
                 </Button>
+            </section>
+
+            {/* App Info Section */}
+            <section className="space-y-4 pt-4 border-t border-slate-100">
+                <div className="flex items-center gap-2 text-slate-400">
+                    <Info className="w-4 h-4" />
+                    <h3 className="text-sm font-bold uppercase tracking-wider">App Info</h3>
+                </div>
+                <div className="text-xs text-slate-400 space-y-1">
+                    <p>Sammy: v{__APP_VERSION__}</p>
+                    {appInfo.version && appInfo.id !== 'web' && (
+                        <p>Native: v{appInfo.version}{appInfo.build ? ` (${appInfo.build})` : ''}</p>
+                    )}
+                    <p className="break-all">
+                        App ID: {appInfo.id || 'loading...'}
+                        {appInfo.id?.includes('.local') ? (
+                            <span className="ml-2 px-1.5 py-0.5 bg-blue-100 text-blue-600 rounded text-[10px] font-medium">LOCAL</span>
+                        ) : appInfo.id?.includes('.dev') ? (
+                            <span className="ml-2 px-1.5 py-0.5 bg-amber-100 text-amber-600 rounded text-[10px] font-medium">DEV</span>
+                        ) : appInfo.id === 'web' ? (
+                            <span className="ml-2 px-1.5 py-0.5 bg-slate-100 text-slate-600 rounded text-[10px] font-medium">WEB</span>
+                        ) : appInfo.id ? (
+                            <span className="ml-2 px-1.5 py-0.5 bg-green-100 text-green-600 rounded text-[10px] font-medium">PROD</span>
+                        ) : null}
+                    </p>
+                    <p className="break-all">
+                        Backend: {import.meta.env.VITE_API_URL || 'local'}
+                        {import.meta.env.VITE_API_URL?.includes('localhost') || !import.meta.env.VITE_API_URL ? (
+                            <span className="ml-2 px-1.5 py-0.5 bg-blue-100 text-blue-600 rounded text-[10px] font-medium">LOCAL</span>
+                        ) : import.meta.env.VITE_API_URL?.includes('-dev') ? (
+                            <span className="ml-2 px-1.5 py-0.5 bg-amber-100 text-amber-600 rounded text-[10px] font-medium">DEV</span>
+                        ) : (
+                            <span className="ml-2 px-1.5 py-0.5 bg-green-100 text-green-600 rounded text-[10px] font-medium">PROD</span>
+                        )}
+                    </p>
+                </div>
             </section>
         </div>
     );

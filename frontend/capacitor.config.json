@@ -1,8 +1,9 @@
 {
-  "appId": "io.sammy.app",
-  "appName": "Sammy",
+  "appId": "io.sammy.app.local",
+  "appName": "Sammy Local",
   "webDir": "dist",
   "server": {
-    "androidScheme": "https"
+    "url": "http://10.0.2.2:4000",
+    "cleartext": true
   }
 }

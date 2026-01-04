@@ -119,13 +119,21 @@ All endpoints (except health) require Firebase Auth token in `Authorization: Bea
 
 ## Mobile (Android/iOS)
 
-The app uses Capacitor for native mobile builds. Dev and prod builds use separate app IDs so both can be installed on the same device.
+The app uses Capacitor for native mobile builds. Three Android product flavors exist with separate app IDs so all can be installed on the same device.
 
 | Script | App ID | App Name | Backend | Use Case |
 |--------|--------|----------|---------|----------|
-| `android:local` | `io.sammy.app.dev` | Sammy Dev | Local (live reload) | Active development |
+| `android:local` | `io.sammy.app.local` | Sammy Local | Local (live reload) | Active development |
 | `android:dev` | `io.sammy.app.dev` | Sammy Dev | GCP dev backend | Testing dev builds |
 | `android` | `io.sammy.app` | Sammy | GCP prod backend | Production builds |
+
+### Android Build Variants
+
+Each flavor has debug and release variants. In Android Studio, select the build variant:
+- **localDebug** - Local development with live reload
+- **devDebug** - Dev backend testing
+- **prodDebug** - Prod backend debugging
+- **prodRelease** - Production release (for Play Store)
 
 ### Android Setup (First Time)
 
@@ -187,7 +195,9 @@ npm run lint --prefix backend
 |----------------------------|--------------------------------------|
 | `npm run dev:local`        | Start local dev servers              |
 | `npm run build`            | Build frontend for production        |
-| `npm run android`          | Build and sync for Android Studio    |
+| `npm run android`          | Build prod Android app               |
+| `npm run android:dev`      | Build dev Android app                |
+| `npm run android:local`    | Android with live reload             |
 | `npm run lint`             | Run ESLint on frontend and backend   |
 | `npm run validate-env`     | Validate environment configuration   |
 | `npm run version:get`      | Get current version                  |
