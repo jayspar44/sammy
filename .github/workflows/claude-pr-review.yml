@@ -27,6 +27,7 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          allowed_tools: "Bash(gh:*),Bash(git:*),Read,Glob,Grep,Write"
           prompt: |
             Review this pull request and post a comment with your findings.
 
