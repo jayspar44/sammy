@@ -68,7 +68,7 @@ jobs:
       - name: Check for common issues
         run: |
           echo "Checking for common issues..."
-          if grep -r "console\.log" frontend/src --include="*.js" --include="*.jsx" | grep -v "node_modules"; then
+          if grep -r "console\.log" frontend/src --include="*.js" --include="*.jsx" | grep -v "node_modules" | grep -v "^\s*//" | grep -v "//.*console\.log"; then
             echo "::warning::Found console.log statements in frontend code (consider removing for production)"
           fi
           if grep -r "TODO" frontend/src backend/src --include="*.js" --include="*.jsx" | grep -v "node_modules"; then
