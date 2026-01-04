@@ -1,36 +1,88 @@
-# AI Context - Sammy
+# Sammy - AI Habit Companion
 
-This file provides context for AI assistants working on the Sammy codebase.
+AI-powered habit tracking app for moderating or quitting drinking with proactive AI support.
 
-## naming Convention
+## Architecture
 
-- **Files**: kebab-case (e.g., `user-profile.js`, `api-routes.js`).
-- **React Components**: PascalCase (e.g., `UserProfile.jsx`).
-- **Variables/Functions**: camelCase.
-- **Directories**: kebab-case.
+- **Frontend**: React 19 + Vite + Tailwind CSS + Capacitor (mobile)
+- **Backend**: Node.js 22 + Express 5 REST API
+- **Database**: Firebase Firestore
+- **Auth**: Firebase Auth (Email/Password)
+- **AI**: Google Gemini 2.5 Flash
+- **Hosting**: Cloud Run (backend), Firebase Hosting (frontend)
 
-## Architecture Overview
+## Project Structure
+
+```
+sammy-1/
+├── frontend/src/
+│   ├── pages/           # Home, Companion, Insights, Settings, Login
+│   ├── components/      # layout/, common/, ui/
+│   ├── contexts/        # AuthContext, UserPreferencesContext, ConnectionContext
+│   ├── api/             # Axios client and services
+│   └── utils/           # Helper functions
+├── backend/src/
+│   ├── index.js         # Server entry
+│   ├── routes/api.js    # Route definitions
+│   ├── controllers/     # auth, log, user, chat
+│   └── services/        # firebase, ai, stats
+├── scripts/             # Dev tooling, version management
+└── docs/                # Additional documentation
+```
+
+## Coding Conventions
+
+### Naming
+- **Files**: kebab-case (`user-profile.js`)
+- **React Components**: PascalCase (`UserProfile.jsx`)
+- **Variables/Functions**: camelCase
+- **Directories**: kebab-case
 
 ### Frontend
-- **State**: React Context for global state (Auth, Theme). Local state for components.
-- **API**: Use the `api/` directory for Axios/Fetch wrappers. Do not make raw fetch calls in components.
-- **Styling**: Vanilla CSS with CSS Modules or scoped classes. Use CSS variables for theming in `index.css`.
-- **Mobile**: Capacitor is used. Avoid browser-only APIs without checks.
+- React Context for global state (Auth, Theme)
+- Use `api/` directory for Axios wrappers - no raw fetch in components
+- Tailwind CSS utility classes for styling
+- Capacitor for mobile - avoid browser-only APIs
 
 ### Backend
-- **Structure**: Controller-Service-Repository pattern (simplified).
-    - `routes/`: Express routers.
-    - `controllers/`: Request handling logic.
-    - `services/`: Business logic, AI integration, Firebase calls.
-- **Logging**: Use `req.log` (Pino) instead of `console.log`.
+- Controller-Service pattern
+- Use `req.log` (Pino) for logging, not `console.log`
 
-## Key Files
+## Key Commands
 
-- `scripts/dev-with-ports.js`: Orchestrates the local dev environment.
-- `frontend/src/App.jsx`: Main React entry and routing.
-- `backend/src/index.js`: Express server entry.
+```bash
+npm run dev:local      # Start local dev (frontend:4000, backend:4001)
+npm run version:patch  # Bump patch version
+npm run version:minor  # Bump minor version
+```
 
-## Common Tasks
+## API Endpoints
 
-- **Adding a new dependency**: Run `npm install` in the respective `frontend` or `backend` folder.
-- **Local Dev**: Always use `npm run dev:local` from the root.
+All endpoints (except `/api/health`) require `Authorization: Bearer <token>`.
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/health` | Health check |
+| POST | `/api/log` | Log a drink |
+| PUT | `/api/log` | Update log entry |
+| GET | `/api/stats` | Get statistics |
+| GET | `/api/stats/range` | Stats for date range |
+| POST/GET | `/api/user/profile` | User profile |
+| POST | `/api/chat` | AI companion message |
+| GET/DELETE | `/api/chat/history` | Chat history |
+
+## Environments
+
+| Env | Backend | Frontend |
+|-----|---------|----------|
+| Local | localhost:4001 | localhost:4000 |
+| Dev | sammy-backend-dev-*.run.app | sammy-658-dev.web.app |
+| Prod | sammy-backend-prod-*.run.app | sammy-658.web.app |
+
+## Additional Context
+
+See [CLAUDE.md](CLAUDE.md) for comprehensive documentation including:
+- Environment variable details
+- Mobile build instructions
+- GCP deployment setup
+- Firebase configuration
