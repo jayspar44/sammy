@@ -1,11 +1,9 @@
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { Sparkles, TrendingUp, Plus, Calendar } from 'lucide-react';
+import { Sparkles, Plus, Calendar } from 'lucide-react';
 import Button from '../components/ui/Button';
-import Card from '../components/ui/Card';
 import SunProgress from '../components/ui/SunProgress';
 import { cn } from '../utils/cn';
-import { useNavigate } from 'react-router-dom';
 import { LogDrinkModal } from '../components/common/LogDrinkModal';
 import { SetGoalModal } from '../components/common/SetGoalModal';
 import { EditHistoricCountModal } from '../components/common/EditHistoricCountModal';
@@ -112,7 +110,6 @@ const WeeklyTrend = ({ data = [], currentDateStr }) => {
 };
 
 export default function Home() {
-    const navigate = useNavigate();
     const { user } = useAuth();
     const { manualDate } = useUserPreferences();
     const [stats, setStats] = useState({ count: 0, limit: 2 });
@@ -120,7 +117,7 @@ export default function Home() {
     const [showLogModal, setShowLogModal] = useState(false);
     const [showGoalModal, setShowGoalModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
-    const [loading, setLoading] = useState(true);
+    const [hasLoggedToday, setHasLoggedToday] = useState(false);
 
     const fetchStats = async () => {
         try {
@@ -133,11 +130,12 @@ export default function Home() {
             }
             if (data.trends) {
                 setTrends(data.trends);
+                // Check if user has logged for today
+                const todayLog = data.trends.find(log => log.date === todayStr);
+                setHasLoggedToday(!!todayLog);
             }
         } catch (err) {
             console.error("Failed to fetch stats", err);
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -177,7 +175,12 @@ export default function Home() {
             {/* Hero */}
             <div className="mb-8 animate-slideUp">
                 <div onClick={() => setShowGoalModal(true)} className="cursor-pointer active:scale-95 transition-transform">
-                    <SunProgress current={stats.count} goal={stats.limit} />
+                    <SunProgress
+                        current={stats.count}
+                        goal={stats.limit}
+                        hasLogged={hasLoggedToday}
+                        date={manualDate || format(new Date(), 'yyyy-MM-dd')}
+                    />
                 </div>
             </div>
 

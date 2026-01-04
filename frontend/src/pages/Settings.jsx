@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useUserPreferences } from '../contexts/UserPreferencesContext';
 import Button from '../components/ui/Button';
@@ -11,7 +11,6 @@ export default function Settings() {
     const { logout } = useAuth();
     const {
         firstName,
-        saveFirstName,
         registeredDate,
         avgDrinkCost,
         avgDrinkCals,

@@ -163,7 +163,9 @@ npm run lint --prefix backend
 | `npm run lint`             | Run ESLint on frontend and backend   |
 | `npm run validate-env`     | Validate environment configuration   |
 | `npm run version:get`      | Get current version                  |
-| `npm run version:bump`     | Bump version number                  |
+| `npm run version:patch -- "msg"` | Patch bump (bug fixes)         |
+| `npm run version:minor -- "msg"` | Minor bump (new features)      |
+| `npm run version:major -- "msg"` | Major bump (breaking changes)  |
 
 ## Firebase
 

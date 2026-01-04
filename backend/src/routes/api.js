@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { verifyToken } = require('../controllers/authController');
-const { logDrink, getStats, updateLog } = require('../controllers/logController');
+const { logDrink, getStats, updateLog, deleteLog, getStatsRange } = require('../controllers/logController');
 
 
 // Health check
@@ -13,9 +13,8 @@ router.use(verifyToken);
 // Logs & Stats
 router.post('/log', logDrink);
 router.put('/log', updateLog);
-router.put('/log', updateLog);
+router.delete('/log', deleteLog);
 router.get('/stats', getStats);
-const { getStatsRange } = require('../controllers/logController');
 router.get('/stats/range', getStatsRange);
 
 // User Profile

@@ -40,25 +40,34 @@ Three package.json files synchronized with version.json:
 
 ### Automated Version Bump (Recommended)
 
-Use the automated script for quick, non-interactive version bumps:
+Use these shorthand commands for version bumps:
 
 ```bash
-# Patch version (0.1.1 → 0.1.2)
-npm run version:patch -- "Bug fix 1" "Bug fix 2"
+# Patch version (0.1.1 → 0.1.2) - bug fixes, minor changes
+npm run version:patch -- "Fix login bug" "Fix typo in header"
 
-# Minor version (0.1.2 → 0.2.0)
-npm run version:minor -- "New feature" "Another feature"
+# Minor version (0.1.2 → 0.2.0) - new features
+npm run version:minor -- "Add dark mode" "Add export feature"
 
-# Major version (0.2.0 → 1.0.0)
-npm run version:major -- "Breaking change"
+# Major version (0.2.0 → 1.0.0) - breaking changes
+npm run version:major -- "Breaking API changes"
+```
 
-# Or use the generic command
-npm run version:bump -- patch "Changelog entry"
+> **IMPORTANT:** These scripts use **positional arguments**, NOT named flags.
+> - Arguments after `--` are changelog entries (quoted strings)
+> - Do NOT use `--type`, `--author`, or `--changes` flags - they don't exist!
+
+### Generic Command (Alternative)
+
+If you need to specify the bump type dynamically:
+
+```bash
+npm run version:bump -- <patch|minor|major> "changelog entry"
 ```
 
 **Features:**
 - Automatic semantic version increment
-- Accepts multiple changelog entries as arguments
+- Accepts multiple changelog entries as arguments (positional, not flags)
 - Non-interactive (perfect for CI/CD)
 - Updates all files atomically
 - Provides next steps after completion

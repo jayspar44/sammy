@@ -4,7 +4,7 @@ const admin = require('firebase-admin');
 
 const logDrink = async (req, res) => {
     const { uid } = req.user;
-    const { date, count, type } = req.body; // Date is YYYY-MM-DD
+    const { date, count, type: _type } = req.body; // Date is YYYY-MM-DD
 
     if (!date || count === undefined) {
         return res.status(400).json({ error: 'Date and count are required' });
@@ -126,19 +126,21 @@ const getStats = async (req, res) => {
 
 const updateLog = async (req, res) => {
     const { uid } = req.user;
-    const { date, newCount, newGoal } = req.body;
+    const { date, newCount, newGoal, devMode } = req.body;
 
     if (!date || (newCount === undefined && newGoal === undefined)) {
         return res.status(400).json({ error: 'Date and either newCount or newGoal are required' });
     }
 
-    // Validate that date is not in the future
-    const requestedDate = new Date(date + 'T00:00:00');
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Validate that date is not in the future (unless devMode is enabled)
+    if (!devMode) {
+        const requestedDate = new Date(date + 'T00:00:00');
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
 
-    if (requestedDate > today) {
-        return res.status(400).json({ error: 'Cannot edit future dates' });
+        if (requestedDate > today) {
+            return res.status(400).json({ error: 'Cannot edit future dates' });
+        }
     }
 
     // Check DB readiness
@@ -200,6 +202,37 @@ const updateLog = async (req, res) => {
     } catch (error) {
         console.error('Error updating log:', error);
         res.status(500).json({ error: 'Failed to update log' });
+    }
+};
+
+const deleteLog = async (req, res) => {
+    const { uid } = req.user;
+    const { date } = req.query;
+
+    if (!date) {
+        return res.status(400).json({ error: 'Date is required' });
+    }
+
+    // Validate date format YYYY-MM-DD
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
+    }
+
+    // Check DB readiness
+    if (!isReady) {
+        return res.status(503).json({ error: 'Database not connected' });
+    }
+
+    try {
+        const userRef = db.collection('users').doc(uid);
+        const logRef = userRef.collection('logs').doc(date);
+
+        await logRef.delete();
+
+        res.json({ success: true, message: "Log deleted successfully" });
+    } catch (error) {
+        console.error('Error deleting log:', error);
+        res.status(500).json({ error: 'Failed to delete log' });
     }
 };
 
@@ -283,4 +316,4 @@ const getStatsRange = async (req, res) => {
     }
 };
 
-module.exports = { logDrink, getStats, updateLog, getStatsRange };
+module.exports = { logDrink, getStats, updateLog, deleteLog, getStatsRange };
