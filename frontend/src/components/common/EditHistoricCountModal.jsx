@@ -84,10 +84,13 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
             const days = dateInfos.map((info) => {
                 const dayStats = rangeStats[info.dateStr] || {};
 
-                // Fallback if dayStats is empty (e.g. no record found)
-                const count = dayStats.today?.count ?? 0;
-                const limit = dayStats.today?.limit ?? 2;
+                // Determine if there's an actual record
                 const hasRecord = dayStats.hasRecord ?? false;
+
+                // For future dates with no record, use null instead of defaults
+                // For past dates or future dates with records, use actual values or defaults
+                const count = hasRecord ? (dayStats.today?.count ?? 0) : null;
+                const limit = hasRecord ? (dayStats.today?.limit ?? 2) : null;
 
                 // In developer mode, allow future days to be edited
                 const isFutureAndNotDevMode = info.isFuture && !developerMode;
@@ -100,7 +103,7 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
                     limit: isFutureAndNotDevMode ? null : limit,
                     isFuture: info.isFuture,
                     isBeforeRegistered: registeredDate ? info.dateStr < registeredDate.split('T')[0] : false,
-                    hasRecord: developerMode ? hasRecord : (!info.isFuture && hasRecord)
+                    hasRecord: hasRecord
                 };
             });
 
@@ -318,8 +321,8 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
                                 const isToday = day.date === format(today, 'yyyy-MM-dd');
                                 const isDeleted = deletedDates[day.date];
 
-                                // Show dash if no record exists and user hasn't modified it yet
-                                const shouldShowDash = !day.hasRecord && !day.isFuture && !isModified && !isDeleted;
+                                // Show dash if no record exists (past or future) and user hasn't modified it yet
+                                const shouldShowDash = !day.hasRecord && !isModified && !isDeleted;
                                 const currentLimit = modifiedGoals[day.date] ?? day.limit;
                                 const isGoalModified = day.date in modifiedGoals;
 
@@ -368,9 +371,9 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
                                                         <>
                                                             <span className={clsx(
                                                                 "text-xl font-bold",
-                                                                day.isBeforeRegistered ? "text-slate-400" : "text-red-400"
+                                                                day.isBeforeRegistered ? "text-slate-400" : day.isFuture ? "text-purple-400" : "text-red-400"
                                                             )}>-</span>
-                                                            <span className={clsx("text-sm", editMode === 'target' ? "text-amber-600 font-bold" : "text-slate-400")}>/{currentLimit}</span>
+                                                            <span className={clsx("text-sm", day.isFuture ? "text-purple-400" : "text-slate-400")}> / -</span>
                                                         </>
                                                     ) : (
                                                         <>
