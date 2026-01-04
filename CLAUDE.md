@@ -19,7 +19,7 @@ sammy-1/
 │   ├── src/
 │   │   ├── pages/           # Home, Companion, Insights, Settings, Login
 │   │   ├── components/      # UI components (layout/, common/, ui/)
-│   │   ├── contexts/        # AuthContext, UserPreferencesContext
+│   │   ├── contexts/        # AuthContext, UserPreferencesContext, ConnectionContext
 │   │   ├── api/             # Axios client and API services
 │   │   └── utils/           # Helper functions
 │   └── capacitor.config.json # Mobile app config (io.sammy.app)
@@ -141,12 +141,26 @@ npx cap sync ios
 npx cap open ios           # Open in Xcode
 ```
 
+## Linting
+
+ESLint is configured for both frontend and backend. Run linting before committing changes.
+
+```bash
+# Lint both frontend and backend
+npm run lint
+
+# Lint individually
+npm run lint --prefix frontend
+npm run lint --prefix backend
+```
+
 ## Useful Commands
 
 | Command                    | Description                          |
 |----------------------------|--------------------------------------|
 | `npm run dev:local`        | Start local dev servers              |
 | `npm run build`            | Build frontend for production        |
+| `npm run lint`             | Run ESLint on frontend and backend   |
 | `npm run validate-env`     | Validate environment configuration   |
 | `npm run version:get`      | Get current version                  |
 | `npm run version:bump`     | Bump version number                  |
@@ -177,6 +191,41 @@ Deployment uses Cloud Build with branch push triggers.
 
 - **develop branch** → Deploys to dev environment
 - **main branch** → Deploys to prod environment
+
+### Automatic Version Tags
+
+Git tags are automatically created when version bumps are pushed to `develop` or `main` (`.github/workflows/version-tag.yml`):
+
+- **Minor/Major bumps** → Tag `v{version}` created automatically
+- **Patch bumps** → No tag created
+
+### PR Validation
+
+Pull requests to `develop` or `main` trigger automated validation (`.github/workflows/pr-validation.yml`):
+
+1. **ESLint** - Runs on both frontend and backend
+2. **Build** - Validates frontend builds successfully
+3. **Code checks** - Warns about `console.log` and `TODO` comments
+
+PRs are blocked from merging if lint or build fails.
+
+### Branch Protection
+
+| Branch | Requires PR | Direct Push | Force Push | Delete |
+|--------|-------------|-------------|------------|--------|
+| `main` | Yes | Blocked | Blocked | Blocked |
+| `develop` | No | Allowed | Blocked | Blocked |
+
+- **main**: All changes must go through a PR (no direct commits)
+- **develop**: Direct commits allowed for owner and Claude Code App
+- Only repository owner can push to protected branches
+
+### Claude Code Reviews
+
+Claude Code reviews PRs via GitHub Actions (`.github/workflows/claude-pr-review.yml`):
+
+- **Automatic**: PRs targeting `main` are reviewed automatically when opened or updated
+- **On-demand**: Mention `@claude` in any PR comment to request a review or ask questions
 
 ### Manual Deployment
 
@@ -227,3 +276,24 @@ See the deployment plan for full setup instructions:
 | Backend Hosting | Google Cloud Run | -  |
 | Frontend Hosting | Firebase Hosting | - |
 | CI/CD      | Google Cloud Build | -       |
+
+## Coding Conventions
+
+### Naming
+- **Files**: kebab-case (e.g., `user-profile.js`, `api-routes.js`)
+- **React Components**: PascalCase (e.g., `UserProfile.jsx`)
+- **Variables/Functions**: camelCase
+- **Directories**: kebab-case
+
+### Frontend Patterns
+- **State**: React Context for global state (Auth, Theme). Local state for components.
+- **API**: Use the `api/` directory for Axios wrappers. Do not make raw fetch calls in components.
+- **Styling**: Tailwind CSS utility classes. Use CSS variables for theming in `index.css`.
+- **Mobile**: Capacitor is used. Avoid browser-only APIs without checks.
+
+### Backend Patterns
+- **Structure**: Controller-Service pattern
+  - `routes/`: Express routers
+  - `controllers/`: Request handling logic
+  - `services/`: Business logic, AI integration, Firebase calls
+- **Logging**: Use `req.log` (Pino) instead of `console.log`
