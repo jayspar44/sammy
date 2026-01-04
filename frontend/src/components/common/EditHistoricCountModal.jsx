@@ -194,21 +194,21 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
             {/* Modal Content */}
             <div
                 className={clsx(
-                    "w-full max-w-2xl bg-white rounded-t-[2.5rem] sm:rounded-[2.5rem] p-6 pb-12 pt-8 relative transition-transform duration-300 ease-out transform",
+                    "w-full max-w-md max-h-[90dvh] bg-white rounded-t-[2.5rem] sm:rounded-[2.5rem] px-5 pb-6 pt-6 relative flex flex-col transition-transform duration-300 ease-out transform",
                     isOpen ? "translate-y-0" : "translate-y-full sm:translate-y-10 sm:scale-95 sm:opacity-0"
                 )}
             >
                 <div className="absolute top-4 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-slate-200 rounded-full sm:hidden" />
 
-                <header className="flex justify-between items-center mb-6">
-                    <h2 className="text-2xl font-bold text-slate-800">Edit History</h2>
+                <header className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-bold text-slate-800">Edit History</h2>
                     <button onClick={onClose} className="p-2 bg-slate-100 rounded-full">
                         <X className="w-5 h-5 text-slate-500" />
                     </button>
                 </header>
 
                 {/* Week Navigation */}
-                <div className="flex items-center justify-between mb-6 bg-slate-50 rounded-xl p-3">
+                <div className="flex items-center justify-between mb-4 bg-slate-50 rounded-xl p-2">
                     <button
                         onClick={handlePrevWeek}
                         className="p-2 hover:bg-white rounded-lg transition-colors"
@@ -250,9 +250,9 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
                 {/* Loading State */}
                 {loadingData ? (
                     <>
-                        <div className="space-y-2 mb-6">
+                        <div className="space-y-1.5 mb-4 flex-1 overflow-y-auto min-h-0">
                             {[...Array(7)].map((_, i) => (
-                                <div key={i} className="flex items-center justify-between p-4 rounded-xl border-2 border-slate-200 bg-slate-50 animate-pulse">
+                                <div key={i} className="flex items-center justify-between py-2.5 px-3 rounded-xl border-2 border-slate-200 bg-slate-50 animate-pulse">
                                     <div className="flex flex-col gap-1">
                                         <div className="h-4 w-16 bg-slate-200 rounded"></div>
                                         <div className="h-3 w-20 bg-slate-200 rounded"></div>
@@ -268,12 +268,12 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
                             ))}
                         </div>
                         {/* Skeleton Save Button */}
-                        <div className="h-14 bg-slate-200 rounded-2xl animate-pulse"></div>
+                        <div className="h-12 bg-slate-200 rounded-2xl animate-pulse"></div>
                     </>
                 ) : (
                     <>
                         {/* Vertical Day List */}
-                        <div className="space-y-2 mb-6">
+                        <div className="space-y-1.5 mb-4 flex-1 overflow-y-auto min-h-0">
                             {weekData.map((day) => {
                                 const currentCount = modifiedCounts[day.date] ?? day.count;
                                 const isModified = day.date in modifiedCounts;
@@ -288,7 +288,7 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
                                     <div
                                         key={day.date}
                                         className={clsx(
-                                            "flex items-center justify-between p-4 rounded-xl border-2 transition-all",
+                                            "flex items-center justify-between py-2.5 px-3 rounded-xl border-2 transition-all",
                                             day.isFuture
                                                 ? "bg-slate-50 border-slate-100 opacity-50"
                                                 : day.isBeforeRegistered
@@ -363,7 +363,7 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
                         {/* Save Button */}
                         <Button
                             variant="primary"
-                            className="w-full text-lg h-14 rounded-2xl shadow-xl shadow-sky-200"
+                            className="w-full text-base h-12 rounded-2xl shadow-lg shadow-sky-200"
                             onClick={handleSaveAll}
                             disabled={!hasChanges || loading}
                         >
@@ -373,7 +373,7 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
 
                         <button
                             onClick={() => setEditMode(prev => prev === 'count' ? 'target' : 'count')}
-                            className="w-full mt-4 text-sm text-slate-400 font-medium hover:text-slate-600 transition-colors"
+                            className="w-full mt-3 text-sm text-slate-400 font-medium hover:text-slate-600 transition-colors"
                         >
                             {editMode === 'count' ? 'Adjust Daily Targets' : 'Back to Editing Counts'}
                         </button>

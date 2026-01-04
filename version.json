@@ -1,6 +1,14 @@
 {
-    "version": "0.2.0",
+    "version": "0.2.1",
     "history": [
+        {
+            "version": "0.2.1",
+            "date": "2026-01-04",
+            "author": "jason",
+            "changes": [
+                "Fix Edit History modal layout - width and height constraints"
+            ]
+        },
         {
             "version": "0.2.0",
             "date": "2026-01-03",
