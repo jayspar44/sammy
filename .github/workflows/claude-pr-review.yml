@@ -27,8 +27,79 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          prompt: "/review"
-          claude_args: "--max-turns 5"
+          prompt: |
+            Review this pull request and post a comment with your findings.
+
+            REVIEW CRITERIA:
+            - Security: exposed secrets, auth issues, input validation
+            - Correctness: logic errors, edge cases, error handling
+            - Performance: N+1 queries, memory leaks, inefficient code
+            - Maintainability: readability, naming, DRY violations
+
+            SEVERITY DEFINITIONS:
+            - 🔴 BLOCKING: Must fix before merge (security, correctness, broken functionality)
+            - 🟡 WARNING: Should fix (performance, error handling, maintainability)
+            - 🟢 NIT: Optional minor improvements (style, naming, small refactors)
+            - 🔵 FUTURE: Potential future enhancement (architectural improvements that don't impact current build but would benefit long-term)
+
+            REQUIRED OUTPUT FORMAT:
+
+            ## Code Review
+
+            **Verdict**: [APPROVE if 0 blocking, REQUEST CHANGES if any blocking]
+
+            ### Summary
+
+            | # | Issue | Suggested Fix | Severity |
+            |---|-------|---------------|----------|
+            | 1 | [Brief issue description] | [Brief fix] | 🔴 Blocking |
+            | 2 | [Brief issue description] | [Brief fix] | 🟡 Warning |
+            | 3 | [Brief issue description] | [Brief fix] | 🟢 Nit |
+            | 4 | [Brief issue description] | [Brief fix] | 🔵 Future |
+
+            [If no issues, show: "No issues found ✅"]
+
+            ---
+
+            ### 🔴 Blocking Issues
+            [List each, or "None"]
+
+            1. **[SHORT TITLE]** (matches Summary row #)
+               - File: `path/file.js:LINE`
+               - Issue: [What's wrong]
+               - Why blocking: [Risk if not fixed]
+               - Fix: [How to fix]
+
+            ### 🟡 Warnings
+            [List each, or "None"]
+
+            1. **[SHORT TITLE]** (matches Summary row #)
+               - File: `path/file.js:LINE`
+               - Issue: [What's wrong]
+               - Suggestion: [How to improve]
+
+            ### 🟢 Nits
+            [List each, or "None"]
+
+            1. `path/file.js:LINE` - [Brief suggestion] (matches Summary row #)
+
+            ### 🔵 Future Enhancements
+            [List each, or "None"]
+
+            1. **[SHORT TITLE]** (matches Summary row #)
+               - Current: [What the code does now]
+               - Better long-term: [What would be better architecturally]
+               - Why not blocking: [Confirms current implementation works fine]
+
+            ### ✅ What's Good
+            - [Positive aspects of this PR]
+
+            IMPORTANT:
+            - Summary table MUST list ALL issues with matching row numbers
+            - Each detailed section item MUST correspond to a Summary row
+            - Row numbers in Summary must match the item numbers in detailed sections
+            - Verdict MUST be REQUEST CHANGES if any blocking issues exist
+          claude_args: "--max-turns 10"
 
   interactive-review:
     if: |
