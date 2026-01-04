@@ -4,7 +4,7 @@ const admin = require('firebase-admin');
 
 const logDrink = async (req, res) => {
     const { uid } = req.user;
-    const { date, count, type } = req.body; // Date is YYYY-MM-DD
+    const { date, count, type: _type } = req.body; // Date is YYYY-MM-DD
 
     if (!date || count === undefined) {
         return res.status(400).json({ error: 'Date and count are required' });

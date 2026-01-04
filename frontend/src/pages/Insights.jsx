@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { Zap, DollarSign, Flame, Calendar, TrendingDown, Wallet } from 'lucide-react';
+import { Zap, Calendar, TrendingDown, Wallet } from 'lucide-react';
 import Card from '../components/ui/Card';
 import { cn } from '../utils/cn';
 import { api } from '../api/services';
 import { useAuth } from '../contexts/AuthContext';
 import { useUserPreferences } from '../contexts/UserPreferencesContext';
 
+// eslint-disable-next-line no-unused-vars -- Icon is used in JSX below
 const StatCard = ({ icon: Icon, label, value, theme = 'emerald', className }) => {
     const themes = {
         emerald: 'bg-emerald-50 text-emerald-600 border-emerald-100',
@@ -37,7 +38,6 @@ export default function Insights() {
         dryStreak: 0,
         trends: []
     });
-    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const loadStats = async () => {
@@ -53,8 +53,6 @@ export default function Insights() {
                 });
             } catch (err) {
                 console.error("Failed to load insights", err);
-            } finally {
-                setLoading(false);
             }
         };
         loadStats();

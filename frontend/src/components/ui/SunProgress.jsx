@@ -4,7 +4,7 @@ import { Check } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import Card from './Card';
 
-const SunProgress = ({ current, goal, label = "Daily Goal", hasLogged = false, date = null }) => {
+const SunProgress = ({ current, goal, hasLogged = false, date = null }) => {
     const percentage = Math.min(100, Math.max(0, (current / goal) * 100));
     const isOverLimit = current > goal;
 
