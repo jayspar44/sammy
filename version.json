@@ -1,6 +1,32 @@
 {
-    "version": "0.2.0",
+    "version": "0.3.1",
     "history": [
+        {
+            "version": "0.3.1",
+            "date": "2026-01-04",
+            "author": "jason",
+            "changes": [
+                "Add version header to API responses"
+            ]
+        },
+        {
+            "version": "0.3.0",
+            "date": "2026-01-04",
+            "author": "jason",
+            "changes": [
+                "Add branch protection and Claude PR review documentation",
+                "Add automatic version tagging for minor/major releases",
+                "Add Claude Code PR review GitHub Action"
+            ]
+        },
+        {
+            "version": "0.2.1",
+            "date": "2026-01-04",
+            "author": "jason",
+            "changes": [
+                "Fix Edit History modal layout - width and height constraints"
+            ]
+        },
         {
             "version": "0.2.0",
             "date": "2026-01-03",

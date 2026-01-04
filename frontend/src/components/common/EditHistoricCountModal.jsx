@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Save, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, Save, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
 import Button from '../ui/Button';
 import { clsx } from 'clsx';
 import { createPortal } from 'react-dom';
@@ -8,12 +8,13 @@ import { api } from '../../api/services';
 import { useUserPreferences } from '../../contexts/UserPreferencesContext';
 
 export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate }) => {
-    const { registeredDate } = useUserPreferences();
+    const { registeredDate, developerMode } = useUserPreferences();
     const [weekStartDate, setWeekStartDate] = useState(null);
     const [weekData, setWeekData] = useState([]);
     const [weekDataCache, setWeekDataCache] = useState({}); // Cache fetched week data
     const [modifiedCounts, setModifiedCounts] = useState({});
     const [modifiedGoals, setModifiedGoals] = useState({});
+    const [deletedDates, setDeletedDates] = useState({});
     const [editMode, setEditMode] = useState('count'); // 'count' or 'target'
     const [isVisible, setIsVisible] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -32,6 +33,7 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
             setWeekStartDate(weekStart);
             setModifiedCounts({});
             setModifiedGoals({});
+            setDeletedDates({});
             setEditMode('count');
         } else {
             setTimeout(() => setIsVisible(false), 300);
@@ -82,20 +84,26 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
             const days = dateInfos.map((info) => {
                 const dayStats = rangeStats[info.dateStr] || {};
 
-                // Fallback if dayStats is empty (e.g. no record found)
-                const count = dayStats.today?.count ?? 0;
-                const limit = dayStats.today?.limit ?? 2;
+                // Determine if there's an actual record
                 const hasRecord = dayStats.hasRecord ?? false;
+
+                // For future dates with no record, use null instead of defaults
+                // For past dates or future dates with records, use actual values or defaults
+                const count = hasRecord ? (dayStats.today?.count ?? 0) : null;
+                const limit = hasRecord ? (dayStats.today?.limit ?? 2) : null;
+
+                // In developer mode, allow future days to be edited
+                const isFutureAndNotDevMode = info.isFuture && !developerMode;
 
                 return {
                     date: info.dateStr,
                     dayLabel: info.dayLabel,
                     dateLabel: info.dateLabel,
-                    count: info.isFuture ? null : count,
-                    limit: info.isFuture ? null : limit,
+                    count: isFutureAndNotDevMode ? null : count,
+                    limit: isFutureAndNotDevMode ? null : limit,
                     isFuture: info.isFuture,
                     isBeforeRegistered: registeredDate ? info.dateStr < registeredDate.split('T')[0] : false,
-                    hasRecord: !info.isFuture && hasRecord
+                    hasRecord: hasRecord
                 };
             });
 
@@ -116,8 +124,8 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
 
     const handleNextWeek = () => {
         const nextWeek = addDays(weekStartDate, 7);
-        // Don't allow going into future weeks
-        if (nextWeek <= today) {
+        // Don't allow going into future weeks (unless devMode is enabled)
+        if (nextWeek <= today || developerMode) {
             setWeekStartDate(nextWeek);
         }
     };
@@ -129,7 +137,7 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
 
     const handleCountChange = (date, delta) => {
         const day = weekData.find(d => d.date === date);
-        if (!day || day.isFuture) return;
+        if (!day || (day.isFuture && !developerMode)) return;
 
         if (editMode === 'target') {
             const currentGoal = modifiedGoals[date] ?? day.limit;
@@ -150,20 +158,53 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
         }
     };
 
+    const handleDeleteLog = (date) => {
+        const day = weekData.find(d => d.date === date);
+        if (!day || (day.isFuture && !developerMode) || !day.hasRecord) return;
+
+        // Confirm deletion
+        if (!window.confirm(`Delete log entry for ${day.dateLabel}? This will completely remove the record from the database.`)) {
+            return;
+        }
+
+        // Mark as deleted
+        setDeletedDates(prev => ({
+            ...prev,
+            [date]: true
+        }));
+
+        // Remove from modified counts/goals if present
+        setModifiedCounts(prev => {
+            const newCounts = { ...prev };
+            delete newCounts[date];
+            return newCounts;
+        });
+        setModifiedGoals(prev => {
+            const newGoals = { ...prev };
+            delete newGoals[date];
+            return newGoals;
+        });
+    };
+
     const handleSaveAll = async () => {
         setLoading(true);
         try {
+            // Delete logs first
+            const deleteUpdates = Object.keys(deletedDates).map(date =>
+                api.deleteLog(date)
+            );
+
             // Save modified counts
             const countUpdates = Object.entries(modifiedCounts).map(([date, count]) =>
-                api.updateHistoricCount(date, { newCount: count })
+                api.updateHistoricCount(date, { newCount: count, devMode: developerMode })
             );
 
             // Save modified goals
             const goalUpdates = Object.entries(modifiedGoals).map(([date, goal]) =>
-                api.updateHistoricCount(date, { newGoal: goal })
+                api.updateHistoricCount(date, { newGoal: goal, devMode: developerMode })
             );
 
-            await Promise.all([...countUpdates, ...goalUpdates]);
+            await Promise.all([...deleteUpdates, ...countUpdates, ...goalUpdates]);
             onSave?.();
             onClose();
         } catch (err) {
@@ -177,7 +218,7 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
     if (!isVisible && !isOpen) return null;
 
     const isCurrentWeek = weekStartDate && isSameWeek(weekStartDate, today, { weekStartsOn: 1 });
-    const hasChanges = Object.keys(modifiedCounts).length > 0 || Object.keys(modifiedGoals).length > 0;
+    const hasChanges = Object.keys(modifiedCounts).length > 0 || Object.keys(modifiedGoals).length > 0 || Object.keys(deletedDates).length > 0;
     const weekEndDate = weekStartDate ? addDays(weekStartDate, 6) : null;
 
     return createPortal(
@@ -194,21 +235,21 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
             {/* Modal Content */}
             <div
                 className={clsx(
-                    "w-full max-w-2xl bg-white rounded-t-[2.5rem] sm:rounded-[2.5rem] p-6 pb-12 pt-8 relative transition-transform duration-300 ease-out transform",
+                    "w-full max-w-md max-h-[90dvh] bg-white rounded-t-[2.5rem] sm:rounded-[2.5rem] px-5 pb-6 pt-6 relative flex flex-col transition-transform duration-300 ease-out transform",
                     isOpen ? "translate-y-0" : "translate-y-full sm:translate-y-10 sm:scale-95 sm:opacity-0"
                 )}
             >
                 <div className="absolute top-4 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-slate-200 rounded-full sm:hidden" />
 
-                <header className="flex justify-between items-center mb-6">
-                    <h2 className="text-2xl font-bold text-slate-800">Edit History</h2>
+                <header className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-bold text-slate-800">Edit History</h2>
                     <button onClick={onClose} className="p-2 bg-slate-100 rounded-full">
                         <X className="w-5 h-5 text-slate-500" />
                     </button>
                 </header>
 
                 {/* Week Navigation */}
-                <div className="flex items-center justify-between mb-6 bg-slate-50 rounded-xl p-3">
+                <div className="flex items-center justify-between mb-4 bg-slate-50 rounded-xl p-2">
                     <button
                         onClick={handlePrevWeek}
                         className="p-2 hover:bg-white rounded-lg transition-colors"
@@ -240,7 +281,7 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
                         <button
                             onClick={handleNextWeek}
                             className="p-2 hover:bg-white rounded-lg transition-colors"
-                            disabled={weekStartDate && addDays(weekStartDate, 7) > today}
+                            disabled={!developerMode && weekStartDate && addDays(weekStartDate, 7) > today}
                         >
                             <ChevronRight className="w-5 h-5 text-slate-600" />
                         </button>
@@ -250,9 +291,9 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
                 {/* Loading State */}
                 {loadingData ? (
                     <>
-                        <div className="space-y-2 mb-6">
+                        <div className="space-y-1.5 mb-4 flex-1 overflow-y-auto min-h-0">
                             {[...Array(7)].map((_, i) => (
-                                <div key={i} className="flex items-center justify-between p-4 rounded-xl border-2 border-slate-200 bg-slate-50 animate-pulse">
+                                <div key={i} className="flex items-center justify-between py-2.5 px-3 rounded-xl border-2 border-slate-200 bg-slate-50 animate-pulse">
                                     <div className="flex flex-col gap-1">
                                         <div className="h-4 w-16 bg-slate-200 rounded"></div>
                                         <div className="h-3 w-20 bg-slate-200 rounded"></div>
@@ -268,19 +309,20 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
                             ))}
                         </div>
                         {/* Skeleton Save Button */}
-                        <div className="h-14 bg-slate-200 rounded-2xl animate-pulse"></div>
+                        <div className="h-12 bg-slate-200 rounded-2xl animate-pulse"></div>
                     </>
                 ) : (
                     <>
                         {/* Vertical Day List */}
-                        <div className="space-y-2 mb-6">
+                        <div className="space-y-1.5 mb-4 flex-1 overflow-y-auto min-h-0">
                             {weekData.map((day) => {
                                 const currentCount = modifiedCounts[day.date] ?? day.count;
                                 const isModified = day.date in modifiedCounts;
                                 const isToday = day.date === format(today, 'yyyy-MM-dd');
+                                const isDeleted = deletedDates[day.date];
 
-                                // Show dash if no record exists and user hasn't modified it yet
-                                const shouldShowDash = !day.hasRecord && !day.isFuture && !isModified;
+                                // Show dash if no record exists (past or future) and user hasn't modified it yet
+                                const shouldShowDash = !day.hasRecord && !isModified && !isDeleted;
                                 const currentLimit = modifiedGoals[day.date] ?? day.limit;
                                 const isGoalModified = day.date in modifiedGoals;
 
@@ -289,29 +331,38 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
                                         key={day.date}
                                         className={clsx(
                                             "flex items-center justify-between p-4 rounded-xl border-2 transition-all",
-                                            day.isFuture
-                                                ? "bg-slate-50 border-slate-100 opacity-50"
-                                                : day.isBeforeRegistered
-                                                    ? "bg-slate-50 border-slate-100 opacity-75" // Keep neutral for pre-reg
-                                                    : shouldShowDash
-                                                        ? "bg-red-50 border-red-200 shadow-sm"
-                                                        : isModified
-                                                            ? "bg-sky-50 border-primary shadow-sm"
-                                                            : isGoalModified
-                                                                ? "bg-amber-50 border-amber-300 shadow-sm"
-                                                                : isToday
-                                                                    ? "bg-slate-100 border-slate-300"
-                                                                    : "bg-white border-slate-200"
+                                            isDeleted
+                                                ? "bg-rose-100 border-rose-400 opacity-75"
+                                                : (day.isFuture && !developerMode)
+                                                    ? "bg-slate-50 border-slate-100 opacity-50"
+                                                    : day.isBeforeRegistered
+                                                        ? "bg-slate-50 border-slate-100 opacity-75" // Keep neutral for pre-reg
+                                                        : shouldShowDash
+                                                            ? "bg-red-50 border-red-200 shadow-sm"
+                                                            : isModified
+                                                                ? "bg-sky-50 border-primary shadow-sm"
+                                                                : isGoalModified
+                                                                    ? "bg-amber-50 border-amber-300 shadow-sm"
+                                                                    : isToday
+                                                                        ? "bg-slate-100 border-slate-300"
+                                                                        : day.isFuture && developerMode
+                                                                            ? "bg-purple-50 border-purple-200 shadow-sm"
+                                                                            : "bg-white border-slate-200"
                                         )}
                                     >
                                         {/* Day Info */}
                                         <div className="flex flex-col">
                                             <p className="text-sm font-bold text-slate-700">{day.dayLabel}</p>
-                                            <p className="text-xs text-slate-500">{day.dateLabel}</p>
+                                            <p className="text-xs text-slate-500">
+                                                {day.dateLabel}
+                                                {day.isFuture && developerMode && <span className="ml-1 text-purple-600 text-[10px]">(Future)</span>}
+                                            </p>
                                         </div>
 
-                                        {day.isFuture ? (
+                                        {(day.isFuture && !developerMode) ? (
                                             <p className="text-sm text-slate-400">—</p>
+                                        ) : isDeleted ? (
+                                            <p className="text-sm text-rose-600 font-medium">Deleted</p>
                                         ) : (
                                             <div className="flex items-center gap-4">
                                                 {/* Count Display */}
@@ -320,9 +371,9 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
                                                         <>
                                                             <span className={clsx(
                                                                 "text-xl font-bold",
-                                                                day.isBeforeRegistered ? "text-slate-400" : "text-red-400"
+                                                                day.isBeforeRegistered ? "text-slate-400" : day.isFuture ? "text-purple-400" : "text-red-400"
                                                             )}>-</span>
-                                                            <span className={clsx("text-sm", editMode === 'target' ? "text-amber-600 font-bold" : "text-slate-400")}>/{currentLimit}</span>
+                                                            <span className={clsx("text-sm", day.isFuture ? "text-purple-400" : "text-slate-400")}> / -</span>
                                                         </>
                                                     ) : (
                                                         <>
@@ -334,6 +385,15 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
 
                                                 {/* +/- Buttons */}
                                                 <div className="flex gap-2">
+                                                    {developerMode && day.hasRecord && (
+                                                        <button
+                                                            onClick={() => handleDeleteLog(day.date)}
+                                                            className="w-10 h-10 rounded-lg bg-rose-100 hover:bg-rose-200 flex items-center justify-center text-rose-600 transition-colors active:scale-95"
+                                                            title="Delete log entry (Developer Mode)"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    )}
                                                     <button
                                                         onClick={() => handleCountChange(day.date, -1)}
                                                         disabled={currentCount === 0}
@@ -363,17 +423,17 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
                         {/* Save Button */}
                         <Button
                             variant="primary"
-                            className="w-full text-lg h-14 rounded-2xl shadow-xl shadow-sky-200"
+                            className="w-full text-base h-12 rounded-2xl shadow-lg shadow-sky-200"
                             onClick={handleSaveAll}
                             disabled={!hasChanges || loading}
                         >
                             <Save className="w-5 h-5 mr-2" />
-                            {loading ? 'Saving...' : hasChanges ? `Save ${Object.keys(modifiedCounts).length + Object.keys(modifiedGoals).length} Change(s)` : 'No Changes'}
+                            {loading ? 'Saving...' : hasChanges ? `Save ${Object.keys(modifiedCounts).length + Object.keys(modifiedGoals).length + Object.keys(deletedDates).length} Change(s)` : 'No Changes'}
                         </Button>
 
                         <button
                             onClick={() => setEditMode(prev => prev === 'count' ? 'target' : 'count')}
-                            className="w-full mt-4 text-sm text-slate-400 font-medium hover:text-slate-600 transition-colors"
+                            className="w-full mt-3 text-sm text-slate-400 font-medium hover:text-slate-600 transition-colors"
                         >
                             {editMode === 'count' ? 'Adjust Daily Targets' : 'Back to Editing Counts'}
                         </button>

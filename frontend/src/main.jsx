@@ -5,7 +5,7 @@ import './index.css'
 import App from './App.jsx'
 
 // Global error trap for mobile debugging
-window.onerror = function (msg, url, line, col, error) {
+window.onerror = function (msg, url, line, col, _error) {
   alert("Global Error: " + msg + "\n" + url + ":" + line + ":" + col);
   return false;
 };

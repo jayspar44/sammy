@@ -101,6 +101,15 @@ export const api = {
         return response.data;
     },
 
+    deleteLog: async (date) => {
+        if (IS_SPOOF_DB()) {
+            console.log(`[SPOOF] Delete Log: ${date}`);
+            return { success: true };
+        }
+        const response = await client.delete('/log', { params: { date } });
+        return response.data;
+    },
+
     getStats: async (date) => {
         let dateStr = date;
         if (!dateStr) {

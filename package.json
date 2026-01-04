@@ -1,12 +1,12 @@
 {
   "name": "sammy",
-  "version": "0.2.0",
+  "version": "0.3.1",
   "description": "AI-based habit companion app",
   "main": "backend/src/index.js",
   "scripts": {
     "install-all": "npm install && cd frontend && npm install && cd ../backend && npm install",
     "build": "npm run install-all && cd frontend && npm run build",
-    "lint": "eslint .",
+    "lint": "npm run lint --prefix frontend && npm run lint --prefix backend",
     "start": "node backend/src/index.js",
     "dev": "nodemon backend/src/index.js",
     "dev:local": "node scripts/dev-with-ports.js",

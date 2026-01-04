@@ -2,6 +2,7 @@ import { Home, MessageCircle, BarChart3 } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { clsx } from 'clsx';
 
+// eslint-disable-next-line no-unused-vars -- Icon is used in JSX below
 const NavItem = ({ to, icon: Icon }) => (
     <NavLink
         to={to}

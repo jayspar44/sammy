@@ -1,0 +1,86 @@
+name: Claude Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches:
+      - main
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+
+jobs:
+  automatic-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            Review this PR and post a comment using `gh pr comment`. Use `gh pr diff` to see changes.
+
+            SEVERITY TIERS:
+            - 🔴 BLOCKING: Must fix (security, correctness, broken functionality)
+            - 🟡 WARNING: Should fix (performance, error handling, maintainability)
+            - 🟢 NIT: Optional (style, naming, minor refactors)
+            - 🔵 FUTURE: Long-term improvement (works now, but could be better architecturally)
+
+            OUTPUT FORMAT:
+            ```
+            ## Code Review
+            **Verdict**: APPROVE or REQUEST CHANGES (if any 🔴)
+
+            ### Summary
+            | # | Issue | Fix | Severity |
+            |---|-------|-----|----------|
+            (table of all issues, or "No issues found ✅")
+
+            ### 🔴 Blocking Issues
+            1. **Title** - `file:line` - Issue and fix
+
+            ### 🟡 Warnings
+            1. **Title** - `file:line` - Issue and suggestion
+
+            ### 🟢 Nits
+            1. `file:line` - Brief suggestion
+
+            ### 🔵 Future
+            1. **Title** - Current approach works, but [better long-term approach]
+
+            ### ✅ What's Good
+            - Positive aspects
+            ```
+
+            Use `gh pr comment` to post. Summary row numbers must match detail sections.
+          claude_args: '--allowed-tools "Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*),Read,Glob,Grep"'
+
+  interactive-review:
+    if: |
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_args: '--allowed-tools "Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*),Bash(gh issue view:*),Bash(gh issue list:*),Read,Glob,Grep"'

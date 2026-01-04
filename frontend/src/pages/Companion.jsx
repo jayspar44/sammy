@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Send } from 'lucide-react';
 import Button from '../components/ui/Button';
-import { useAuth } from '../contexts/AuthContext';
 import { cn } from '../utils/cn';
 import { api } from '../api/services';
 import { format } from 'date-fns';
@@ -24,8 +23,6 @@ const Message = ({ text, sender }) => {
 };
 
 export default function Companion() {
-    const { user } = useAuth();
-
     const bottomRef = useRef(null);
     const [input, setInput] = useState('');
     const [isTyping, setIsTyping] = useState(false);
