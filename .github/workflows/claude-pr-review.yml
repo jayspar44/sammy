@@ -1,11 +1,5 @@
 name: Claude Code Review
 
-permissions:
-  contents: write
-  pull-requests: write
-  issues: write
-  id-token: write
-
 on:
   pull_request:
     types: [opened, synchronize]
@@ -20,16 +14,23 @@ jobs:
   automatic-review:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
       - uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          allowed_tools: "Bash(gh:*),Bash(git:*),Read,Glob,Grep,Write"
           prompt: |
-            Review this pull request and post a comment with your findings.
+            Review this pull request and post your findings as a PR comment using `gh pr comment`.
+
+            First, use `gh pr view` and `gh pr diff` to understand the changes.
 
             REVIEW CRITERIA:
             - Security: exposed secrets, auth issues, input validation
@@ -43,7 +44,7 @@ jobs:
             - 🟢 NIT: Optional minor improvements (style, naming, small refactors)
             - 🔵 FUTURE: Potential future enhancement (architectural improvements that don't impact current build but would benefit long-term)
 
-            REQUIRED OUTPUT FORMAT:
+            REQUIRED OUTPUT FORMAT (post this as a PR comment using `gh pr comment`):
 
             ## Code Review
 
@@ -96,21 +97,29 @@ jobs:
             - [Positive aspects of this PR]
 
             IMPORTANT:
+            - Use `gh pr comment` with your Bash tool to post the review
             - Summary table MUST list ALL issues with matching row numbers
             - Each detailed section item MUST correspond to a Summary row
             - Row numbers in Summary must match the item numbers in detailed sections
             - Verdict MUST be REQUEST CHANGES if any blocking issues exist
-          claude_args: "--max-turns 10"
+          claude_args: '--max-turns 10 --allowed-tools "Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*),Read,Glob,Grep"'
 
   interactive-review:
     if: |
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
       (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude'))
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
       - uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          claude_args: '--allowed-tools "Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*),Bash(gh issue view:*),Bash(gh issue list:*),Read,Glob,Grep"'
