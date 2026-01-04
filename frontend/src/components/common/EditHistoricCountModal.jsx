@@ -160,7 +160,7 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
 
     const handleDeleteLog = (date) => {
         const day = weekData.find(d => d.date === date);
-        if (!day || day.isFuture || !day.hasRecord) return;
+        if (!day || (day.isFuture && !developerMode) || !day.hasRecord) return;
 
         // Confirm deletion
         if (!window.confirm(`Delete log entry for ${day.dateLabel}? This will completely remove the record from the database.`)) {
