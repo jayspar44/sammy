@@ -28,81 +28,42 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           prompt: |
-            Review this pull request and post your findings as a PR comment using `gh pr comment`.
+            Review this PR and post a comment using `gh pr comment`. Use `gh pr diff` to see changes.
 
-            First, use `gh pr view` and `gh pr diff` to understand the changes.
-
-            REVIEW CRITERIA:
-            - Security: exposed secrets, auth issues, input validation
-            - Correctness: logic errors, edge cases, error handling
-            - Performance: N+1 queries, memory leaks, inefficient code
-            - Maintainability: readability, naming, DRY violations
-
-            SEVERITY DEFINITIONS:
-            - 🔴 BLOCKING: Must fix before merge (security, correctness, broken functionality)
+            SEVERITY TIERS:
+            - 🔴 BLOCKING: Must fix (security, correctness, broken functionality)
             - 🟡 WARNING: Should fix (performance, error handling, maintainability)
-            - 🟢 NIT: Optional minor improvements (style, naming, small refactors)
-            - 🔵 FUTURE: Potential future enhancement (architectural improvements that don't impact current build but would benefit long-term)
+            - 🟢 NIT: Optional (style, naming, minor refactors)
+            - 🔵 FUTURE: Long-term improvement (works now, but could be better architecturally)
 
-            REQUIRED OUTPUT FORMAT (post this as a PR comment using `gh pr comment`):
-
+            OUTPUT FORMAT:
+            ```
             ## Code Review
-
-            **Verdict**: [APPROVE if 0 blocking, REQUEST CHANGES if any blocking]
+            **Verdict**: APPROVE or REQUEST CHANGES (if any 🔴)
 
             ### Summary
-
-            | # | Issue | Suggested Fix | Severity |
-            |---|-------|---------------|----------|
-            | 1 | [Brief issue description] | [Brief fix] | 🔴 Blocking |
-            | 2 | [Brief issue description] | [Brief fix] | 🟡 Warning |
-            | 3 | [Brief issue description] | [Brief fix] | 🟢 Nit |
-            | 4 | [Brief issue description] | [Brief fix] | 🔵 Future |
-
-            [If no issues, show: "No issues found ✅"]
-
-            ---
+            | # | Issue | Fix | Severity |
+            |---|-------|-----|----------|
+            (table of all issues, or "No issues found ✅")
 
             ### 🔴 Blocking Issues
-            [List each, or "None"]
-
-            1. **[SHORT TITLE]** (matches Summary row #)
-               - File: `path/file.js:LINE`
-               - Issue: [What's wrong]
-               - Why blocking: [Risk if not fixed]
-               - Fix: [How to fix]
+            1. **Title** - `file:line` - Issue and fix
 
             ### 🟡 Warnings
-            [List each, or "None"]
-
-            1. **[SHORT TITLE]** (matches Summary row #)
-               - File: `path/file.js:LINE`
-               - Issue: [What's wrong]
-               - Suggestion: [How to improve]
+            1. **Title** - `file:line` - Issue and suggestion
 
             ### 🟢 Nits
-            [List each, or "None"]
+            1. `file:line` - Brief suggestion
 
-            1. `path/file.js:LINE` - [Brief suggestion] (matches Summary row #)
-
-            ### 🔵 Future Enhancements
-            [List each, or "None"]
-
-            1. **[SHORT TITLE]** (matches Summary row #)
-               - Current: [What the code does now]
-               - Better long-term: [What would be better architecturally]
-               - Why not blocking: [Confirms current implementation works fine]
+            ### 🔵 Future
+            1. **Title** - Current approach works, but [better long-term approach]
 
             ### ✅ What's Good
-            - [Positive aspects of this PR]
+            - Positive aspects
+            ```
 
-            IMPORTANT:
-            - Use `gh pr comment` with your Bash tool to post the review
-            - Summary table MUST list ALL issues with matching row numbers
-            - Each detailed section item MUST correspond to a Summary row
-            - Row numbers in Summary must match the item numbers in detailed sections
-            - Verdict MUST be REQUEST CHANGES if any blocking issues exist
-          claude_args: '--max-turns 10 --allowed-tools "Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*),Read,Glob,Grep"'
+            Use `gh pr comment` to post. Summary row numbers must match detail sections.
+          claude_args: '--allowed-tools "Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*),Read,Glob,Grep"'
 
   interactive-review:
     if: |
