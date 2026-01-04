@@ -30,7 +30,7 @@ const handleMessage = async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('Error checking chat limit:', error);
+        req.log.error({ err: error }, 'Error checking chat limit');
         // Default to allowed on error to avoid blocking valid users during glitches
         allowed = true;
     }
@@ -64,7 +64,7 @@ const handleMessage = async (req, res) => {
                 expireAt: expireAt
             });
         } else {
-            console.log('Chat history disabled for user', uid);
+            req.log.info({ uid }, 'Chat history disabled for user');
         }
 
         // 1. Gather Context
@@ -80,7 +80,7 @@ const handleMessage = async (req, res) => {
             const stats = await calculateStats(uid, anchorDate);
             contextSummary = getContextSummary(stats);
         } catch (err) {
-            console.error("Failed to load stats for chat context:", err);
+            req.log.error({ err }, 'Failed to load stats for chat context');
         }
 
         const currentDayName = anchorDate.toLocaleDateString('en-US', { weekday: 'long' });
@@ -164,7 +164,7 @@ User says: "${message}"
         res.json({ text: aiResponse, sender: 'sammy', timestamp: new Date() });
 
     } catch (error) {
-        console.error('Error in chat handler:', error);
+        req.log.error({ err: error }, 'Error in chat handler');
         res.status(500).json({ error: 'Failed to generate response' });
     }
 };
@@ -194,7 +194,7 @@ const getChatHistory = async (req, res) => {
         // Reverse so oldest is first for UI chat flow
         res.json(messages.reverse());
     } catch (error) {
-        console.error('Error fetching chat history:', error);
+        req.log.error({ err: error }, 'Error fetching chat history');
         res.status(500).json({ error: 'Failed to fetch history' });
     }
 };
@@ -213,7 +213,7 @@ const deleteChatHistory = async (req, res) => {
 
         res.json({ success: true, message: 'Chat history cleared' });
     } catch (error) {
-        console.error('Error clearing chat history:', error);
+        req.log.error({ err: error }, 'Error clearing chat history');
         res.status(500).json({ error: 'Failed to clear history' });
     }
 };

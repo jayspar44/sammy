@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import { Sparkles, ArrowRight } from 'lucide-react';
+import { logger } from '../utils/logger';
 
 const Login = () => {
     const { loginEmail, signup, user } = useAuth();
@@ -33,7 +34,7 @@ const Login = () => {
                 await loginEmail(email, password);
             }
         } catch (err) {
-            console.error("Auth error:", err);
+            logger.error('Auth error:', err);
             if (err.code === 'auth/invalid-credential') {
                 setError('Invalid email or password.');
             } else if (err.code === 'auth/email-already-in-use') {

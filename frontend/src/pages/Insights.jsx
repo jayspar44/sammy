@@ -6,6 +6,7 @@ import { cn } from '../utils/cn';
 import { api } from '../api/services';
 import { useAuth } from '../contexts/AuthContext';
 import { useUserPreferences } from '../contexts/UserPreferencesContext';
+import { logger } from '../utils/logger';
 
 // eslint-disable-next-line no-unused-vars -- Icon is used in JSX below
 const StatCard = ({ icon: Icon, label, value, theme = 'emerald', className }) => {
@@ -52,7 +53,7 @@ export default function Insights() {
                     trends: data.trends || []
                 });
             } catch (err) {
-                console.error("Failed to load insights", err);
+                logger.error('Failed to load insights', err);
             }
         };
         loadStats();

@@ -1,4 +1,5 @@
 import client from './client';
+import { logger } from '../utils/logger';
 
 const IS_SPOOF_DB = () => localStorage.getItem('sammy_pref_spoofDb') === 'true';
 
@@ -58,7 +59,7 @@ export const api = {
     // User Profile
     getUserProfile: async () => {
         if (IS_SPOOF_DB()) {
-            console.log('[SPOOF] Getting User Profile', MOCK_PROFILE);
+            logger.spoof('Getting User Profile', MOCK_PROFILE);
             return MOCK_PROFILE;
         }
         const response = await client.get('/user/profile');
@@ -67,7 +68,7 @@ export const api = {
 
     updateUserProfile: async (data) => {
         if (IS_SPOOF_DB()) {
-            console.log('[SPOOF] Updating Profile', data);
+            logger.spoof('Updating Profile', data);
             return { success: true };
         }
         const response = await client.post('/user/profile', data);
@@ -77,7 +78,7 @@ export const api = {
     // Logs
     logDrink: async (date, count) => {
         if (IS_SPOOF_DB()) {
-            console.log(`[SPOOF] Log Drink: ${date} - ${count}`);
+            logger.spoof(`Log Drink: ${date} - ${count}`);
             return { success: true };
         }
         const response = await client.post('/log', { date, count });
@@ -86,7 +87,7 @@ export const api = {
 
     updateHistoricCount: async (date, newCountOrPayload) => {
         if (IS_SPOOF_DB()) {
-            console.log(`[SPOOF] Update Historic: ${date}`, newCountOrPayload);
+            logger.spoof(`Update Historic: ${date}`, newCountOrPayload);
             return { success: true };
         }
 
@@ -103,7 +104,7 @@ export const api = {
 
     deleteLog: async (date) => {
         if (IS_SPOOF_DB()) {
-            console.log(`[SPOOF] Delete Log: ${date}`);
+            logger.spoof(`Delete Log: ${date}`);
             return { success: true };
         }
         const response = await client.delete('/log', { params: { date } });
@@ -117,7 +118,7 @@ export const api = {
         }
 
         if (IS_SPOOF_DB()) {
-            console.log(`[SPOOF] Get Stats for ${dateStr}`);
+            logger.spoof(`Get Stats for ${dateStr}`);
             const trends = generateMockTrends(dateStr);
             // Calculate dynamic streak for accurate spoofing
             let dryStreak = 0;
@@ -151,7 +152,7 @@ export const api = {
 
     getStatsRange: async (startDate, endDate) => {
         if (IS_SPOOF_DB()) {
-            console.log(`[SPOOF] Get Stats Range ${startDate} to ${endDate}`);
+            logger.spoof(`Get Stats Range ${startDate} to ${endDate}`);
             return generateMockRangeStats(startDate, endDate);
         }
         const response = await client.get(`/stats/range`, { params: { startDate, endDate } });
@@ -161,7 +162,7 @@ export const api = {
     // Chat
     getChatHistory: async () => {
         if (IS_SPOOF_DB()) {
-            console.log('[SPOOF] Getting Chat History');
+            logger.spoof('Getting Chat History');
             return [];
         }
         const response = await client.get('/chat/history');
@@ -170,7 +171,7 @@ export const api = {
 
     clearChatHistory: async () => {
         if (IS_SPOOF_DB()) {
-            console.log('[SPOOF] Clearing Chat History');
+            logger.spoof('Clearing Chat History');
             return { success: true };
         }
         const response = await client.delete('/chat/history');
@@ -179,7 +180,7 @@ export const api = {
 
     sendMessage: async (message, date) => {
         if (IS_SPOOF_DB()) {
-            console.log(`[SPOOF] Chat Message: ${message}`);
+            logger.spoof(`Chat Message: ${message}`);
             return { reply: "I'm in Developer Mode! I can't really think right now, but you look great!" };
         }
 

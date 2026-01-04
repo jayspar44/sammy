@@ -1,6 +1,14 @@
 {
-    "version": "0.3.1",
+    "version": "0.4.0",
     "history": [
+        {
+            "version": "0.4.0",
+            "date": "2026-01-04",
+            "author": "jason",
+            "changes": [
+                "Implement structured logging with Pino (backend) and custom logger (frontend)"
+            ]
+        },
         {
             "version": "0.3.1",
             "date": "2026-01-04",

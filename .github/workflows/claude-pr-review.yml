@@ -62,7 +62,7 @@ jobs:
             - Positive aspects
             ```
 
-            Use `gh pr comment` to post. Summary row numbers must match detail sections.
+            Use `gh pr comment` to post. IMPORTANT: Summary table and detail sections must list issues in the same order (e.g., if summary is 1,2,3,4 then details must be 1,2,3,4 - not 1,3,2,4).
           claude_args: '--allowed-tools "Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*),Read,Glob,Grep"'
 
   interactive-review:

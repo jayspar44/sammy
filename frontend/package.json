@@ -1,14 +1,17 @@
 {
   "name": "frontend",
   "private": true,
-  "version": "0.3.1",
+  "version": "0.4.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "start": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "android": "node scripts/android-build.js prod",
+    "android:dev": "node scripts/android-build.js dev",
+    "android:local": "node scripts/android-build.js local"
   },
   "dependencies": {
     "@capacitor/android": "^8.0.0",

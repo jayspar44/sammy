@@ -6,6 +6,7 @@ import Card from '../components/ui/Card';
 import { User, Code, LogOut, Save } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { api } from '../api/services';
+import { logger } from '../utils/logger';
 
 export default function Settings() {
     const { logout } = useAuth();
@@ -30,7 +31,7 @@ export default function Settings() {
     const [calsInput, setCalsInput] = useState(150);
 
     useEffect(() => {
-        console.log("[DEBUG] Settings Sync:", { firstName, avgDrinkCost, avgDrinkCals });
+        logger.debug('Settings Sync:', { firstName, avgDrinkCost, avgDrinkCals });
         setNameInput(firstName || '');
         setCostInput(avgDrinkCost || 10);
         setCalsInput(avgDrinkCals || 150);
@@ -49,7 +50,7 @@ export default function Settings() {
         try {
             await logout();
         } catch (error) {
-            console.error("Logout failed", error);
+            logger.error('Logout failed', error);
         }
     };
 
@@ -143,7 +144,7 @@ export default function Settings() {
                                         await api.clearChatHistory();
                                         // Optional: show toast
                                     } catch (err) {
-                                        console.error("Failed to clear history", err);
+                                        logger.error('Failed to clear history', err);
                                     }
                                 }
                             }}

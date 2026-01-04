@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { api } from '../api/services';
 import { useAuth } from './AuthContext';
+import { logger } from '../utils/logger';
 
 const UserPreferencesContext = createContext();
 
@@ -54,9 +55,9 @@ export const UserPreferencesProvider = ({ children }) => {
             if (user) {
                 try {
                     setProfileLoading(true);
-                    console.log("[DEBUG] Fetching User Profile...");
+                    logger.debug('Fetching User Profile...');
                     const data = await api.getUserProfile();
-                    console.log("[DEBUG] Profile Data Received:", data);
+                    logger.debug('Profile Data Received:', data);
 
                     if (data) {
                         if (data.firstName !== undefined) setFirstName(data.firstName);
@@ -66,7 +67,7 @@ export const UserPreferencesProvider = ({ children }) => {
                         if (data.chatHistoryEnabled !== undefined) setChatHistoryEnabled(data.chatHistoryEnabled);
                     }
                 } catch (error) {
-                    console.error("Failed to load user profile", error);
+                    logger.error('Failed to load user profile', error);
                 } finally {
                     setProfileLoading(false);
                 }
@@ -85,7 +86,7 @@ export const UserPreferencesProvider = ({ children }) => {
             setFirstName(name);
             return true;
         } catch (e) {
-            console.error("Failed to save name", e);
+            logger.error('Failed to save name', e);
             throw e;
         }
     };
@@ -100,7 +101,7 @@ export const UserPreferencesProvider = ({ children }) => {
             if (updates.chatHistoryEnabled !== undefined) setChatHistoryEnabled(updates.chatHistoryEnabled);
             return true;
         } catch (e) {
-            console.error("Failed to save config", e);
+            logger.error('Failed to save config', e);
             throw e;
         }
     };

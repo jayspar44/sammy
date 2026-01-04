@@ -68,7 +68,7 @@ const updateProfile = async (req, res) => {
 
         res.json({ success: true, message: 'Profile updated' });
     } catch (error) {
-        console.error('Error updating profile:', error);
+        req.log.error({ err: error }, 'Error updating profile');
         res.status(500).json({ error: 'Failed to update profile' });
     }
 };
@@ -101,7 +101,7 @@ const getProfile = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Error fetching profile:', error);
+        req.log.error({ err: error }, 'Error fetching profile');
         res.status(500).json({ error: 'Failed to fetch profile' });
     }
 };

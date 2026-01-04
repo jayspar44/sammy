@@ -119,16 +119,43 @@ All endpoints (except health) require Firebase Auth token in `Authorization: Bea
 
 ## Mobile (Android/iOS)
 
-The app uses Capacitor for native mobile builds.
+The app uses Capacitor for native mobile builds. Dev and prod builds use separate app IDs so both can be installed on the same device.
 
-### Build for Android
+| Script | App ID | App Name | Backend | Use Case |
+|--------|--------|----------|---------|----------|
+| `android:local` | `io.sammy.app.dev` | Sammy Dev | Local (live reload) | Active development |
+| `android:dev` | `io.sammy.app.dev` | Sammy Dev | GCP dev backend | Testing dev builds |
+| `android` | `io.sammy.app` | Sammy | GCP prod backend | Production builds |
+
+### Android Setup (First Time)
 
 ```bash
 cd frontend
-npm run build              # Build web assets
-npx cap add android        # Add Android platform (first time)
-npx cap sync android       # Sync web assets to native project
+npx cap add android        # Add Android platform
 npx cap open android       # Open in Android Studio
+```
+
+### Android Development (Live Reload)
+
+```bash
+# Terminal 1: Start local dev servers
+npm run dev:local
+
+# Terminal 2: Run Android with live reload
+npm run android:local      # Select emulator, changes auto-reload
+```
+
+### Android Builds
+
+```bash
+# Dev build (points to GCP dev backend)
+npm run android:dev        # Then open Android Studio and run
+
+# Prod build (points to GCP prod backend)
+npm run android            # Then open Android Studio and run
+
+# Open Android Studio
+npx cap open android
 ```
 
 ### Build for iOS
@@ -160,6 +187,7 @@ npm run lint --prefix backend
 |----------------------------|--------------------------------------|
 | `npm run dev:local`        | Start local dev servers              |
 | `npm run build`            | Build frontend for production        |
+| `npm run android`          | Build and sync for Android Studio    |
 | `npm run lint`             | Run ESLint on frontend and backend   |
 | `npm run validate-env`     | Validate environment configuration   |
 | `npm run version:get`      | Get current version                  |

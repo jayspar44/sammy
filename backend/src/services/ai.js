@@ -1,11 +1,12 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const logger = require('../logger');
 
 let model;
 
 const apiKey = process.env.GEMINI_API_KEY;
 
 if (!apiKey) {
-    console.error('CRITICAL: GEMINI_API_KEY is not set in backend/.env');
+    logger.fatal('GEMINI_API_KEY is not set in backend/.env');
 }
 
 const genAI = new GoogleGenerativeAI(apiKey || 'dummy_key');
@@ -20,7 +21,7 @@ const generateResponse = async (prompt) => {
         const response = await result.response;
         return response.text();
     } catch (error) {
-        console.error('Error generating AI response:', error);
+        logger.error({ err: error }, 'Error generating AI response');
         throw error;
     }
 };

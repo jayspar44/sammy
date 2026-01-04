@@ -10,6 +10,7 @@ import { EditHistoricCountModal } from '../components/common/EditHistoricCountMo
 import { api } from '../api/services';
 import { useAuth } from '../contexts/AuthContext';
 import { useUserPreferences } from '../contexts/UserPreferencesContext';
+import { logger } from '../utils/logger';
 
 const WeeklyTrend = ({ data = [], currentDateStr }) => {
     // Generate last 7 days including today (currentDateStr)
@@ -135,7 +136,7 @@ export default function Home() {
                 setHasLoggedToday(!!todayLog);
             }
         } catch (err) {
-            console.error("Failed to fetch stats", err);
+            logger.error('Failed to fetch stats', err);
         }
     };
 
@@ -152,8 +153,7 @@ export default function Home() {
             setShowLogModal(false);
             fetchStats(); // Refresh
         } catch (err) {
-            console.error("Failed to log drink", err);
-            alert("Failed to log drink");
+            logger.error('Failed to log drink', err);
         }
     };
 
@@ -164,8 +164,7 @@ export default function Home() {
             setShowGoalModal(false);
             fetchStats(); // Refresh to see new limit
         } catch (err) {
-            console.error("Failed to set goal", err);
-            alert("Failed to set goal");
+            logger.error('Failed to set goal', err);
         }
     };
 
