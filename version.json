@@ -1,6 +1,14 @@
 {
-    "version": "0.5.0",
+    "version": "0.6.0",
     "history": [
+        {
+            "version": "0.6.0",
+            "date": "2026-01-10",
+            "author": "jason",
+            "changes": [
+                "Expand chat AI context to 90 days with comprehensive summaries"
+            ]
+        },
         {
             "version": "0.5.0",
             "date": "2026-01-04",
