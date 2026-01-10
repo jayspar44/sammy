@@ -14,7 +14,7 @@ export const Layout = () => {
     return (
         <MobileContainer>
             {developerMode && (
-                <div className="bg-amber-100 text-amber-800 text-[10px] font-bold text-center py-1 border-b border-amber-200 shrink-0 z-50">
+                <div className="bg-amber-100 text-amber-800 text-[10px] font-bold text-center py-1 border-b border-amber-200 shrink-0 z-50 dark:bg-amber-900 dark:text-amber-200 dark:border-amber-800">
                     Developer Mode Active {spoofDb && "(Spoofing DB)"}
                 </div>
             )}
@@ -28,7 +28,7 @@ export const Layout = () => {
                     ⚠️ Cannot Connect to Server - Check if backend is running
                 </div>
             )}
-            <div className="flex-1 overflow-y-auto pb-24 no-scrollbar">
+            <div className="flex-1 overflow-y-auto no-scrollbar" style={{ paddingBottom: 'calc(4rem + var(--safe-area-bottom))' }}>
                 {!isCompanionPage && <TopBar />}
                 <Outlet />
             </div>

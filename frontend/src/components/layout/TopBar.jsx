@@ -22,37 +22,37 @@ export const TopBar = () => {
     };
 
     return (
-        <header className="relative flex items-center justify-between px-6 py-4 bg-surface/50 backdrop-blur-sm sticky top-0 z-40">
+        <header className="relative flex items-center justify-between px-6 py-4 bg-surface/80 backdrop-blur-md sticky top-0 z-40 dark:bg-slate-800/80">
             {/* Left: Logo and greeting */}
             <div className="flex items-center gap-3">
                 <Wordmark variant="icon" size="sm" />
                 <div>
                     {profileLoading ? (
-                        <div className="h-7 w-24 bg-slate-200 rounded animate-pulse" />
+                        <div className="h-7 w-24 bg-slate-200 rounded animate-pulse dark:bg-slate-700" />
                     ) : (
-                        <h1 className="text-xl font-bold text-slate-800 tracking-tight">
+                        <h1 className="text-xl font-bold text-slate-800 tracking-tight dark:text-slate-50">
                             Hi, {displayName}
                         </h1>
                     )}
-                    <p className="text-slate-500 font-medium text-sm">Ready to shine?</p>
+                    <p className="text-slate-500 font-medium text-sm dark:text-slate-400">Ready to shine?</p>
                 </div>
             </div>
 
             {/* Center: Version string (absolute positioned, top aligned) */}
             <div className="absolute left-1/2 top-4 -translate-x-1/2">
-                <p className="text-slate-400 font-mono text-[10px]">{getVersionString()}</p>
+                <p className="text-slate-400 font-mono text-[10px] dark:text-slate-500">{getVersionString()}</p>
             </div>
 
             {/* Right: Settings button */}
             {isOnSettings ? (
                 <button onClick={handleSettingsClick} className="relative group">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg shadow-sky-200 transition-transform active:scale-95 bg-primary">
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg shadow-sky-200 transition-transform active:scale-95 bg-primary dark:bg-sky-500 dark:shadow-sky-900/50">
                         <Settings className="w-5 h-5" />
                     </div>
                 </button>
             ) : (
                 <NavLink to="/settings" className="relative group">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-sky-700 transition-transform active:scale-95 bg-sky-100 hover:bg-sky-200">
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-sky-700 transition-transform active:scale-95 bg-sky-100 hover:bg-sky-200 dark:bg-sky-900/30 dark:text-sky-400 dark:hover:bg-sky-900/50">
                         <Settings className="w-5 h-5" />
                     </div>
                 </NavLink>

@@ -4,5 +4,14 @@
   "webDir": "dist",
   "server": {
     "androidScheme": "https"
+  },
+  "plugins": {
+    "StatusBar": {
+      "overlay": true,
+      "backgroundColor": "#f8fafc"
+    },
+    "SystemBars": {
+      "insetsHandling": "enforce"
+    }
   }
 }

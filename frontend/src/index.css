@@ -31,6 +31,14 @@
   --font-sans: 'Outfit', sans-serif;
 }
 
+:root {
+  /* Capacitor SystemBars fallback variables (for older Android WebView) */
+  --safe-area-top: env(safe-area-inset-top, var(--safe-area-inset-top, 0px));
+  --safe-area-bottom: env(safe-area-inset-bottom, var(--safe-area-inset-bottom, 0px));
+  --safe-area-left: env(safe-area-inset-left, var(--safe-area-inset-left, 0px));
+  --safe-area-right: env(safe-area-inset-right, var(--safe-area-inset-right, 0px));
+}
+
 @layer base {
 
   html,
@@ -45,11 +53,7 @@
   body {
     /* Use the standard utility class generated from the theme variable */
     @apply bg-background text-slate-800 font-sans antialiased;
-    /* Safe area insets for mobile devices (notches, status bars, home indicators) */
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
-    padding-left: env(safe-area-inset-left);
-    padding-right: env(safe-area-inset-right);
+    @apply dark:bg-slate-900 dark:text-slate-50;
   }
 
   h1,
@@ -59,6 +63,7 @@
   h5,
   h6 {
     @apply text-slate-900 tracking-tight;
+    @apply dark:text-slate-50;
   }
 }
 
