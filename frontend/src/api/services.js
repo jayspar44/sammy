@@ -52,7 +52,16 @@ const MOCK_PROFILE = {
     firstName: 'DevUser',
     email: 'dev@spoof.local',
     avgDrinkCost: 10,
-    avgDrinkCals: 150
+    avgDrinkCals: 150,
+    typicalWeek: {
+        monday: 3,
+        tuesday: 2,
+        wednesday: 2,
+        thursday: 4,
+        friday: 6,
+        saturday: 5,
+        sunday: 1
+    }
 };
 
 export const api = {

@@ -1,6 +1,14 @@
 {
-    "version": "0.6.1",
+    "version": "0.6.2",
     "history": [
+        {
+            "version": "0.6.2",
+            "date": "2026-01-10",
+            "author": "jason",
+            "changes": [
+                "Add typical week baseline feature for progress tracking"
+            ]
+        },
         {
             "version": "0.6.1",
             "date": "2026-01-10",

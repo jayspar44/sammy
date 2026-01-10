@@ -4,11 +4,12 @@ import { useAuth } from '../contexts/AuthContext';
 import { useUserPreferences } from '../contexts/UserPreferencesContext';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
-import { User, Code, LogOut, Save, Info } from 'lucide-react';
+import { User, Code, LogOut, Save, Info, Calendar } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { api } from '../api/services';
 import { logger } from '../utils/logger';
 import { App } from '@capacitor/app';
+import { TypicalWeekModal } from '../components/common/TypicalWeekModal';
 
 export default function Settings() {
     const { logout } = useAuth();
@@ -20,6 +21,7 @@ export default function Settings() {
         updateProfileConfig,
         profileLoading,
         chatHistoryEnabled,
+        typicalWeek,
         developerMode,
         setDeveloperMode,
         spoofDb,
@@ -32,6 +34,7 @@ export default function Settings() {
     const [costInput, setCostInput] = useState(10);
     const [calsInput, setCalsInput] = useState(150);
     const [appInfo, setAppInfo] = useState({ id: '', version: '', build: '' });
+    const [showTypicalWeekModal, setShowTypicalWeekModal] = useState(false);
 
     useEffect(() => {
         logger.debug('Settings Sync:', { firstName, avgDrinkCost, avgDrinkCals });
@@ -66,6 +69,16 @@ export default function Settings() {
         }
     };
 
+    const handleSaveTypicalWeek = async (weekData) => {
+        try {
+            await updateProfileConfig({ typicalWeek: weekData });
+            setShowTypicalWeekModal(false);
+        } catch (error) {
+            logger.error('Failed to save typical week', error);
+            throw error;
+        }
+    };
+
     return (
         <div className="p-6 pb-8 space-y-6 animate-fadeIn">
             {/* Profile Section */}
@@ -76,7 +89,7 @@ export default function Settings() {
                         <div className="bg-sky-100 p-2 rounded-full text-sky-600">
                             <User className="w-5 h-5" />
                         </div>
-                        <span className="font-semibold text-slate-700">Personal Info</span>
+                        <span className="font-bold text-slate-700">Personal Info</span>
                     </div>
 
                     <div>
@@ -123,6 +136,62 @@ export default function Settings() {
                         Save Changes
                     </Button>
 
+                </Card>
+            </section>
+
+            {/* Typical Week Baseline Section */}
+            <section className="space-y-4">
+                <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Typical Week Baseline</h3>
+                <Card className="p-4 space-y-4">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="bg-amber-100 p-2 rounded-full text-amber-600">
+                            <Calendar className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <span className="font-bold text-slate-700">Your Typical Drinking Pattern</span>
+                            <p className="text-xs text-slate-500">Used for baseline calculations and progress tracking</p>
+                        </div>
+                    </div>
+
+                    {typicalWeek ? (
+                        <>
+                            {/* Horizontal Day Display */}
+                            <div className="grid grid-cols-7 gap-1 sm:gap-2">
+                                {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, index) => {
+                                    const dayKey = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'][index];
+                                    const count = typicalWeek[dayKey] || 0;
+                                    return (
+                                        <div key={day} className="flex flex-col items-center p-2 sm:p-3 bg-slate-50 rounded-lg border border-slate-200">
+                                            <div className="text-xs font-semibold text-slate-500 mb-1">{day}</div>
+                                            <div className="text-xl font-bold text-slate-800">{count}</div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {/* Weekly Total */}
+                            <div className="flex items-center justify-between px-2 py-2 bg-sky-50 rounded-lg border border-sky-100">
+                                <span className="text-sm font-semibold text-sky-800">Weekly Total:</span>
+                                <span className="text-lg font-bold text-sky-600">
+                                    {Object.values(typicalWeek).reduce((sum, val) => sum + (val || 0), 0)} drinks
+                                </span>
+                            </div>
+                        </>
+                    ) : (
+                        <div className="text-center py-6 px-4 bg-slate-50 rounded-lg border border-dashed border-slate-300">
+                            <p className="text-sm text-slate-600 mb-1">No typical week baseline set</p>
+                            <p className="text-xs text-slate-500">Set your baseline to track progress</p>
+                        </div>
+                    )}
+
+                    <Button
+                        variant="primary"
+                        className="w-full"
+                        onClick={() => setShowTypicalWeekModal(true)}
+                    >
+                        <Calendar className="w-4 h-4 mr-2" />
+                        {typicalWeek ? 'Edit Baseline' : 'Set Baseline'}
+                    </Button>
                 </Card>
             </section>
 
@@ -178,7 +247,7 @@ export default function Settings() {
                                 <Code className="w-5 h-5" />
                             </div>
                             <div>
-                                <span className="font-semibold text-slate-700 block">Developer Mode</span>
+                                <span className="font-bold text-slate-700 block">Developer Mode</span>
                                 <span className="text-xs text-slate-400">Unlock advanced testing tools</span>
                             </div>
                         </div>
@@ -283,6 +352,14 @@ export default function Settings() {
                     </p>
                 </div>
             </section>
+
+            {/* Typical Week Modal */}
+            <TypicalWeekModal
+                isOpen={showTypicalWeekModal}
+                onClose={() => setShowTypicalWeekModal(false)}
+                onSave={handleSaveTypicalWeek}
+                initialData={typicalWeek}
+            />
         </div>
     );
 }

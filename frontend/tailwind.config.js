@@ -13,6 +13,7 @@ export default {
                 primary: {
                     DEFAULT: colors.sky[500],
                     light: colors.sky[100],
+                    dark: colors.sky[600],
                 },
                 secondary: {
                     DEFAULT: colors.amber[400],
@@ -33,7 +34,7 @@ export default {
                 // Let's stick to standard Tailwind sizes but ensure they are used as requested.
             },
             fontFamily: {
-                sans: ['Inter', 'sans-serif'], // Assuming Inter is available or just standard sans
+                sans: ['Outfit', 'sans-serif'],
             },
             keyframes: {
                 slideUp: {

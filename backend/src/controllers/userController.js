@@ -44,6 +44,30 @@ const updateProfile = async (req, res) => {
         if (req.body.registeredDate !== undefined) {
             userData.registeredDate = req.body.registeredDate;
         }
+        if (req.body.typicalWeek !== undefined) {
+            const typicalWeek = req.body.typicalWeek;
+
+            // Validate structure
+            const validDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+            const weekData = {};
+
+            for (const day of validDays) {
+                if (typicalWeek[day] !== undefined) {
+                    const val = parseInt(typicalWeek[day]);
+                    if (isNaN(val) || val < 0 || val > 100) {
+                        return res.status(400).json({ error: `Invalid value for ${day}` });
+                    }
+                    weekData[day] = val;
+                }
+            }
+
+            // Allow clearing by passing null/empty object
+            if (Object.keys(weekData).length > 0) {
+                userData.typicalWeek = weekData;
+            } else {
+                userData.typicalWeek = null;
+            }
+        }
 
         await db.collection('users').doc(uid).set(userData, { merge: true });
 
@@ -97,7 +121,8 @@ const getProfile = async (req, res) => {
             avgDrinkCost: data.avgDrinkCost ?? 10,
             avgDrinkCals: data.avgDrinkCals ?? 150,
             chatHistoryEnabled: data.chatHistoryEnabled !== undefined ? data.chatHistoryEnabled : true,
-            registeredDate: data.registeredDate || data.updatedAt || new Date().toISOString() // Fallback to updated or now
+            registeredDate: data.registeredDate || data.updatedAt || new Date().toISOString(), // Fallback to updated or now
+            typicalWeek: data.typicalWeek || null
         });
 
     } catch (error) {

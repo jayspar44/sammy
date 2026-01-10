@@ -30,6 +30,7 @@ export const UserPreferencesProvider = ({ children }) => {
     const [avgDrinkCost, setAvgDrinkCost] = useState(10);
     const [avgDrinkCals, setAvgDrinkCals] = useState(150);
     const [chatHistoryEnabled, setChatHistoryEnabled] = useState(true);
+    const [typicalWeek, setTypicalWeek] = useState(null);
     const [profileLoading, setProfileLoading] = useState(false);
 
     // Persistence Effects
@@ -65,6 +66,7 @@ export const UserPreferencesProvider = ({ children }) => {
                         if (data.avgDrinkCost !== undefined) setAvgDrinkCost(data.avgDrinkCost);
                         if (data.avgDrinkCals !== undefined) setAvgDrinkCals(data.avgDrinkCals);
                         if (data.chatHistoryEnabled !== undefined) setChatHistoryEnabled(data.chatHistoryEnabled);
+                        if (data.typicalWeek !== undefined) setTypicalWeek(data.typicalWeek);
                     }
                 } catch (error) {
                     logger.error('Failed to load user profile', error);
@@ -99,6 +101,7 @@ export const UserPreferencesProvider = ({ children }) => {
             if (updates.avgDrinkCost !== undefined) setAvgDrinkCost(updates.avgDrinkCost);
             if (updates.avgDrinkCals !== undefined) setAvgDrinkCals(updates.avgDrinkCals);
             if (updates.chatHistoryEnabled !== undefined) setChatHistoryEnabled(updates.chatHistoryEnabled);
+            if (updates.typicalWeek !== undefined) setTypicalWeek(updates.typicalWeek);
             return true;
         } catch (e) {
             logger.error('Failed to save config', e);
@@ -119,6 +122,7 @@ export const UserPreferencesProvider = ({ children }) => {
         avgDrinkCost,
         avgDrinkCals,
         chatHistoryEnabled,
+        typicalWeek,
         updateProfileConfig,
         profileLoading
     };
