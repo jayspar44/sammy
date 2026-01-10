@@ -1,18 +1,16 @@
 import React from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Settings } from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
 import { useUserPreferences } from '../../contexts/UserPreferencesContext';
 import { getVersionString } from '../../utils/appConfig';
 import Wordmark from '../ui/Wordmark';
 
 export const TopBar = () => {
-    const { user } = useAuth();
-    const { firstName } = useUserPreferences();
+    const { firstName, profileLoading } = useUserPreferences();
     const location = useLocation();
     const navigate = useNavigate();
 
-    const displayName = firstName || user?.email || 'Friend';
+    const displayName = firstName || 'Friend';
 
     const isOnSettings = location.pathname === '/settings';
 
@@ -29,9 +27,13 @@ export const TopBar = () => {
             <div className="flex items-center gap-3">
                 <Wordmark variant="icon" size="sm" />
                 <div>
-                    <h1 className="text-xl font-bold text-slate-800 tracking-tight">
-                        Hi, {displayName}
-                    </h1>
+                    {profileLoading ? (
+                        <div className="h-7 w-24 bg-slate-200 rounded animate-pulse" />
+                    ) : (
+                        <h1 className="text-xl font-bold text-slate-800 tracking-tight">
+                            Hi, {displayName}
+                        </h1>
+                    )}
                     <p className="text-slate-500 font-medium text-sm">Ready to shine?</p>
                 </div>
             </div>

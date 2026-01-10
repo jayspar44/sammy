@@ -92,39 +92,60 @@ export default function Settings() {
                         <span className="font-bold text-slate-700">Personal Info</span>
                     </div>
 
-                    <div>
-                        <label className="block text-xs font-bold text-slate-500 mb-1">First Name</label>
-                        <input
-                            type="text"
-                            value={nameInput}
-                            onChange={(e) => setNameInput(e.target.value)}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                            placeholder="Your Name"
-                        />
-                    </div>
+                    {profileLoading ? (
+                        <div className="space-y-4 animate-pulse">
+                            <div>
+                                <div className="h-4 w-20 bg-slate-200 rounded mb-1" />
+                                <div className="h-10 bg-slate-100 rounded-xl" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <div className="h-4 w-16 bg-slate-200 rounded mb-1" />
+                                    <div className="h-10 bg-slate-100 rounded-xl" />
+                                </div>
+                                <div>
+                                    <div className="h-4 w-20 bg-slate-200 rounded mb-1" />
+                                    <div className="h-10 bg-slate-100 rounded-xl" />
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 mb-1">First Name</label>
+                                <input
+                                    type="text"
+                                    value={nameInput}
+                                    onChange={(e) => setNameInput(e.target.value)}
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                    placeholder="Your Name"
+                                />
+                            </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-xs font-bold text-slate-500 mb-1">Avg Cost ($)</label>
-                            <input
-                                type="number"
-                                value={costInput}
-                                onChange={(e) => setCostInput(e.target.value)}
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                                placeholder="10"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold text-slate-500 mb-1">Avg Calories</label>
-                            <input
-                                type="number"
-                                value={calsInput}
-                                onChange={(e) => setCalsInput(e.target.value)}
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                                placeholder="150"
-                            />
-                        </div>
-                    </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 mb-1">Avg Cost ($)</label>
+                                    <input
+                                        type="number"
+                                        value={costInput}
+                                        onChange={(e) => setCostInput(e.target.value)}
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                        placeholder="10"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 mb-1">Avg Calories</label>
+                                    <input
+                                        type="number"
+                                        value={calsInput}
+                                        onChange={(e) => setCalsInput(e.target.value)}
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                        placeholder="150"
+                                    />
+                                </div>
+                            </div>
+                        </>
+                    )}
 
                     <Button
                         variant="primary"
@@ -153,7 +174,18 @@ export default function Settings() {
                         </div>
                     </div>
 
-                    {typicalWeek ? (
+                    {profileLoading ? (
+                        <div className="animate-pulse">
+                            <div className="grid grid-cols-7 gap-1 sm:gap-2">
+                                {[...Array(7)].map((_, i) => (
+                                    <div key={i} className="flex flex-col items-center p-2 sm:p-3 bg-slate-100 rounded-lg">
+                                        <div className="h-3 w-6 bg-slate-200 rounded mb-1" />
+                                        <div className="h-6 w-4 bg-slate-200 rounded" />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ) : typicalWeek ? (
                         <>
                             {/* Horizontal Day Display */}
                             <div className="grid grid-cols-7 gap-1 sm:gap-2">

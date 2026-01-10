@@ -114,6 +114,7 @@ export default function Home() {
     const { user } = useAuth();
     const { manualDate } = useUserPreferences();
     const [stats, setStats] = useState({ count: 0, limit: 2 });
+    const [statsLoading, setStatsLoading] = useState(true);
     const [trends, setTrends] = useState([]);
     const [showLogModal, setShowLogModal] = useState(false);
     const [showGoalModal, setShowGoalModal] = useState(false);
@@ -121,6 +122,7 @@ export default function Home() {
     const [hasLoggedToday, setHasLoggedToday] = useState(false);
 
     const fetchStats = async () => {
+        setStatsLoading(true);
         try {
             // Ensure we use the same date string for the chart prop
             const todayStr = manualDate || format(new Date(), 'yyyy-MM-dd');
@@ -137,6 +139,8 @@ export default function Home() {
             }
         } catch (err) {
             logger.error('Failed to fetch stats', err);
+        } finally {
+            setStatsLoading(false);
         }
     };
 
@@ -171,16 +175,22 @@ export default function Home() {
     return (
         <div className="p-6 pt-8 animate-fadeIn">
             {/* Hero */}
-            {/* Hero */}
             <div className="mb-8 animate-slideUp">
-                <div onClick={() => setShowGoalModal(true)} className="cursor-pointer active:scale-95 transition-transform">
-                    <SunProgress
-                        current={stats.count}
-                        goal={stats.limit}
-                        hasLogged={hasLoggedToday}
-                        date={manualDate || format(new Date(), 'yyyy-MM-dd')}
-                    />
-                </div>
+                {statsLoading ? (
+                    <div className="flex flex-col items-center animate-pulse">
+                        <div className="w-48 h-48 rounded-full bg-slate-100" />
+                        <div className="h-6 w-32 bg-slate-200 rounded mt-4" />
+                    </div>
+                ) : (
+                    <div onClick={() => setShowGoalModal(true)} className="cursor-pointer active:scale-95 transition-transform">
+                        <SunProgress
+                            current={stats.count}
+                            goal={stats.limit}
+                            hasLogged={hasLoggedToday}
+                            date={manualDate || format(new Date(), 'yyyy-MM-dd')}
+                        />
+                    </div>
+                )}
             </div>
 
             {/* EXPICIT ACTION BUTTONS - Moved Above Weekly Trend */}

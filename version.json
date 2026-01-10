@@ -1,6 +1,14 @@
 {
-    "version": "0.6.2",
+    "version": "0.6.3",
     "history": [
+        {
+            "version": "0.6.3",
+            "date": "2026-01-10",
+            "author": "jason",
+            "changes": [
+                "Add skeleton loading states to prevent UI flicker"
+            ]
+        },
         {
             "version": "0.6.2",
             "date": "2026-01-10",
