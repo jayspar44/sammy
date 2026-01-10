@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config({ quiet: true });
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -62,6 +62,7 @@ app.get('/', (req, res) => {
 
 // Start server
 const PORT = process.env.PORT || 4001;
-app.listen(PORT, () => {
-    logger.info(`Server running on port ${PORT}`);
+const HOST = '0.0.0.0'; // Bind to all interfaces for Android emulator access
+app.listen(PORT, HOST, () => {
+    logger.info(`Server running on ${HOST}:${PORT}`);
 });

@@ -1,3 +1,4 @@
+/* global __BUILD_TIMESTAMP__, __GIT_HASH__, __GIT_BRANCH__ */
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useUserPreferences } from '../contexts/UserPreferencesContext';
@@ -263,12 +264,21 @@ export default function Settings() {
                     </p>
                     <p className="break-all">
                         Backend: {import.meta.env.VITE_API_URL || 'local'}
-                        {import.meta.env.VITE_API_URL?.includes('localhost') || !import.meta.env.VITE_API_URL ? (
+                        {import.meta.env.VITE_API_URL?.includes('localhost') || import.meta.env.VITE_API_URL?.includes('10.0.2.2') || !import.meta.env.VITE_API_URL ? (
                             <span className="ml-2 px-1.5 py-0.5 bg-blue-100 text-blue-600 rounded text-[10px] font-medium">LOCAL</span>
                         ) : import.meta.env.VITE_API_URL?.includes('-dev') ? (
                             <span className="ml-2 px-1.5 py-0.5 bg-amber-100 text-amber-600 rounded text-[10px] font-medium">DEV</span>
                         ) : (
                             <span className="ml-2 px-1.5 py-0.5 bg-green-100 text-green-600 rounded text-[10px] font-medium">PROD</span>
+                        )}
+                    </p>
+                    <p>
+                        Built: {new Date(__BUILD_TIMESTAMP__).toLocaleString()}
+                    </p>
+                    <p>
+                        Commit: {__GIT_HASH__}
+                        {__GIT_BRANCH__ !== 'main' && __GIT_BRANCH__ !== 'unknown' && (
+                            <span className="ml-2 text-slate-300">({__GIT_BRANCH__})</span>
                         )}
                     </p>
                 </div>

@@ -123,14 +123,15 @@ The app uses Capacitor for native mobile builds. Three Android product flavors e
 
 | Script | App ID | App Name | Backend | Use Case |
 |--------|--------|----------|---------|----------|
-| `android:local` | `io.sammy.app.local` | Sammy Local | Local (live reload) | Active development |
-| `android:dev` | `io.sammy.app.dev` | Sammy Dev | GCP dev backend | Testing dev builds |
+| `android:local` | `io.sammy.app.local` | Sammy (Local) | Local backend | Local development |
+| `android:local-livereload` | `io.sammy.app.local` | Sammy (Local) | Local (live reload) | Active development |
+| `android:dev` | `io.sammy.app.dev` | Sammy (Dev) | GCP dev backend | Testing dev builds |
 | `android` | `io.sammy.app` | Sammy | GCP prod backend | Production builds |
 
 ### Android Build Variants
 
 Each flavor has debug and release variants. In Android Studio, select the build variant:
-- **localDebug** - Local development with live reload
+- **localDebug** - Local backend development
 - **devDebug** - Dev backend testing
 - **prodDebug** - Prod backend debugging
 - **prodRelease** - Production release (for Play Store)
@@ -143,19 +144,25 @@ npx cap add android        # Add Android platform
 npx cap open android       # Open in Android Studio
 ```
 
-### Android Development (Live Reload)
+### Android Development
 
 ```bash
+# Local build (points to local backend)
+npm run android:local      # Then open Android Studio and run
+
+# Live reload (for active development)
 # Terminal 1: Start local dev servers
 npm run dev:local
-
 # Terminal 2: Run Android with live reload
-npm run android:local      # Select emulator, changes auto-reload
+npm run android:local-livereload   # Select emulator, changes auto-reload
 ```
 
 ### Android Builds
 
 ```bash
+# Local build (points to local backend)
+npm run android:local      # Then open Android Studio and run
+
 # Dev build (points to GCP dev backend)
 npm run android:dev        # Then open Android Studio and run
 
@@ -175,6 +182,22 @@ npx cap add ios
 npx cap sync ios
 npx cap open ios           # Open in Xcode
 ```
+
+### Quick Android Reference
+
+| I want to...                    | Run this                        | Then in Android Studio      |
+|---------------------------------|---------------------------------|-----------------------------|
+| Build local app                 | `npm run android:local`         | Select `localDebug` variant |
+| Develop with live reload        | `npm run android:local-livereload` | (auto-selects device)    |
+| Test against GCP dev backend    | `npm run android:dev`           | Select `devDebug` variant   |
+| Build production app            | `npm run android`               | Select `prodDebug` variant  |
+
+**Tips:**
+- The build script shows a colored banner indicating which environment you're building
+- For `android:local-livereload`, start `npm run dev:local` first in a separate terminal
+- For `android:local`, only `npm run dev:backend` needs to be running when testing
+- Check **Settings > App Info** in the app to verify environment and build timestamp
+- All three app variants can be installed on the same device (different app IDs)
 
 ## Linting
 
@@ -337,3 +360,6 @@ See the deployment plan for full setup instructions:
   - `controllers/`: Request handling logic
   - `services/`: Business logic, AI integration, Firebase calls
 - **Logging**: Use `req.log` (Pino) instead of `console.log`
+
+### Git Commits
+- **Version prefix**: Include current version in commit messages (e.g., `v0.4.0: Add dark mode toggle`)

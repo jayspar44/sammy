@@ -1,5 +1,5 @@
 const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '../backend/.env') });
+require('dotenv').config({ path: path.join(__dirname, '../backend/.env'), quiet: true });
 
 async function listModels() {
     const apiKey = process.env.GEMINI_API_KEY;
