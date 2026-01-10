@@ -1,5 +1,5 @@
 const { db } = require('../services/firebase');
-const { generateResponse } = require('../services/ai');
+const { generateChatResponse } = require('../services/ai');
 const { calculateStats, getContextSummary } = require('../services/statsService');
 
 const admin = require('firebase-admin');
@@ -105,23 +105,28 @@ const handleMessage = async (req, res) => {
             .orderBy('timestamp', 'asc')
             .get();
 
-        let conversationHistory = "";
+        const history = [];
         historySnapshot.forEach(doc => {
             const data = doc.data();
-            // Skip the message we just saved to avoid duplication interpretation in some cases, 
-            // OR include it. Usually omitting the very last "User says" line from history 
-            // is better since it's injected explicitly at the end. 
-            // Let's include everything EXCLUDING the current message if possible, but 
-            // simpler to just dump it all and let the prompt handle "User says" recurrence 
-            // or just ensure we don't double print.
-            // Actually, we'll format it as a log.
-            if (data.text !== message) { // Simple dedupe for the exact current message frame
-                conversationHistory += `${data.sender === 'user' ? 'User' : 'Sammy'}: ${data.text}\n`;
+            // Don't include the current message in history - it will be sent separately
+            if (data.text !== message) {
+                history.push({
+                    sender: data.sender,
+                    text: data.text
+                });
             }
         });
 
-        // 3. Construct Prompt
-        const systemInternal = `
+        // 3. Construct System Instruction (history and current message are handled separately)
+        const contextInfo = `
+CONTEXT:${userName ? `\nUser: ${userName}` : ''}
+Today: ${currentDayName}, ${todayStr}${typicalWeekContext}
+
+STATS & INSIGHTS:
+${contextSummary}
+        `.trim();
+
+        const systemInstruction = `
 You are Sammy, a compassionate, intelligent AI habit companion helping users reduce alcohol consumption.
 
 IDENTITY & TONE:
@@ -144,17 +149,10 @@ SAFETY GUARDRAILS (CRITICAL):
 - DO NOT provide medical advice.
 - If a user mentions physical withdrawal symptoms (shaking, seizures, hallucinations, severe nausea) or self-harm, you MUST strongly suggest they seek professional medical help immediately.
 
-CONTEXT:${userName ? `\nUser: ${userName}` : ''}
-Today: ${currentDayName}, ${todayStr}${typicalWeekContext}
-
-STATS & INSIGHTS:
-${contextSummary}
-
-RECENT CONVERSATION HISTORY (Last 7 Days):
-${conversationHistory}
+${contextInfo}
 
 INSTRUCTIONS:
-- ${conversationHistory.trim() ? '**This is a continuation of an ongoing conversation.** Review the history above and maintain context from previous messages. Don\'t re-introduce yourself or treat this as a first interaction.' : '**This is the start of a new conversation.** You can introduce yourself naturally if appropriate.'}
+- ${history.length > 0 ? '**This is a continuation of an ongoing conversation.** Review the conversation history and maintain context from previous messages. Don\'t re-introduce yourself or treat this as a first interaction.' : '**This is the start of a new conversation.** You can introduce yourself naturally if appropriate.'}
 - Use stats and history to personalize responses, but don't force it into every message.
 - Reference past conversations when relevant, but keep it natural.
 - **Typical Week Baseline**: ${typicalWeek ? 'The user has set a typical week baseline. Use this to provide context for their progress - are they drinking more or less than their typical pattern? This helps track meaningful change, not just arbitrary goals.' : 'The user has not set a typical week baseline yet. If relevant, you might gently mention they can set one in Settings to help track their progress.'}
@@ -163,12 +161,10 @@ INSTRUCTIONS:
 - If asked about something off-topic (weather, sports, etc.), it's okay to briefly acknowledge you can't help with that, then gently pivot OR just chat casually if appropriate. Don't force awkward transitions.
 - Don't end every message with a question - mix it up.
 - **Name Usage**: ${userName ? `The user's name is ${userName}. Use it occasionally, not in every message.` : 'The user has not shared their name. Address them directly without using placeholder names.'}
+        `.trim();
 
-User says: "${message}"
-        `;
-
-        // 4. Call AI
-        const aiResponse = await generateResponse(systemInternal);
+        // 4. Call AI with structured chat API
+        const aiResponse = await generateChatResponse(systemInstruction, history, message);
 
         // 5. Save AI Response (Only if enabled)
         if (chatHistoryEnabled) {

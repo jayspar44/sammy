@@ -1,6 +1,14 @@
 {
-    "version": "0.7.0",
+    "version": "0.8.0",
     "history": [
+        {
+            "version": "0.8.0",
+            "date": "2026-01-10",
+            "author": "jason",
+            "changes": [
+                "Migrate to new Gemini SDK with structured chat API"
+            ]
+        },
         {
             "version": "0.7.0",
             "date": "2026-01-10",
