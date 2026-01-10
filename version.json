@@ -1,6 +1,14 @@
 {
-    "version": "0.9.2",
+    "version": "0.9.3",
     "history": [
+        {
+            "version": "0.9.3",
+            "date": "2026-01-10",
+            "author": "jason",
+            "changes": [
+                "fix: Refactor layout architecture with absolute positioning for proper scrolling and floating nav elements"
+            ]
+        },
         {
             "version": "0.9.2",
             "date": "2026-01-10",

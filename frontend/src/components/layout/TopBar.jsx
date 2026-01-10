@@ -22,7 +22,9 @@ export const TopBar = () => {
     };
 
     return (
-        <header className="relative flex items-center justify-between px-6 py-4 bg-surface/80 backdrop-blur-md sticky top-0 z-40 dark:bg-slate-800/80">
+        <header
+            className="absolute top-0 left-0 right-0 flex items-center justify-between px-6 py-4 bg-surface/80 backdrop-blur-md z-40 dark:bg-slate-800/80"
+        >
             {/* Left: Logo and greeting */}
             <div className="flex items-center gap-3">
                 <Wordmark variant="icon" size="sm" />
