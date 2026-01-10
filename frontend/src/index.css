@@ -1,6 +1,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;700;900&display=swap');
 @import "tailwindcss";
 
+/* Define custom variant for dark mode in Tailwind v4 */
+@custom-variant dark (&:is(.dark *));
+
 @theme {
   /* Dawn Color Palette */
   --color-primary: #0ea5e9;

@@ -151,13 +151,13 @@ export const TypicalWeekModal = ({ isOpen, onClose, onSave, initialData }) => {
         <div
             className={clsx(
                 'fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center transition-all duration-300',
-                isOpen ? 'bg-black/40 backdrop-blur-sm' : 'bg-black/0'
+                isOpen ? 'bg-black/40 dark:bg-black/80 backdrop-blur-sm' : 'bg-black/0'
             )}
             onClick={onClose}
         >
             <div
                 className={clsx(
-                    'w-full max-w-md bg-white shadow-2xl transition-all duration-300 flex flex-col',
+                    'w-full max-w-md bg-white dark:bg-slate-800 shadow-2xl transition-all duration-300 flex flex-col',
                     'rounded-t-[2.5rem] sm:rounded-[2.5rem]',
                     'max-h-[90dvh]',
                     isOpen ? 'translate-y-0 sm:scale-100 sm:opacity-100' : 'translate-y-full sm:translate-y-10 sm:scale-95 sm:opacity-0'
@@ -166,26 +166,26 @@ export const TypicalWeekModal = ({ isOpen, onClose, onSave, initialData }) => {
             >
                 {/* Drag Handle (Mobile) */}
                 <div className="flex justify-center pt-3 pb-1 sm:hidden">
-                    <div className="w-12 h-1.5 bg-slate-200 rounded-full" />
+                    <div className="w-12 h-1.5 bg-slate-200 dark:bg-slate-600 rounded-full" />
                 </div>
 
                 {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-700">
                     <div>
-                        <h2 className="text-xl font-bold text-slate-800">Typical Week Baseline</h2>
-                        <p className="text-xs text-slate-500 mt-0.5">Set your typical drinking pattern</p>
+                        <h2 className="text-xl font-bold text-slate-800 dark:text-slate-50">Typical Week Baseline</h2>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Set your typical drinking pattern</p>
                     </div>
                     <button
                         onClick={onClose}
-                        className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 transition-colors"
+                        className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
                     >
-                        <X className="w-5 h-5 text-slate-500" />
+                        <X className="w-5 h-5 text-slate-500 dark:text-slate-400" />
                     </button>
                 </div>
 
                 {/* Help Text */}
-                <div className="px-6 py-3 bg-sky-50 border-b border-sky-100">
-                    <p className="text-sm text-sky-800">
+                <div className="px-6 py-3 bg-sky-50 dark:bg-sky-900/20 border-b border-sky-100 dark:border-sky-900/30">
+                    <p className="text-sm text-sky-800 dark:text-sky-300">
                         Set your typical drinking pattern before using Sammy. This helps track your progress toward healthier habits.
                     </p>
                 </div>
@@ -203,14 +203,14 @@ export const TypicalWeekModal = ({ isOpen, onClose, onSave, initialData }) => {
                                     className={clsx(
                                         'flex items-center justify-between p-4 rounded-2xl border transition-colors',
                                         isModified
-                                            ? 'bg-sky-50 border-sky-200'
+                                            ? 'bg-sky-50 dark:bg-sky-900/20 border-sky-200 dark:border-sky-700'
                                             : count === 0
-                                            ? 'bg-slate-50 border-slate-200'
-                                            : 'bg-white border-slate-200'
+                                            ? 'bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-700'
+                                            : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'
                                     )}
                                 >
                                     <div className="flex-1">
-                                        <div className="font-semibold text-slate-800">{day.label}</div>
+                                        <div className="font-semibold text-slate-800 dark:text-slate-200">{day.label}</div>
                                     </div>
 
                                     <div className="flex items-center gap-3">
@@ -221,8 +221,8 @@ export const TypicalWeekModal = ({ isOpen, onClose, onSave, initialData }) => {
                                             className={clsx(
                                                 'w-9 h-9 flex items-center justify-center rounded-full font-bold text-lg transition-colors',
                                                 count === 0
-                                                    ? 'bg-slate-100 text-slate-300 cursor-not-allowed'
-                                                    : 'bg-slate-200 text-slate-700 hover:bg-slate-300 active:scale-95'
+                                                    ? 'bg-slate-100 dark:bg-slate-700 text-slate-300 cursor-not-allowed'
+                                                    : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600 active:scale-95'
                                             )}
                                         >
                                             −
@@ -230,8 +230,8 @@ export const TypicalWeekModal = ({ isOpen, onClose, onSave, initialData }) => {
 
                                         {/* Count Display */}
                                         <div className="w-12 text-center">
-                                            <div className="text-2xl font-bold text-slate-800">{count}</div>
-                                            <div className="text-xs text-slate-500">drinks</div>
+                                            <div className="text-2xl font-bold text-slate-800 dark:text-slate-100">{count}</div>
+                                            <div className="text-xs text-slate-500 dark:text-slate-400">drinks</div>
                                         </div>
 
                                         {/* Increment Button */}
@@ -241,7 +241,7 @@ export const TypicalWeekModal = ({ isOpen, onClose, onSave, initialData }) => {
                                             className={clsx(
                                                 'w-9 h-9 flex items-center justify-center rounded-full font-bold text-lg transition-colors',
                                                 count >= 100
-                                                    ? 'bg-slate-100 text-slate-300 cursor-not-allowed'
+                                                    ? 'bg-slate-100 dark:bg-slate-700 text-slate-300 cursor-not-allowed'
                                                     : 'bg-primary text-white hover:bg-sky-600 active:scale-95'
                                             )}
                                         >
@@ -255,10 +255,10 @@ export const TypicalWeekModal = ({ isOpen, onClose, onSave, initialData }) => {
                 </div>
 
                 {/* Footer */}
-                <div className="border-t border-slate-100 px-6 py-4 space-y-3">
+                <div className="border-t border-slate-100 dark:border-slate-700 px-6 py-4 space-y-3">
                     {/* Weekly Total */}
                     <div className="flex items-center justify-between text-sm">
-                        <span className="font-semibold text-slate-700">Weekly Total:</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-200">Weekly Total:</span>
                         <span className="text-lg font-bold text-primary">{weeklyTotal} drinks</span>
                     </div>
 

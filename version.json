@@ -1,6 +1,14 @@
 {
-    "version": "0.8.2",
+    "version": "0.9.0",
     "history": [
+        {
+            "version": "0.9.0",
+            "date": "2026-01-10",
+            "author": "jason",
+            "changes": [
+                "Add dark mode with Tailwind v4 custom variant support"
+            ]
+        },
         {
             "version": "0.8.2",
             "date": "2026-01-10",

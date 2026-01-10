@@ -51,14 +51,14 @@ const Login = () => {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50 animate-fadeIn">
-            <Card className="w-full max-w-md p-8 shadow-xl bg-white border-slate-100">
+        <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50 animate-fadeIn dark:bg-slate-900">
+            <Card className="w-full max-w-md p-8 shadow-xl bg-white border-slate-100 dark:bg-slate-800 dark:border-slate-700">
                 <div className="text-center mb-8">
                     <Wordmark variant="full" size="lg" className="justify-center" />
                 </div>
 
                 {error && (
-                    <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-xl text-red-600 text-sm font-medium">
+                    <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-xl text-red-600 text-sm font-medium dark:bg-red-900/20 dark:border-red-800 dark:text-red-400">
                         {error}
                     </div>
                 )}
@@ -71,7 +71,7 @@ const Login = () => {
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             required
-                            className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-medium"
+                            className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-medium dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200 dark:placeholder:text-slate-500"
                         />
                     </div>
                     <div>
@@ -81,7 +81,7 @@ const Login = () => {
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             required
-                            className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-medium"
+                            className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-medium dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200 dark:placeholder:text-slate-500"
                         />
                     </div>
 
@@ -96,13 +96,13 @@ const Login = () => {
                     </Button>
                 </form>
 
-                <div className="mt-8 pt-6 border-t border-slate-100 text-center">
-                    <p className="text-slate-500 text-sm mb-3">
+                <div className="mt-8 pt-6 border-t border-slate-100 text-center dark:border-slate-700">
+                    <p className="text-slate-500 text-sm mb-3 dark:text-slate-400">
                         {isSignup ? 'Already have an account?' : "Don't have an account?"}
                     </p>
                     <Button
                         variant="ghost"
-                        className="w-full hover:bg-slate-50 text-slate-600"
+                        className="w-full hover:bg-slate-50 text-slate-600 dark:hover:bg-slate-700 dark:text-slate-300"
                         onClick={() => setIsSignup(!isSignup)}
                     >
                         {isSignup ? 'Sign In' : 'Create Account'}
