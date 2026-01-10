@@ -1,6 +1,14 @@
 {
-    "version": "0.10.1",
+    "version": "0.10.2",
     "history": [
+        {
+            "version": "0.10.2",
+            "date": "2026-01-10",
+            "author": "jason",
+            "changes": [
+                "feat: Add version/env info to Login page"
+            ]
+        },
         {
             "version": "0.10.1",
             "date": "2026-01-10",
