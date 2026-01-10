@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { Sparkles, Plus, Calendar } from 'lucide-react';
 import Button from '../components/ui/Button';
+import Card from '../components/ui/Card';
 import SunProgress from '../components/ui/SunProgress';
 import { cn } from '../utils/cn';
 import { LogDrinkModal } from '../components/common/LogDrinkModal';
@@ -46,14 +47,7 @@ const WeeklyTrend = ({ data = [], currentDateStr }) => {
     const maxVal = Math.max(...chartData.map(d => d.val || 0), 5); // Minimum scale of 5
 
     return (
-        <div className="mb-4">
-            <div className="flex items-center justify-between mb-4 px-2">
-                <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2 tracking-tight dark:text-slate-50">
-                    Weekly Trend
-                </h3>
-            </div>
-
-            <div className="flex gap-2 h-32 px-2">
+        <div className="flex gap-2 h-32">
                 {/* Y-Axis */}
                 <div className="flex flex-col justify-between text-xs text-slate-400 font-medium py-1 dark:text-slate-500">
                     <span>{Math.ceil(maxVal)}</span>
@@ -106,7 +100,6 @@ const WeeklyTrend = ({ data = [], currentDateStr }) => {
                     })}
                 </div>
             </div>
-        </div>
     );
 };
 
@@ -193,8 +186,9 @@ export default function Home() {
                 )}
             </div>
 
-            {/* EXPICIT ACTION BUTTONS - Moved Above Weekly Trend */}
-            <div className="mb-10 animate-slideUp" style={{ animationDelay: '200ms' }}>
+            {/* Quick Actions */}
+            <Card className="mb-8 p-6 animate-slideUp" style={{ animationDelay: '200ms' }}>
+                <h3 className="font-bold text-slate-800 dark:text-slate-50 mb-4">Quick Actions</h3>
                 <Button
                     variant="primary"
                     className="w-full shadow-md shadow-sky-200/50 py-4 text-lg mb-3"
@@ -212,24 +206,26 @@ export default function Home() {
                     <Plus className="w-5 h-5 mr-2" />
                     Log Drink
                 </Button>
-            </div>
+            </Card>
 
-            {/* Weekly Trend - Moved Below */}
-            <div className="animate-slideUp" style={{ animationDelay: '300ms' }}>
+            {/* Weekly Trend */}
+            <Card className="p-6 animate-slideUp" style={{ animationDelay: '300ms' }}>
+                <div className="flex items-center justify-between mb-6">
+                    <h3 className="font-bold text-slate-800 dark:text-slate-50">Weekly Trend</h3>
+                </div>
+
                 <WeeklyTrend data={trends} currentDateStr={manualDate || format(new Date(), 'yyyy-MM-dd')} />
 
                 {/* Edit History Button */}
                 <Button
                     variant="ghost"
-                    className="w-full mt-4 bg-slate-50 text-slate-600 hover:bg-slate-100 py-2.5 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                    className="w-full mt-6 bg-slate-50 text-slate-600 hover:bg-slate-100 py-2.5 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
                     onClick={() => setShowEditModal(true)}
                 >
                     <Calendar className="w-4 h-4 mr-2" />
                     Edit History
                 </Button>
-            </div>
-
-            {/* EXPICIT ACTION BUTTON */}
+            </Card>
 
 
             <LogDrinkModal

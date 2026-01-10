@@ -20,7 +20,7 @@ const SunProgress = ({ current, goal, hasLogged = false, date = null }) => {
                 <div className="flex justify-between items-end">
                     <div>
                         <div className="flex items-center gap-2 mb-1">
-                            <p className="text-primary-light text-sm font-medium">
+                            <p className="text-primary-light font-bold">
                                 Today's goal {formattedDate && `(${formattedDate})`}
                             </p>
                             {hasLogged && (

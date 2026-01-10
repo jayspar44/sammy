@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { useTheme } from '../contexts/ThemeContext';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Moon, Sun } from 'lucide-react';
 import Wordmark from '../components/ui/Wordmark';
 import { logger } from '../utils/logger';
 
 const Login = () => {
     const { loginEmail, signup, user } = useAuth();
+    const { isDark, toggleTheme } = useTheme();
     const navigate = useNavigate();
 
     const [isSignup, setIsSignup] = useState(false);
@@ -51,7 +53,20 @@ const Login = () => {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50 animate-fadeIn dark:bg-slate-900">
+        <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50 animate-fadeIn dark:bg-slate-900 relative">
+            {/* Dark Mode Toggle */}
+            <button
+                onClick={toggleTheme}
+                className="absolute top-4 right-4 p-3 rounded-full bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 active:scale-95 transition-all shadow-lg dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-700"
+                aria-label="Toggle dark mode"
+            >
+                {isDark ? (
+                    <Sun className="w-5 h-5" />
+                ) : (
+                    <Moon className="w-5 h-5" />
+                )}
+            </button>
+
             <Card className="w-full max-w-md p-8 shadow-xl bg-white border-slate-100 dark:bg-slate-800 dark:border-slate-700">
                 <div className="text-center mb-8">
                     <Wordmark variant="full" size="lg" className="justify-center" />
