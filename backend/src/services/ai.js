@@ -7,6 +7,7 @@ const apiKey = process.env.GEMINI_API_KEY;
 
 if (!apiKey) {
     logger.fatal('GEMINI_API_KEY is not set in backend/.env');
+    process.exit(1); // Stop the server if API key is missing
 }
 
 // Initialize the new SDK client
@@ -25,7 +26,7 @@ const generateChatResponse = async (systemInstruction, history, message) => {
     }
 
     try {
-        // Create chat session with structured history
+        // Create chat session with structured history using correct API
         const chat = client.chats.create({
             model: 'gemini-2.5-flash',
             config: {
@@ -37,9 +38,9 @@ const generateChatResponse = async (systemInstruction, history, message) => {
             }))
         });
 
-        // Send the current message
-        const result = await chat.sendMessage({ message });
-        return result.text;
+        // Send the current message with correct API
+        const response = await chat.sendMessage({ message });
+        return response.text;
     } catch (error) {
         logger.error({ err: error }, 'Error generating chat response');
         throw error;
