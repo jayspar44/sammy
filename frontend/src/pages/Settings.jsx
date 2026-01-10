@@ -204,43 +204,7 @@ export default function Settings() {
                             <span className="font-bold text-slate-700 dark:text-slate-200">Your Typical Drinking Pattern</span>
                             <p className="text-xs text-slate-500 dark:text-slate-400">Used for baseline calculations and progress tracking</p>
                         </div>
-                    ) : (
-                        <>
-                            <div>
-                                <label className="block text-xs font-bold text-slate-500 mb-1">First Name</label>
-                                <input
-                                    type="text"
-                                    value={nameInput}
-                                    onChange={(e) => setNameInput(e.target.value)}
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                                    placeholder="Your Name"
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 mb-1">Avg Cost ($)</label>
-                                    <input
-                                        type="number"
-                                        value={costInput}
-                                        onChange={(e) => setCostInput(e.target.value)}
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                                        placeholder="10"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 mb-1">Avg Calories</label>
-                                    <input
-                                        type="number"
-                                        value={calsInput}
-                                        onChange={(e) => setCalsInput(e.target.value)}
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                                        placeholder="150"
-                                    />
-                                </div>
-                            </div>
-                        </>
-                    )}
+                    </div>
 
                     {profileLoading ? (
                         <div className="animate-pulse">
