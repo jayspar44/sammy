@@ -1,6 +1,14 @@
 {
-    "version": "0.10.0",
+    "version": "0.10.1",
     "history": [
+        {
+            "version": "0.10.1",
+            "date": "2026-01-10",
+            "author": "jason",
+            "changes": [
+                "Fix express-rate-limit trust proxy error in local dev"
+            ]
+        },
         {
             "version": "0.10.0",
             "date": "2026-01-10",

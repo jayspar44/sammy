@@ -10,8 +10,12 @@ const app = express();
 
 const apiRoutes = require('./routes/api');
 
-// Trust proxy headers (required for Cloud Run, load balancers, etc.)
-app.set('trust proxy', true);
+// Trust proxy configuration (environment-specific)
+// Production/Dev: Trust exactly 1 proxy hop (Cloud Run load balancer)
+// Local: No proxy, use direct IP addresses
+if (process.env.NODE_ENV === 'dev' || process.env.NODE_ENV === 'production') {
+    app.set('trust proxy', 1);
+}
 
 // Security Middleware
 app.use(helmet());
