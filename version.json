@@ -1,6 +1,14 @@
 {
-    "version": "0.6.3",
+    "version": "0.7.0",
     "history": [
+        {
+            "version": "0.7.0",
+            "date": "2026-01-10",
+            "author": "jason",
+            "changes": [
+                "Improve AI chat naturalness and add daily stats breakdown"
+            ]
+        },
         {
             "version": "0.6.3",
             "date": "2026-01-10",

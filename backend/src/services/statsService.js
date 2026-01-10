@@ -133,7 +133,15 @@ const getContextSummary = (stats) => {
     // Ensure we have 90 days
     const last90Days = trends.slice(0, 90);
 
-    // 1. Weekly summaries (13 weeks)
+    // 1. Daily breakdown (last 28 days / 4 weeks)
+    const last28Days = last90Days.slice(0, 28);
+    const dailyBreakdown = last28Days.map(day => {
+        const date = new Date(day.date);
+        const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+        return `  ${day.date} (${dayName}): ${day.count} drinks`;
+    });
+
+    // 2. Weekly summaries (13 weeks)
     const weekSummaries = [];
     for (let i = 0; i < last90Days.length; i += 7) {
         const week = last90Days.slice(i, i + 7);
@@ -178,6 +186,9 @@ Current Status:
 - Dry Streak: ${insights.dryStreak} days
 - Money Saved (90d): $${insights.moneySaved}
 - Calories Saved (90d): ${insights.caloriesCut}
+
+Daily Breakdown (Last 28 Days):
+${dailyBreakdown.join('\n')}
 
 Weekly Summary (Last 90 Days):
 ${weekSummaries.join('\n')}
