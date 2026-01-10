@@ -1,6 +1,14 @@
 {
-    "version": "0.8.1",
+    "version": "0.8.2",
     "history": [
+        {
+            "version": "0.8.2",
+            "date": "2026-01-10",
+            "author": "jason",
+            "changes": [
+                "Fix Cloud Run trust proxy and secure env files"
+            ]
+        },
         {
             "version": "0.8.1",
             "date": "2026-01-10",
