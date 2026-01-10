@@ -24,8 +24,16 @@ if (Capacitor.isNativePlatform()) {
 
   // Configure status bar with overlay
   StatusBar.setOverlaysWebView({ overlay: true });
-  StatusBar.setStyle({ style: Style.Dark });
-  StatusBar.setBackgroundColor({ color: '#f8fafc' });
+
+  // Set initial status bar based on saved theme
+  const savedTheme = localStorage.getItem('sammy_pref_theme') || 'light';
+  if (savedTheme === 'dark') {
+    StatusBar.setStyle({ style: Style.Light });
+    StatusBar.setBackgroundColor({ color: '#1e293b' }); // slate-800
+  } else {
+    StatusBar.setStyle({ style: Style.Dark });
+    StatusBar.setBackgroundColor({ color: '#0ea5e9' }); // sky-500
+  }
 }
 
 createRoot(document.getElementById('root')).render(
