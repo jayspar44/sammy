@@ -10,6 +10,7 @@ import { EditHistoricCountModal } from '../components/common/EditHistoricCountMo
 import { api } from '../api/services';
 import { useAuth } from '../contexts/AuthContext';
 import { useUserPreferences } from '../contexts/UserPreferencesContext';
+import { logger } from '../utils/logger';
 
 const WeeklyTrend = ({ data = [], currentDateStr }) => {
     // Generate last 7 days including today (currentDateStr)
@@ -113,6 +114,7 @@ export default function Home() {
     const { user } = useAuth();
     const { manualDate } = useUserPreferences();
     const [stats, setStats] = useState({ count: 0, limit: 2 });
+    const [statsLoading, setStatsLoading] = useState(true);
     const [trends, setTrends] = useState([]);
     const [showLogModal, setShowLogModal] = useState(false);
     const [showGoalModal, setShowGoalModal] = useState(false);
@@ -120,6 +122,7 @@ export default function Home() {
     const [hasLoggedToday, setHasLoggedToday] = useState(false);
 
     const fetchStats = async () => {
+        setStatsLoading(true);
         try {
             // Ensure we use the same date string for the chart prop
             const todayStr = manualDate || format(new Date(), 'yyyy-MM-dd');
@@ -135,7 +138,9 @@ export default function Home() {
                 setHasLoggedToday(!!todayLog);
             }
         } catch (err) {
-            console.error("Failed to fetch stats", err);
+            logger.error('Failed to fetch stats', err);
+        } finally {
+            setStatsLoading(false);
         }
     };
 
@@ -152,8 +157,7 @@ export default function Home() {
             setShowLogModal(false);
             fetchStats(); // Refresh
         } catch (err) {
-            console.error("Failed to log drink", err);
-            alert("Failed to log drink");
+            logger.error('Failed to log drink', err);
         }
     };
 
@@ -164,31 +168,36 @@ export default function Home() {
             setShowGoalModal(false);
             fetchStats(); // Refresh to see new limit
         } catch (err) {
-            console.error("Failed to set goal", err);
-            alert("Failed to set goal");
+            logger.error('Failed to set goal', err);
         }
     };
 
     return (
         <div className="p-6 pt-8 animate-fadeIn">
             {/* Hero */}
-            {/* Hero */}
             <div className="mb-8 animate-slideUp">
-                <div onClick={() => setShowGoalModal(true)} className="cursor-pointer active:scale-95 transition-transform">
-                    <SunProgress
-                        current={stats.count}
-                        goal={stats.limit}
-                        hasLogged={hasLoggedToday}
-                        date={manualDate || format(new Date(), 'yyyy-MM-dd')}
-                    />
-                </div>
+                {statsLoading ? (
+                    <div className="flex flex-col items-center animate-pulse">
+                        <div className="w-48 h-48 rounded-full bg-slate-100" />
+                        <div className="h-6 w-32 bg-slate-200 rounded mt-4" />
+                    </div>
+                ) : (
+                    <div onClick={() => setShowGoalModal(true)} className="cursor-pointer active:scale-95 transition-transform">
+                        <SunProgress
+                            current={stats.count}
+                            goal={stats.limit}
+                            hasLogged={hasLoggedToday}
+                            date={manualDate || format(new Date(), 'yyyy-MM-dd')}
+                        />
+                    </div>
+                )}
             </div>
 
             {/* EXPICIT ACTION BUTTONS - Moved Above Weekly Trend */}
             <div className="mb-10 animate-slideUp" style={{ animationDelay: '200ms' }}>
                 <Button
                     variant="primary"
-                    className="w-full shadow-lg shadow-sky-200/50 py-4 text-lg mb-3"
+                    className="w-full shadow-md shadow-sky-200/50 py-4 text-lg mb-3"
                     onClick={() => handleLogDrink(0)}
                 >
                     <Sparkles className="w-5 h-5 mr-2" />

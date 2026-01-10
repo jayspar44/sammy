@@ -19,6 +19,11 @@ export const getEnvironment = () => {
   // Check API URL to determine if we're in dev or prod
   const apiUrl = import.meta.env.VITE_API_URL || '';
 
+  // Check for local backend (localhost or Android emulator loopback)
+  if (apiUrl.includes('localhost') || apiUrl.includes('10.0.2.2')) {
+    return 'local';
+  }
+
   if (apiUrl.includes('-dev')) {
     return 'dev';
   }

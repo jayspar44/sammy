@@ -3,7 +3,7 @@ const { auth, isReady } = require('../services/firebase');
 const verifyToken = async (req, res, next) => {
     // Check if Firebase service is ready
     if (!isReady) {
-        console.warn('Auth Service Unavailable: Firebase not initialized');
+        req.log.warn('Auth Service Unavailable: Firebase not initialized');
         return res.status(503).json({ error: 'Auth service unavailable' });
     }
 
@@ -18,7 +18,7 @@ const verifyToken = async (req, res, next) => {
         req.user = decodedToken;
         next();
     } catch (error) {
-        console.error('Error verifying token:', error.message);
+        req.log.error({ err: error }, 'Error verifying token');
         res.status(401).json({ error: 'Invalid token' });
     }
 };

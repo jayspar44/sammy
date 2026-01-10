@@ -20,7 +20,7 @@ steps:
           --allow-unauthenticated \
           --set-secrets="FIREBASE_SERVICE_ACCOUNT=FIREBASE_SERVICE_ACCOUNT:latest,GEMINI_API_KEY=GEMINI_API_KEY:latest" \
           --set-env-vars="NODE_ENV=${_ENV}" \
-          --set-env-vars="^@^ALLOWED_ORIGINS=https://sammy-658-dev.web.app,https://sammy-658.web.app,capacitor://localhost"
+          --set-env-vars="^@^ALLOWED_ORIGINS=https://sammy-658-dev.web.app,https://sammy-658.web.app,capacitor://localhost,https://localhost"
 
   # Step 2: Get Cloud Run URL and Firebase config, create frontend env file
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'

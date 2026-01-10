@@ -17,14 +17,14 @@ const calculateStats = async (userId, anchorDate) => {
     const globalDrinkCost = userData.avgDrinkCost ?? 10;
     const globalDrinkCals = userData.avgDrinkCals ?? 150;
 
-    // Fetch logs for last 30 days (includes today)
-    const thirtyDaysAgo = new Date(anchorDate);
-    thirtyDaysAgo.setDate(anchorDate.getDate() - 30);
-    const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split('T')[0];
+    // Fetch logs for last 90 days (includes today)
+    const ninetyDaysAgo = new Date(anchorDate);
+    ninetyDaysAgo.setDate(anchorDate.getDate() - 90);
+    const ninetyDaysAgoStr = ninetyDaysAgo.toISOString().split('T')[0];
     const todayStr = anchorDate.toISOString().split('T')[0];
 
     const logsSnapshot = await userRef.collection('logs')
-        .where('date', '>=', thirtyDaysAgoStr)
+        .where('date', '>=', ninetyDaysAgoStr)
         .get();
 
     const logsMap = {};
@@ -66,8 +66,8 @@ const calculateStats = async (userId, anchorDate) => {
     let dryStreak = 0;
     let checkDate = new Date(anchorDate);
 
-    // Check previous 30 days for streak
-    for (let i = 0; i < 30; i++) {
+    // Check previous 90 days for streak
+    for (let i = 0; i < 90; i++) {
         const dStr = checkDate.toISOString().split('T')[0];
         const log = logsMap[dStr];
 
@@ -90,7 +90,7 @@ const calculateStats = async (userId, anchorDate) => {
     let moneySaved = 0;
     let calsCut = 0;
 
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 90; i++) {
         const d = new Date(anchorDate);
         d.setDate(anchorDate.getDate() - i);
         const dStr = d.toISOString().split('T')[0];
@@ -130,16 +130,79 @@ const calculateStats = async (userId, anchorDate) => {
 const getContextSummary = (stats) => {
     const { today, insights, trends } = stats;
 
-    // Last 7 days summary
-    const last7Days = trends.slice(0, 7).map(t => `${t.date}: ${t.count}`).join(', ');
+    // Ensure we have 90 days
+    const last90Days = trends.slice(0, 90);
+
+    // 1. Daily breakdown (last 28 days / 4 weeks)
+    const last28Days = last90Days.slice(0, 28);
+    const dailyBreakdown = last28Days.map(day => {
+        const date = new Date(day.date);
+        const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+        return `  ${day.date} (${dayName}): ${day.count} drinks`;
+    });
+
+    // 2. Weekly summaries (13 weeks)
+    const weekSummaries = [];
+    for (let i = 0; i < last90Days.length; i += 7) {
+        const week = last90Days.slice(i, i + 7);
+        const weekTotal = week.reduce((sum, day) => sum + day.count, 0);
+        const weekStart = week[0]?.date || 'N/A';
+        const weekEnd = week[week.length - 1]?.date || 'N/A';
+        weekSummaries.push(`  ${weekStart} to ${weekEnd}: ${weekTotal} drinks`);
+    }
+
+    // 2. Monthly summaries (last 3 calendar months)
+    const monthlyTotals = new Map();
+    last90Days.forEach(day => {
+        if (!day.date) return;
+        const monthKey = day.date.substring(0, 7); // "YYYY-MM"
+        monthlyTotals.set(monthKey, (monthlyTotals.get(monthKey) || 0) + day.count);
+    });
+    const monthlySummaries = Array.from(monthlyTotals.entries())
+        .sort((a, b) => b[0].localeCompare(a[0])) // Most recent first
+        .slice(0, 3)
+        .map(([month, total]) => `  ${month}: ${total} drinks`);
+
+    // 3. Period aggregations
+    const last30Days = last90Days.slice(0, 30).reduce((sum, d) => sum + d.count, 0);
+    const last60Days = last90Days.slice(0, 60).reduce((sum, d) => sum + d.count, 0);
+    const last90Total = last90Days.reduce((sum, d) => sum + d.count, 0);
+
+    // Calculate "last month" (previous calendar month)
+    const now = new Date();
+    const lastMonthKey = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+        .toISOString().substring(0, 7);
+    const lastMonthTotal = monthlyTotals.get(lastMonthKey) || 0;
+
+    // Calculate "last 2 months" (2 previous calendar months)
+    const twoMonthsAgoKey = new Date(now.getFullYear(), now.getMonth() - 2, 1)
+        .toISOString().substring(0, 7);
+    const last2MonthsTotal = (monthlyTotals.get(lastMonthKey) || 0) +
+                             (monthlyTotals.get(twoMonthsAgoKey) || 0);
 
     return `
 Current Status:
 - Drinks Today: ${today.count} / ${today.limit}
 - Dry Streak: ${insights.dryStreak} days
-- Money Saved (30d): $${insights.moneySaved}
-- Calories Saved (30d): ${insights.caloriesCut}
-- Last 7 Days Log: [${last7Days}]
+- Money Saved (90d): $${insights.moneySaved}
+- Calories Saved (90d): ${insights.caloriesCut}
+
+Daily Breakdown (Last 28 Days):
+${dailyBreakdown.join('\n')}
+
+Weekly Summary (Last 90 Days):
+${weekSummaries.join('\n')}
+
+Monthly Summary (Last 3 Months):
+${monthlySummaries.join('\n')}
+
+Period Totals:
+- Last 30 days: ${last30Days} drinks
+- Last calendar month (${lastMonthKey}): ${lastMonthTotal} drinks
+- Last 60 days: ${last60Days} drinks
+- Last 2 calendar months: ${last2MonthsTotal} drinks
+- Last 90 days: ${last90Total} drinks
+- Last 3 calendar months: ${Array.from(monthlyTotals.values()).reduce((a, b) => a + b, 0)} drinks
     `.trim();
 };
 

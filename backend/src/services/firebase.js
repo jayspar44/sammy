@@ -1,4 +1,5 @@
 const admin = require('firebase-admin');
+const logger = require('../logger');
 
 let isReady = false;
 
@@ -13,15 +14,15 @@ if (!admin.apps.length) {
             admin.initializeApp({
                 credential: admin.credential.cert(serviceAccount)
             });
-            console.log('Firebase Admin initialized successfully');
+            logger.info('Firebase Admin initialized successfully');
             isReady = true;
         } else {
-            console.warn('Firebase Service Account is empty. Skipping initialization.');
+            logger.warn('Firebase Service Account is empty. Skipping initialization.');
         }
 
     } catch (error) {
-        console.error('Firebase Admin initialization failed:', error.message);
-        console.warn('Backend will start but Firebase features will fail.');
+        logger.error({ err: error }, 'Firebase Admin initialization failed');
+        logger.warn('Backend will start but Firebase features will fail.');
     }
 } else {
     isReady = true;

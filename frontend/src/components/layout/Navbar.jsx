@@ -24,7 +24,10 @@ const NavItem = ({ to, icon: Icon }) => (
 
 export const Navbar = () => {
     return (
-        <nav className="absolute bottom-4 left-4 right-4 bg-white/80 backdrop-blur-lg border border-slate-100 px-6 rounded-2xl shadow-lg">
+        <nav
+            className="absolute left-4 right-4 bg-white/80 backdrop-blur-lg border border-slate-100 px-6 rounded-2xl shadow-lg"
+            style={{ bottom: 'calc(1rem + env(safe-area-inset-bottom))' }}
+        >
             <div className="flex items-center justify-between h-16 max-w-sm mx-auto">
                 <NavItem to="/" icon={Home} />
                 <NavLink to="/companion" className={({ isActive }) => clsx(

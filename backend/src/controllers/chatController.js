@@ -1,5 +1,5 @@
 const { db } = require('../services/firebase');
-const { generateResponse } = require('../services/ai');
+const { generateChatResponse } = require('../services/ai');
 const { calculateStats, getContextSummary } = require('../services/statsService');
 
 const admin = require('firebase-admin');
@@ -30,7 +30,7 @@ const handleMessage = async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('Error checking chat limit:', error);
+        req.log.error({ err: error }, 'Error checking chat limit');
         // Default to allowed on error to avoid blocking valid users during glitches
         allowed = true;
     }
@@ -64,12 +64,12 @@ const handleMessage = async (req, res) => {
                 expireAt: expireAt
             });
         } else {
-            console.log('Chat history disabled for user', uid);
+            req.log.info({ uid }, 'Chat history disabled for user');
         }
 
         // 1. Gather Context
         // userDoc/userData already fetched above
-        const userName = userData.firstName || 'Friend';
+        const userName = userData.firstName || null;
 
         const todayStr = date || new Date().toISOString().split('T')[0];
         const anchorDate = new Date(todayStr);
@@ -80,10 +80,21 @@ const handleMessage = async (req, res) => {
             const stats = await calculateStats(uid, anchorDate);
             contextSummary = getContextSummary(stats);
         } catch (err) {
-            console.error("Failed to load stats for chat context:", err);
+            req.log.error({ err }, 'Failed to load stats for chat context');
         }
 
         const currentDayName = anchorDate.toLocaleDateString('en-US', { weekday: 'long' });
+
+        // Gather typical week baseline if set
+        const typicalWeek = userData.typicalWeek || null;
+        let typicalWeekContext = "";
+        if (typicalWeek) {
+            const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+            const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            const weekString = days.map((day, idx) => `${dayLabels[idx]}: ${typicalWeek[day] || 0}`).join(', ');
+            const weekTotal = days.reduce((sum, day) => sum + (typicalWeek[day] || 0), 0);
+            typicalWeekContext = `\nTypical Week Baseline: ${weekString} (Total: ${weekTotal}/week)`;
+        }
 
         // 2. Fetch Chat History (Last 7 Days)
         const sevenDaysAgo = new Date(anchorDate);
@@ -94,57 +105,66 @@ const handleMessage = async (req, res) => {
             .orderBy('timestamp', 'asc')
             .get();
 
-        let conversationHistory = "";
+        const history = [];
         historySnapshot.forEach(doc => {
             const data = doc.data();
-            // Skip the message we just saved to avoid duplication interpretation in some cases, 
-            // OR include it. Usually omitting the very last "User says" line from history 
-            // is better since it's injected explicitly at the end. 
-            // Let's include everything EXCLUDING the current message if possible, but 
-            // simpler to just dump it all and let the prompt handle "User says" recurrence 
-            // or just ensure we don't double print.
-            // Actually, we'll format it as a log.
-            if (data.text !== message) { // Simple dedupe for the exact current message frame
-                conversationHistory += `${data.sender === 'user' ? 'User' : 'Sammy'}: ${data.text}\n`;
+            // Don't include the current message in history - it will be sent separately
+            if (data.text !== message) {
+                history.push({
+                    sender: data.sender,
+                    text: data.text
+                });
             }
         });
 
-        // 3. Construct Prompt
-        const systemInternal = `
+        // 3. Construct System Instruction (history and current message are handled separately)
+        const contextInfo = `
+CONTEXT:${userName ? `\nUser: ${userName}` : ''}
+Today: ${currentDayName}, ${todayStr}${typicalWeekContext}
+
+STATS & INSIGHTS:
+${contextSummary}
+        `.trim();
+
+        const systemInstruction = `
 You are Sammy, a compassionate, intelligent AI habit companion helping users reduce alcohol consumption.
 
 IDENTITY & TONE:
-- Optimistic, non-judgmental, warm, and supportive.
-- Conversational and natural. Avoid sounding robotic or repetitive.
-- Uses emojis naturally but not excessively. 🐇
+- Talk like a real person, not a cheerleader or motivational poster.
+- Be supportive but casual - more like a thoughtful friend than a life coach.
+- Non-judgmental and warm, but don't overdo the enthusiasm.
+- Use emojis sparingly (0-1 per message max), and only when they fit naturally.
+- Avoid excessive exclamation marks (use 1-2 max per message).
+- Don't force every conversation back to drinking stats - sometimes just chat.
 - NEVER patronizing. You are a partner, not a parent.
+
+AVOID THESE PATTERNS (they sound robotic):
+- Don't start messages with "Hey [Name]" repeatedly - vary your openings or skip the greeting
+- NEVER comment on the quality of the question - no "good question", "great question", "good clarifying question", "interesting question", etc. Just answer directly.
+- Don't start responses with pleasantries like "Thanks for asking" or "I appreciate you asking" - get straight to the answer
+- Don't say "really well" or "really good" in every message - be more specific or matter-of-fact
+- Be encouraging when appropriate, but do it naturally - mix acknowledgment with facts rather than cheerleading in every message
 
 SAFETY GUARDRAILS (CRITICAL):
 - DO NOT provide medical advice.
 - If a user mentions physical withdrawal symptoms (shaking, seizures, hallucinations, severe nausea) or self-harm, you MUST strongly suggest they seek professional medical help immediately.
 
-CONTEXT:
-User: ${userName}
-Today: ${currentDayName}, ${todayStr}
-
-STATS & INSIGHTS:
-${contextSummary}
-
-RECENT CONVERSATION HISTORY (Last 7 Days):
-${conversationHistory}
+${contextInfo}
 
 INSTRUCTIONS:
-- Use the provided context stats AND conversation history to personalize your response.
-- Reference past topics if relevant (e.g., "How is that stressful project going?" if they mentioned it yesterday).
-- **Engagement**: Ask open-ended follow-up questions.
-- **Diversity**: varying your sentence structure.
-- **Length**: Keep it concise (2-4 sentences) usually.
+- ${history.length > 0 ? '**This is a continuation of an ongoing conversation.** Review the conversation history and maintain context from previous messages. Don\'t re-introduce yourself or treat this as a first interaction.' : '**This is the start of a new conversation.** You can introduce yourself naturally if appropriate.'}
+- Use stats and history to personalize responses, but don't force it into every message.
+- Reference past conversations when relevant, but keep it natural.
+- **Typical Week Baseline**: ${typicalWeek ? 'The user has set a typical week baseline. Use this to provide context for their progress - are they drinking more or less than their typical pattern? This helps track meaningful change, not just arbitrary goals.' : 'The user has not set a typical week baseline yet. If relevant, you might gently mention they can set one in Settings to help track their progress.'}
+- Ask questions when genuinely curious or it makes sense, not as a formula.
+- Vary your style - sometimes brief (1-2 sentences), sometimes longer (3-4), rarely more.
+- If asked about something off-topic (weather, sports, etc.), it's okay to briefly acknowledge you can't help with that, then gently pivot OR just chat casually if appropriate. Don't force awkward transitions.
+- Don't end every message with a question - mix it up.
+- **Name Usage**: ${userName ? `The user's name is ${userName}. Use it occasionally, not in every message.` : 'The user has not shared their name. Address them directly without using placeholder names.'}
+        `.trim();
 
-User says: "${message}"
-        `;
-
-        // 4. Call AI
-        const aiResponse = await generateResponse(systemInternal);
+        // 4. Call AI with structured chat API
+        const aiResponse = await generateChatResponse(systemInstruction, history, message);
 
         // 5. Save AI Response (Only if enabled)
         if (chatHistoryEnabled) {
@@ -164,7 +184,7 @@ User says: "${message}"
         res.json({ text: aiResponse, sender: 'sammy', timestamp: new Date() });
 
     } catch (error) {
-        console.error('Error in chat handler:', error);
+        req.log.error({ err: error }, 'Error in chat handler');
         res.status(500).json({ error: 'Failed to generate response' });
     }
 };
@@ -194,7 +214,7 @@ const getChatHistory = async (req, res) => {
         // Reverse so oldest is first for UI chat flow
         res.json(messages.reverse());
     } catch (error) {
-        console.error('Error fetching chat history:', error);
+        req.log.error({ err: error }, 'Error fetching chat history');
         res.status(500).json({ error: 'Failed to fetch history' });
     }
 };
@@ -213,7 +233,7 @@ const deleteChatHistory = async (req, res) => {
 
         res.json({ success: true, message: 'Chat history cleared' });
     } catch (error) {
-        console.error('Error clearing chat history:', error);
+        req.log.error({ err: error }, 'Error clearing chat history');
         res.status(500).json({ error: 'Failed to clear history' });
     }
 };

@@ -72,7 +72,7 @@ const logDrink = async (req, res) => {
 
         res.json({ success: true, message: "Logged successfully" });
     } catch (error) {
-        console.error('Error logging drink:', error);
+        req.log.error({ err: error }, 'Error logging drink');
         res.status(500).json({ error: 'Failed to log drink' });
     }
 };
@@ -119,7 +119,7 @@ const getStats = async (req, res) => {
         const stats = await calculateStats(uid, anchorDate);
         res.json(stats);
     } catch (error) {
-        console.error('Error fetching stats:', error);
+        req.log.error({ err: error }, 'Error fetching stats');
         res.status(500).json({ error: 'Failed to fetch stats' });
     }
 };
@@ -200,7 +200,7 @@ const updateLog = async (req, res) => {
 
         res.json({ success: true, message: "Log updated successfully" });
     } catch (error) {
-        console.error('Error updating log:', error);
+        req.log.error({ err: error }, 'Error updating log');
         res.status(500).json({ error: 'Failed to update log' });
     }
 };
@@ -231,7 +231,7 @@ const deleteLog = async (req, res) => {
 
         res.json({ success: true, message: "Log deleted successfully" });
     } catch (error) {
-        console.error('Error deleting log:', error);
+        req.log.error({ err: error }, 'Error deleting log');
         res.status(500).json({ error: 'Failed to delete log' });
     }
 };
@@ -311,7 +311,7 @@ const getStatsRange = async (req, res) => {
         res.json(results);
 
     } catch (error) {
-        console.error('Error fetching stats range:', error);
+        req.log.error({ err: error }, 'Error fetching stats range');
         res.status(500).json({ error: 'Failed to fetch stats range' });
     }
 };

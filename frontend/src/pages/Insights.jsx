@@ -6,6 +6,7 @@ import { cn } from '../utils/cn';
 import { api } from '../api/services';
 import { useAuth } from '../contexts/AuthContext';
 import { useUserPreferences } from '../contexts/UserPreferencesContext';
+import { logger } from '../utils/logger';
 
 // eslint-disable-next-line no-unused-vars -- Icon is used in JSX below
 const StatCard = ({ icon: Icon, label, value, theme = 'emerald', className }) => {
@@ -38,10 +39,12 @@ export default function Insights() {
         dryStreak: 0,
         trends: []
     });
+    const [statsLoading, setStatsLoading] = useState(true);
 
     useEffect(() => {
         const loadStats = async () => {
             if (!user) return;
+            setStatsLoading(true);
             try {
                 const todayStr = manualDate || format(new Date(), 'yyyy-MM-dd');
                 const data = await api.getStats(todayStr);
@@ -52,7 +55,9 @@ export default function Insights() {
                     trends: data.trends || []
                 });
             } catch (err) {
-                console.error("Failed to load insights", err);
+                logger.error('Failed to load insights', err);
+            } finally {
+                setStatsLoading(false);
             }
         };
         loadStats();
@@ -90,38 +95,50 @@ export default function Insights() {
             </header>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-2 gap-4 mb-4">
-                <StatCard
-                    icon={Wallet}
-                    label="Money Saved"
-                    value={`$${stats.moneySaved}`}
-                    theme="emerald"
-                    className="border"
-                />
-                <StatCard
-                    icon={TrendingDown}
-                    label="Calories Cut"
-                    value={`${stats.caloriesCut}`} // Format nicely if > 1000? e.g. 2.4k
-                    theme="amber"
-                    className="border"
-                />
-            </div>
+            {statsLoading ? (
+                <div className="animate-pulse">
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                        <div className="h-28 bg-slate-100 rounded-2xl" />
+                        <div className="h-28 bg-slate-100 rounded-2xl" />
+                    </div>
+                    <div className="h-24 bg-slate-100 rounded-2xl mb-8" />
+                </div>
+            ) : (
+                <>
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                        <StatCard
+                            icon={Wallet}
+                            label="Money Saved"
+                            value={`$${stats.moneySaved}`}
+                            theme="emerald"
+                            className="border"
+                        />
+                        <StatCard
+                            icon={TrendingDown}
+                            label="Calories Cut"
+                            value={`${stats.caloriesCut}`}
+                            theme="amber"
+                            className="border"
+                        />
+                    </div>
 
-            {/* Streak Card - Full Width */}
-            <Card className="mb-8 bg-indigo-600 text-white border-none flex items-center justify-between p-6 shadow-lg shadow-indigo-200">
-                <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm">
-                        <Zap className="w-6 h-6 text-yellow-300 fill-current" />
-                    </div>
-                    <div>
-                        <div className="text-sm text-indigo-100 font-medium uppercase tracking-wider">Dry Streak</div>
-                        <div className="text-3xl font-bold">{stats.dryStreak} Days</div>
-                    </div>
-                </div>
-                <div className="text-indigo-200">
-                    <TrendingDown className="w-6 h-6 rotate-180" />
-                </div>
-            </Card>
+                    {/* Streak Card - Full Width */}
+                    <Card className="mb-8 bg-indigo-600 text-white border-none flex items-center justify-between p-6 shadow-lg shadow-indigo-200">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm">
+                                <Zap className="w-6 h-6 text-yellow-300 fill-current" />
+                            </div>
+                            <div>
+                                <div className="text-sm text-indigo-100 font-medium uppercase tracking-wider">Dry Streak</div>
+                                <div className="text-3xl font-bold">{stats.dryStreak} Days</div>
+                            </div>
+                        </div>
+                        <div className="text-indigo-200">
+                            <TrendingDown className="w-6 h-6 rotate-180" />
+                        </div>
+                    </Card>
+                </>
+            )}
 
             {/* Monthly Trend */}
             <Card className="p-6">

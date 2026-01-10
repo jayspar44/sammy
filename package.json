@@ -1,6 +1,6 @@
 {
   "name": "sammy",
-  "version": "0.3.1",
+  "version": "0.8.0",
   "description": "AI-based habit companion app",
   "main": "backend/src/index.js",
   "scripts": {
@@ -15,6 +15,10 @@
     "dev:backend": "cd backend && npm run dev",
     "dev:frontend": "cd frontend && npm start",
     "build:frontend": "cd frontend && npm run build",
+    "android": "cd frontend && npm run android",
+    "android:dev": "cd frontend && npm run android:dev",
+    "android:local": "cd frontend && npm run android:local",
+    "android:local-livereload": "cd frontend && npm run android:local-livereload",
     "test:frontend": "cd frontend && npm test",
     "setup:env": "node scripts/setup-env.js",
     "validate-env": "node scripts/validate-env.js",

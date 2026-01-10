@@ -1,22 +1,20 @@
 import React from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
+import { Settings } from 'lucide-react';
 import { useUserPreferences } from '../../contexts/UserPreferencesContext';
-import { cn } from '../../utils/cn';
 import { getVersionString } from '../../utils/appConfig';
+import Wordmark from '../ui/Wordmark';
 
 export const TopBar = () => {
-    const { user } = useAuth();
-    const { firstName } = useUserPreferences();
+    const { firstName, profileLoading } = useUserPreferences();
     const location = useLocation();
     const navigate = useNavigate();
 
-    const displayName = firstName || user?.email || 'Friend';
-    const initial = firstName ? firstName[0].toUpperCase() : (user?.email ? user.email[0].toUpperCase() : 'S');
+    const displayName = firstName || 'Friend';
 
     const isOnSettings = location.pathname === '/settings';
 
-    const handleAvatarClick = (e) => {
+    const handleSettingsClick = (e) => {
         if (isOnSettings) {
             e.preventDefault();
             navigate(-1);
@@ -24,43 +22,41 @@ export const TopBar = () => {
     };
 
     return (
-        <header className="flex justify-between items-center px-6 py-4 bg-surface/50 backdrop-blur-sm sticky top-0 z-40">
-            <div>
-                <h1 className="text-xl font-bold text-slate-800 tracking-tight">
-                    Hi, {displayName}
-                </h1>
-                <p className="text-slate-500 font-medium text-sm">Ready to shine?</p>
+        <header className="relative flex items-center justify-between px-6 py-4 bg-surface/50 backdrop-blur-sm sticky top-0 z-40">
+            {/* Left: Logo and greeting */}
+            <div className="flex items-center gap-3">
+                <Wordmark variant="icon" size="sm" />
+                <div>
+                    {profileLoading ? (
+                        <div className="h-7 w-24 bg-slate-200 rounded animate-pulse" />
+                    ) : (
+                        <h1 className="text-xl font-bold text-slate-800 tracking-tight">
+                            Hi, {displayName}
+                        </h1>
+                    )}
+                    <p className="text-slate-500 font-medium text-sm">Ready to shine?</p>
+                </div>
             </div>
-            <div className="flex flex-col items-end gap-2">
+
+            {/* Center: Version string (absolute positioned, top aligned) */}
+            <div className="absolute left-1/2 top-4 -translate-x-1/2">
                 <p className="text-slate-400 font-mono text-[10px]">{getVersionString()}</p>
-                {isOnSettings ? (
-                    <button onClick={handleAvatarClick} className="relative group">
-                        <div className={cn(
-                            "w-10 h-10 rounded-full flex items-center justify-center text-white text-lg font-bold shadow-lg transition-transform active:scale-95",
-                            "bg-gradient-to-tr from-sky-400 to-indigo-500 shadow-sky-200"
-                        )}>
-                            {user?.photoURL ? (
-                                <img src={user.photoURL} alt="Avatar" className="w-full h-full rounded-full object-cover" />
-                            ) : (
-                                initial
-                            )}
-                        </div>
-                    </button>
-                ) : (
-                    <NavLink to="/settings" className="relative group">
-                        <div className={cn(
-                            "w-10 h-10 rounded-full flex items-center justify-center text-white text-lg font-bold shadow-lg transition-transform active:scale-95",
-                            "bg-gradient-to-tr from-sky-400 to-indigo-500 shadow-sky-200"
-                        )}>
-                            {user?.photoURL ? (
-                                <img src={user.photoURL} alt="Avatar" className="w-full h-full rounded-full object-cover" />
-                            ) : (
-                                initial
-                            )}
-                        </div>
-                    </NavLink>
-                )}
             </div>
+
+            {/* Right: Settings button */}
+            {isOnSettings ? (
+                <button onClick={handleSettingsClick} className="relative group">
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg shadow-sky-200 transition-transform active:scale-95 bg-primary">
+                        <Settings className="w-5 h-5" />
+                    </div>
+                </button>
+            ) : (
+                <NavLink to="/settings" className="relative group">
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-sky-700 transition-transform active:scale-95 bg-sky-100 hover:bg-sky-200">
+                        <Settings className="w-5 h-5" />
+                    </div>
+                </NavLink>
+            )}
         </header>
     );
 };

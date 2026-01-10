@@ -5,6 +5,7 @@ import { cn } from '../utils/cn';
 import { api } from '../api/services';
 import { format } from 'date-fns';
 import { TopBar } from '../components/layout/TopBar';
+import { logger } from '../utils/logger';
 
 const Message = ({ text, sender }) => {
     const isUser = sender === 'user';
@@ -39,7 +40,7 @@ export default function Companion() {
                     setMessages([{ id: 'welcome', text: "Hi! How are you feeling today?", sender: 'sammy' }]);
                 }
             } catch (err) {
-                console.error("Failed to load chat history", err);
+                logger.error('Failed to load chat history', err);
             }
         };
         loadHistory();
@@ -72,7 +73,7 @@ export default function Companion() {
                 sender: 'sammy'
             }]);
         } catch (err) {
-            console.error("Failed to send message", err);
+            logger.error('Failed to send message', err);
             setIsTyping(false);
             setMessages(prev => [...prev, {
                 id: Date.now() + 1,

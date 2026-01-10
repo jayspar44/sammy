@@ -1,28 +1,50 @@
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { GoogleGenAI } = require('@google/genai');
+const logger = require('../logger');
 
-let model;
+let client;
 
 const apiKey = process.env.GEMINI_API_KEY;
 
 if (!apiKey) {
-    console.error('CRITICAL: GEMINI_API_KEY is not set in backend/.env');
+    logger.fatal('GEMINI_API_KEY is not set in backend/.env');
+    process.exit(1); // Stop the server if API key is missing
 }
 
-const genAI = new GoogleGenerativeAI(apiKey || 'dummy_key');
-// Initialize strictly if key exists, otherwise model remains undefined but we logged the error.
-model = apiKey ? genAI.getGenerativeModel({ model: "gemini-2.5-flash" }) : null;
+// Initialize the new SDK client
+client = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
-const generateResponse = async (prompt) => {
-    if (!model) throw new Error('Gemini API Key is missing or invalid. Check backend logs.');
+/**
+ * Generates a chat response using structured chat API.
+ * @param {string} systemInstruction - The system prompt/instructions
+ * @param {Array} history - Array of message objects: [{sender: 'user'|'sammy', text: '...'}]
+ * @param {string} message - The current user message
+ * @returns {Promise<string>} The AI's response text
+ */
+const generateChatResponse = async (systemInstruction, history, message) => {
+    if (!client) {
+        throw new Error('Gemini API Key is missing or invalid. Check backend logs.');
+    }
 
     try {
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        return response.text();
+        // Create chat session with structured history using correct API
+        const chat = client.chats.create({
+            model: 'gemini-2.5-flash',
+            config: {
+                systemInstruction
+            },
+            history: history.map(msg => ({
+                role: msg.sender === 'user' ? 'user' : 'model',
+                parts: [{ text: msg.text }]
+            }))
+        });
+
+        // Send the current message with correct API
+        const response = await chat.sendMessage({ message });
+        return response.text;
     } catch (error) {
-        console.error('Error generating AI response:', error);
+        logger.error({ err: error }, 'Error generating chat response');
         throw error;
     }
 };
 
-module.exports = { generateResponse };
+module.exports = { generateChatResponse };

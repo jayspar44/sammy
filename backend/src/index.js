@@ -1,12 +1,12 @@
-require('dotenv').config();
+require('dotenv').config({ quiet: true });
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
-const { pino } = require('pino');
+const pinoHttp = require('pino-http');
+const logger = require('./logger');
 
 const app = express();
-const logger = pino();
 
 const apiRoutes = require('./routes/api');
 
@@ -40,11 +40,17 @@ app.use(cors({
 
 app.use(express.json());
 
-// Logging middleware
-app.use((req, res, next) => {
-    logger.info({ method: req.method, url: req.url }, 'Request received');
-    next();
-});
+// HTTP request logging middleware (attaches req.log to all requests)
+app.use(pinoHttp({
+    logger,
+    autoLogging: false, // Disable automatic request/response logging
+    quietReqLogger: true,
+    // Only include minimal request info when we do log
+    serializers: {
+        req: (req) => ({ method: req.method, url: req.url }),
+        res: (res) => ({ statusCode: res.statusCode })
+    }
+}));
 
 // Routes
 app.use('/api', apiRoutes);
@@ -56,7 +62,7 @@ app.get('/', (req, res) => {
 
 // Start server
 const PORT = process.env.PORT || 4001;
-app.listen(PORT, () => {
-    logger.info(`Server running on port ${PORT}`);
-    console.log(`Server running on port ${PORT}`);
+const HOST = '0.0.0.0'; // Bind to all interfaces for Android emulator access
+app.listen(PORT, HOST, () => {
+    logger.info(`Server running on ${HOST}:${PORT}`);
 });

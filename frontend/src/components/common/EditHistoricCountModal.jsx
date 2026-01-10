@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom';
 import { format, subDays, addDays, startOfWeek, isSameWeek } from 'date-fns';
 import { api } from '../../api/services';
 import { useUserPreferences } from '../../contexts/UserPreferencesContext';
+import { logger } from '../../utils/logger';
 
 export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate }) => {
     const { registeredDate, developerMode } = useUserPreferences();
@@ -111,7 +112,7 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
             // Cache the data
             setWeekDataCache(prev => ({ ...prev, [weekKey]: days }));
         } catch (err) {
-            console.error('Failed to load week data', err);
+            logger.error('Failed to load week data', err);
         } finally {
             setLoadingData(false);
         }
@@ -208,8 +209,7 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
             onSave?.();
             onClose();
         } catch (err) {
-            console.error('Failed to save changes', err);
-            alert('Failed to save some changes. Please try again.');
+            logger.error('Failed to save changes', err);
         } finally {
             setLoading(false);
         }

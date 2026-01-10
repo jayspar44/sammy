@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { api } from '../api/services';
 import { useAuth } from './AuthContext';
+import { logger } from '../utils/logger';
 
 const UserPreferencesContext = createContext();
 
@@ -29,6 +30,7 @@ export const UserPreferencesProvider = ({ children }) => {
     const [avgDrinkCost, setAvgDrinkCost] = useState(10);
     const [avgDrinkCals, setAvgDrinkCals] = useState(150);
     const [chatHistoryEnabled, setChatHistoryEnabled] = useState(true);
+    const [typicalWeek, setTypicalWeek] = useState(null);
     const [profileLoading, setProfileLoading] = useState(false);
 
     // Persistence Effects
@@ -54,9 +56,9 @@ export const UserPreferencesProvider = ({ children }) => {
             if (user) {
                 try {
                     setProfileLoading(true);
-                    console.log("[DEBUG] Fetching User Profile...");
+                    logger.debug('Fetching User Profile...');
                     const data = await api.getUserProfile();
-                    console.log("[DEBUG] Profile Data Received:", data);
+                    logger.debug('Profile Data Received:', data);
 
                     if (data) {
                         if (data.firstName !== undefined) setFirstName(data.firstName);
@@ -64,9 +66,10 @@ export const UserPreferencesProvider = ({ children }) => {
                         if (data.avgDrinkCost !== undefined) setAvgDrinkCost(data.avgDrinkCost);
                         if (data.avgDrinkCals !== undefined) setAvgDrinkCals(data.avgDrinkCals);
                         if (data.chatHistoryEnabled !== undefined) setChatHistoryEnabled(data.chatHistoryEnabled);
+                        if (data.typicalWeek !== undefined) setTypicalWeek(data.typicalWeek);
                     }
                 } catch (error) {
-                    console.error("Failed to load user profile", error);
+                    logger.error('Failed to load user profile', error);
                 } finally {
                     setProfileLoading(false);
                 }
@@ -85,7 +88,7 @@ export const UserPreferencesProvider = ({ children }) => {
             setFirstName(name);
             return true;
         } catch (e) {
-            console.error("Failed to save name", e);
+            logger.error('Failed to save name', e);
             throw e;
         }
     };
@@ -98,9 +101,10 @@ export const UserPreferencesProvider = ({ children }) => {
             if (updates.avgDrinkCost !== undefined) setAvgDrinkCost(updates.avgDrinkCost);
             if (updates.avgDrinkCals !== undefined) setAvgDrinkCals(updates.avgDrinkCals);
             if (updates.chatHistoryEnabled !== undefined) setChatHistoryEnabled(updates.chatHistoryEnabled);
+            if (updates.typicalWeek !== undefined) setTypicalWeek(updates.typicalWeek);
             return true;
         } catch (e) {
-            console.error("Failed to save config", e);
+            logger.error('Failed to save config', e);
             throw e;
         }
     };
@@ -118,6 +122,7 @@ export const UserPreferencesProvider = ({ children }) => {
         avgDrinkCost,
         avgDrinkCals,
         chatHistoryEnabled,
+        typicalWeek,
         updateProfileConfig,
         profileLoading
     };
