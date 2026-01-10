@@ -11,15 +11,15 @@ import { logger } from '../utils/logger';
 // eslint-disable-next-line no-unused-vars -- Icon is used in JSX below
 const StatCard = ({ icon: Icon, label, value, theme = 'emerald', className }) => {
     const themes = {
-        emerald: 'bg-emerald-50 text-emerald-600 border-emerald-100',
-        amber: 'bg-amber-50 text-amber-600 border-amber-100',
-        sky: 'bg-sky-50 text-sky-600 border-sky-100',
-        indigo: 'bg-indigo-50 text-indigo-600 border-indigo-100',
+        emerald: 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800',
+        amber: 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800',
+        sky: 'bg-sky-50 text-sky-600 border-sky-100 dark:bg-sky-900/30 dark:text-sky-400 dark:border-sky-800',
+        indigo: 'bg-indigo-50 text-indigo-600 border-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-400 dark:border-indigo-800',
     };
 
     return (
         <Card className={cn("flex flex-col items-start justify-between p-5 gap-3 transition-transform active:scale-95", themes[theme], className)}>
-            <div className="p-2 bg-white/60 rounded-xl backdrop-blur-sm">
+            <div className="p-2 bg-white/60 rounded-xl backdrop-blur-sm dark:bg-white/10">
                 <Icon className="w-6 h-6" />
             </div>
             <div>
@@ -88,10 +88,10 @@ export default function Insights() {
     const maxVal = Math.max(...monthlyData.map(d => d.val || 0), 5);
 
     return (
-        <div className="p-6 pt-8 animate-fadeIn">
+        <div className="p-6 pt-8 animate-fadeIn min-h-full dark:bg-slate-900">
             <header className="mb-8">
-                <h1 className="text-3xl font-bold text-slate-800 tracking-tight mb-1">Your Progress</h1>
-                <p className="text-slate-500 font-medium">Keep up the momentum!</p>
+                <h1 className="text-3xl font-bold text-slate-800 tracking-tight mb-1 dark:text-slate-50">Your Progress</h1>
+                <p className="text-slate-500 font-medium dark:text-slate-400">Keep up the momentum!</p>
             </header>
 
             {/* Stats Grid */}
@@ -123,7 +123,7 @@ export default function Insights() {
                     </div>
 
                     {/* Streak Card - Full Width */}
-                    <Card className="mb-8 bg-indigo-600 text-white border-none flex items-center justify-between p-6 shadow-lg shadow-indigo-200">
+                    <Card className="mb-8 bg-indigo-600 text-white border-none flex items-center justify-between p-6 shadow-lg shadow-indigo-200 dark:bg-indigo-700 dark:shadow-indigo-950/50">
                         <div className="flex items-center gap-4">
                             <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm">
                                 <Zap className="w-6 h-6 text-yellow-300 fill-current" />
@@ -143,13 +143,13 @@ export default function Insights() {
             {/* Monthly Trend */}
             <Card className="p-6">
                 <div className="flex items-center gap-2 mb-6">
-                    <Calendar className="w-5 h-5 text-slate-400" />
-                    <h3 className="font-bold text-slate-800">Last 30 Days</h3>
+                    <Calendar className="w-5 h-5 text-slate-400 dark:text-slate-500" />
+                    <h3 className="font-bold text-slate-800 dark:text-slate-50">Last 30 Days</h3>
                 </div>
 
                 <div className="flex gap-2 h-40">
                     {/* Y-Axis */}
-                    <div className="flex flex-col justify-between text-xs text-slate-400 font-medium py-1">
+                    <div className="flex flex-col justify-between text-xs text-slate-400 font-medium py-1 dark:text-slate-500">
                         <span>{Math.ceil(maxVal)}</span>
                         <span>{Math.ceil(maxVal / 2)}</span>
                         <span>0</span>
@@ -163,10 +163,10 @@ export default function Insights() {
                             if (d.val === null) {
                                 height = "0px";
                             } else if (d.val === 0) {
-                                barColor = "bg-primary";
+                                barColor = "bg-primary dark:bg-sky-400";
                                 height = "8px"; // Match Home.jsx visual weight
                             } else {
-                                barColor = "bg-sky-200";
+                                barColor = "bg-sky-200 dark:bg-sky-900";
                                 height = `${Math.min((d.val / maxVal) * 100, 100)}%`;
                             }
 
@@ -184,7 +184,7 @@ export default function Insights() {
                         })}
                     </div>
                 </div>
-                <div className="mt-4 flex justify-between text-xs text-slate-400 font-bold tracking-wider">
+                <div className="mt-4 flex justify-between text-xs text-slate-400 font-bold tracking-wider dark:text-slate-500">
                     <span>30 days ago</span>
                     <span>Today</span>
                 </div>

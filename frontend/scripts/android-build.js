@@ -55,7 +55,7 @@ const configs = {
     emoji: '🔵',
     backend: 'http://10.0.2.2:4001 (local backend)',
     flavor: 'local',
-    buildMode: 'local-build'
+    buildMode: 'android-local'
   },
   'local-livereload': {
     appId: 'io.sammy.app.local',

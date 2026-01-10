@@ -340,6 +340,61 @@ See the deployment plan for full setup instructions:
 | Frontend Hosting | Firebase Hosting | - |
 | CI/CD      | Google Cloud Build | -       |
 
+## Security
+
+### 🚨 CRITICAL: Never Commit Secrets
+
+**NEVER commit any file containing secrets, credentials, or API keys to git.**
+
+#### Protected Files (Must NEVER be committed)
+- `.env` (backend)
+- `.env.local` (frontend)
+- `.env.dev` (frontend)
+- `.env.production` (frontend)
+- `.env.android-local` (frontend)
+- Any file matching `.env*` EXCEPT `.env.example` or `.env.template` files
+
+#### Gitignore Pattern
+Both `frontend/.gitignore` and `backend/.gitignore` use pattern-based matching:
+```gitignore
+# Ignore ALL .env files
+.env*
+
+# EXCEPT templates/examples (these are safe to commit)
+!.env.example
+!.env.template
+!.env*.example
+!.env*.template
+```
+
+#### What Contains Secrets
+- **Firebase Config**: Contains API keys (even though client-side, should not be in git)
+- **Backend ENV**: Contains Firebase service account JSON, Gemini API key
+- **Any file with `apiKey`, `serviceAccount`, or similar sensitive data**
+
+#### GCP Secret Manager
+Production secrets are stored in GCP Secret Manager:
+- `FIREBASE_CLIENT_CONFIG` - Frontend Firebase config (used by Cloud Build)
+- `FIREBASE_SERVICE_ACCOUNT` - Backend Admin SDK credentials
+- `GEMINI_API_KEY` - AI API access
+
+#### If a Secret Leaks
+1. **Rotate the key immediately** in Google Cloud Console
+2. **Update all environment files** with new key
+3. **Update GCP Secret Manager** with new key
+4. **Delete the old key** from Google Cloud Console
+5. **Do NOT commit the updated .env files** - they're still ignored
+6. If the key was pushed to GitHub, consider git history cleanup (but rotation is most critical)
+
+#### Before Committing
+Always verify you're not about to commit secrets:
+```bash
+git status          # Check what's staged
+git diff --cached   # Review staged changes
+```
+
+If you see any `.env` file (except `.env.example` or `.env.template`), **STOP** and ensure it's in `.gitignore`.
+
 ## Coding Conventions
 
 ### Naming

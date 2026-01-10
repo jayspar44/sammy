@@ -14,8 +14,8 @@ const Message = ({ text, sender }) => {
             <div className={cn(
                 "max-w-[80%] p-3 text-sm leading-relaxed shadow-sm transition-all",
                 isUser
-                    ? "bg-primary text-white rounded-2xl rounded-tr-none"
-                    : "bg-surface text-slate-700 border border-slate-100 rounded-2xl rounded-tl-none"
+                    ? "bg-primary text-white rounded-2xl rounded-tr-none dark:bg-sky-600"
+                    : "bg-surface text-slate-700 border border-slate-100 rounded-2xl rounded-tl-none dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700"
             )}>
                 {text}
             </div>
@@ -84,7 +84,7 @@ export default function Companion() {
     };
 
     return (
-        <div className="flex flex-col h-full relative bg-neutral-50">
+        <div className="flex flex-col h-full relative bg-neutral-50 dark:bg-slate-900">
             <TopBar />
 
             {/* Messages */}
@@ -94,10 +94,10 @@ export default function Companion() {
                 ))}
                 {isTyping && (
                     <div className="flex justify-start mb-4 animate-pulse">
-                        <div className="bg-white border border-slate-100 rounded-2xl rounded-tl-none p-4 flex gap-1">
-                            <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                            <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                            <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                        <div className="bg-white border border-slate-100 rounded-2xl rounded-tl-none p-4 flex gap-1 dark:bg-slate-800 dark:border-slate-700">
+                            <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce dark:bg-slate-500" style={{ animationDelay: '0ms' }} />
+                            <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce dark:bg-slate-500" style={{ animationDelay: '150ms' }} />
+                            <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce dark:bg-slate-500" style={{ animationDelay: '300ms' }} />
                         </div>
                     </div>
                 )}
@@ -105,15 +105,15 @@ export default function Companion() {
             </div>
 
             {/* Input Area - in flex flow, above navbar */}
-            <div className="px-4 py-2 bg-neutral-50">
-                <div className="bg-white/95 backdrop-blur-md border border-slate-200 p-2 rounded-[2rem] shadow-xl flex gap-2">
+            <div className="px-4 py-2 bg-neutral-50 dark:bg-slate-900">
+                <div className="bg-white/95 backdrop-blur-md border border-slate-200 p-2 rounded-[2rem] shadow-xl flex gap-2 dark:bg-slate-800/95 dark:border-slate-700">
                     <input
                         type="text"
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                         placeholder="Type a message..."
-                        className="flex-1 bg-transparent px-4 text-sm focus:outline-none font-medium text-slate-700 min-w-0"
+                        className="flex-1 bg-transparent px-4 text-sm focus:outline-none font-medium text-slate-700 min-w-0 dark:text-slate-200 placeholder:dark:text-slate-500"
                     />
                     <Button
                         size="icon"

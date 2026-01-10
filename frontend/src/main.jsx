@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { Capacitor } from '@capacitor/core'
 import { StatusBar, Style } from '@capacitor/status-bar'
+import { SafeArea } from '@capacitor-community/safe-area'
 import './index.css'
 import App from './App.jsx'
 import { logger } from './utils/logger'
@@ -18,6 +19,11 @@ window.addEventListener('unhandledrejection', function (event) {
 
 // Configure status bar for native platforms
 if (Capacitor.isNativePlatform()) {
+  // Initialize safe area plugin (handles older Android WebView < 140)
+  SafeArea.enable();
+
+  // Configure status bar with overlay
+  StatusBar.setOverlaysWebView({ overlay: true });
   StatusBar.setStyle({ style: Style.Dark });
   StatusBar.setBackgroundColor({ color: '#f8fafc' });
 }

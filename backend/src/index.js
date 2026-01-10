@@ -10,6 +10,9 @@ const app = express();
 
 const apiRoutes = require('./routes/api');
 
+// Trust proxy headers (required for Cloud Run, load balancers, etc.)
+app.set('trust proxy', true);
+
 // Security Middleware
 app.use(helmet());
 

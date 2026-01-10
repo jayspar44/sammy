@@ -8,6 +8,7 @@ import Login from './pages/Login';
 import Settings from './pages/Settings';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
+import { ThemeProvider } from './contexts/ThemeContext';
 import { UserPreferencesProvider } from './contexts/UserPreferencesContext';
 import { ConnectionProvider, useConnection } from './contexts/ConnectionContext';
 import { setConnectionStatusCallback } from './api/client';
@@ -49,11 +50,13 @@ function AppContent() {
 function App() {
   return (
     <AuthProvider>
-      <UserPreferencesProvider>
-        <ConnectionProvider>
-          <AppContent />
-        </ConnectionProvider>
-      </UserPreferencesProvider>
+      <ThemeProvider>
+        <UserPreferencesProvider>
+          <ConnectionProvider>
+            <AppContent />
+          </ConnectionProvider>
+        </UserPreferencesProvider>
+      </ThemeProvider>
     </AuthProvider>
   );
 }
