@@ -1,6 +1,14 @@
 {
-    "version": "0.9.3",
+    "version": "0.10.0",
     "history": [
+        {
+            "version": "0.10.0",
+            "date": "2026-01-10",
+            "author": "jason",
+            "changes": [
+                "Add Android app icons and splash screens with theme-adaptive design"
+            ]
+        },
         {
             "version": "0.9.3",
             "date": "2026-01-10",
