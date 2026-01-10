@@ -187,7 +187,7 @@ export default function Home() {
             <div className="mb-10 animate-slideUp" style={{ animationDelay: '200ms' }}>
                 <Button
                     variant="primary"
-                    className="w-full shadow-lg shadow-sky-200/50 py-4 text-lg mb-3"
+                    className="w-full shadow-md shadow-sky-200/50 py-4 text-lg mb-3"
                     onClick={() => handleLogDrink(0)}
                 >
                     <Sparkles className="w-5 h-5 mr-2" />

@@ -1,6 +1,14 @@
 {
-    "version": "0.6.0",
+    "version": "0.6.1",
     "history": [
+        {
+            "version": "0.6.1",
+            "date": "2026-01-10",
+            "author": "jason",
+            "changes": [
+                "UI polish: new logo assets, settings button redesign, wordmark styling"
+            ]
+        },
         {
             "version": "0.6.0",
             "date": "2026-01-10",
