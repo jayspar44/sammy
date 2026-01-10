@@ -8,7 +8,7 @@
   "plugins": {
     "StatusBar": {
       "overlay": true,
-      "backgroundColor": "#f8fafc"
+      "backgroundColor": "#1e293b"
     },
     "SystemBars": {
       "insetsHandling": "enforce"

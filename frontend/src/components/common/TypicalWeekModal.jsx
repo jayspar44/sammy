@@ -3,6 +3,7 @@ import { X, Save } from 'lucide-react';
 import Button from '../ui/Button';
 import { clsx } from 'clsx';
 import { createPortal } from 'react-dom';
+import { logger } from '../../utils/logger';
 
 const DAYS = [
     { key: 'monday', label: 'Monday' },
@@ -133,7 +134,7 @@ export const TypicalWeekModal = ({ isOpen, onClose, onSave, initialData }) => {
             await onSave(weekData);
             onClose();
         } catch (error) {
-            console.error('Failed to save typical week:', error);
+            logger.error('Failed to save typical week:', error);
         } finally {
             setLoading(false);
         }
