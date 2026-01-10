@@ -1,11 +1,12 @@
 const pino = require('pino');
 
-// Default to pretty-print unless explicitly in production
-const isProd = process.env.NODE_ENV === 'production';
+// Only use pino-pretty for local development (NODE_ENV undefined or 'development')
+// GCP environments (dev, prod) use structured JSON for Cloud Logging compatibility
+const isLocalDev = !process.env.NODE_ENV || process.env.NODE_ENV === 'development';
 
 const logger = pino({
     level: process.env.LOG_LEVEL || 'info',
-    ...(!isProd && {
+    ...(isLocalDev && {
         transport: {
             target: 'pino-pretty',
             options: {
@@ -15,8 +16,8 @@ const logger = pino({
             }
         }
     }),
-    // Minimal output in production
-    ...(isProd && {
+    // Structured JSON output for cloud environments (dev, prod)
+    ...(!isLocalDev && {
         formatters: {
             level: (label) => ({ level: label })
         },
