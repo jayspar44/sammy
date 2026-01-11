@@ -1,6 +1,14 @@
 {
-    "version": "0.10.3",
+    "version": "0.10.4",
     "history": [
+        {
+            "version": "0.10.4",
+            "date": "2026-01-11",
+            "author": "jason",
+            "changes": [
+                "Update CLAUDE.md with missing API endpoint, ThemeContext, and accurate gitignore patterns"
+            ]
+        },
         {
             "version": "0.10.3",
             "date": "2026-01-10",

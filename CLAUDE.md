@@ -19,7 +19,7 @@ sammy-1/
 │   ├── src/
 │   │   ├── pages/           # Home, Companion, Insights, Settings, Login
 │   │   ├── components/      # UI components (layout/, common/, ui/)
-│   │   ├── contexts/        # AuthContext, UserPreferencesContext, ConnectionContext
+│   │   ├── contexts/        # AuthContext, UserPreferencesContext, ConnectionContext, ThemeContext
 │   │   ├── api/             # Axios client and API services
 │   │   └── utils/           # Helper functions
 │   └── capacitor.config.json # Mobile app config (io.sammy.app)
@@ -109,6 +109,7 @@ All endpoints (except health) require Firebase Auth token in `Authorization: Bea
 | GET    | `/api/health`         | Health check (public)      |
 | POST   | `/api/log`            | Log a drink                |
 | PUT    | `/api/log`            | Update a log entry         |
+| DELETE | `/api/log`            | Delete a log entry         |
 | GET    | `/api/stats`          | Get user statistics        |
 | GET    | `/api/stats/range`    | Get stats for date range   |
 | POST   | `/api/user/profile`   | Create/update user profile |
@@ -220,7 +221,8 @@ npm run lint --prefix backend
 | `npm run build`            | Build frontend for production        |
 | `npm run android`          | Build prod Android app               |
 | `npm run android:dev`      | Build dev Android app                |
-| `npm run android:local`    | Android with live reload             |
+| `npm run android:local`    | Build local Android app              |
+| `npm run android:local-livereload` | Android with live reload   |
 | `npm run lint`             | Run ESLint on frontend and backend   |
 | `npm run validate-env`     | Validate environment configuration   |
 | `npm run version:get`      | Get current version                  |
@@ -352,17 +354,23 @@ See the deployment plan for full setup instructions:
 - `.env.dev` (frontend)
 - `.env.production` (frontend)
 - `.env.android-local` (frontend)
+- `.env.local-build` (frontend)
 - Any file matching `.env*` EXCEPT `.env.example` or `.env.template` files
 
-#### Gitignore Pattern
-Both `frontend/.gitignore` and `backend/.gitignore` use pattern-based matching:
-```gitignore
-# Ignore ALL .env files
-.env*
+#### Gitignore Patterns
+Both `.gitignore` files ignore all `.env*` files except templates/examples:
 
-# EXCEPT templates/examples (these are safe to commit)
+**Backend** (`backend/.gitignore`):
+```gitignore
+.env*
 !.env.example
-!.env.template
+```
+
+**Frontend** (`frontend/.gitignore`):
+```gitignore
+.env*
+!.env.local.template
+!.env.production.example
 !.env*.example
 !.env*.template
 ```
