@@ -1,7 +1,7 @@
 {
   "name": "frontend",
   "private": true,
-  "version": "0.10.8",
+  "version": "0.10.9",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -13,7 +13,11 @@
     "android:dev": "node scripts/android-build.js dev",
     "android:local": "node scripts/android-build.js local",
     "android:local-livereload": "node scripts/android-build.js local-livereload",
-    "generate:android-assets": "node scripts/generate-android-assets.js"
+    "generate:android-assets": "node scripts/generate-android-assets.js",
+    "apk": "node scripts/build-apk.js dev debug",
+    "apk:dev": "node scripts/build-apk.js dev debug",
+    "apk:local": "node scripts/build-apk.js local debug",
+    "apk:prod": "node scripts/build-apk.js prod release"
   },
   "dependencies": {
     "@capacitor-community/safe-area": "^8.0.1",

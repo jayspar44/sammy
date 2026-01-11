@@ -174,6 +174,26 @@ npm run android            # Then open Android Studio and run
 npx cap open android
 ```
 
+### Build APK (No Android Studio)
+
+Build APKs directly via Gradle and copy to Google Drive:
+
+```bash
+# Default: dev debug
+npm run apk               # Build devDebug APK
+
+# Specific variants
+npm run apk:dev           # Build devDebug APK
+npm run apk:local         # Build localDebug APK
+npm run apk:prod          # Build prodRelease APK
+
+# Custom variant (from frontend dir)
+cd frontend && node scripts/build-apk.js prod debug
+```
+
+APKs are automatically copied to `G:\My Drive\sammy` with versioned filenames:
+- `sammy-dev-debug-v0.10.8-20260111-1430.apk`
+
 ### Build for iOS
 
 ```bash
@@ -223,6 +243,10 @@ npm run lint --prefix backend
 | `npm run android:dev`      | Build dev Android app                |
 | `npm run android:local`    | Build local Android app              |
 | `npm run android:local-livereload` | Android with live reload   |
+| `npm run apk`              | Build devDebug APK to Google Drive   |
+| `npm run apk:dev`          | Build devDebug APK to Google Drive   |
+| `npm run apk:local`        | Build localDebug APK to Google Drive |
+| `npm run apk:prod`         | Build prodRelease APK to Google Drive|
 | `npm run lint`             | Run ESLint on frontend and backend   |
 | `npm run validate-env`     | Validate environment configuration   |
 | `npm run version:get`      | Get current version                  |
