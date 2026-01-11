@@ -13,6 +13,7 @@ import { UserPreferencesProvider } from './contexts/UserPreferencesContext';
 import { ConnectionProvider, useConnection } from './contexts/ConnectionContext';
 import { setConnectionStatusCallback } from './api/client';
 import { getEnvironment } from './utils/appConfig';
+import { setupKeyboardListeners } from './utils/keyboard';
 
 function AppContent() {
   const { setApiConnectionStatus } = useConnection();
@@ -48,6 +49,12 @@ function AppContent() {
 }
 
 function App() {
+  // Setup keyboard listeners for native platforms
+  useEffect(() => {
+    const cleanup = setupKeyboardListeners();
+    return cleanup;
+  }, []);
+
   return (
     <AuthProvider>
       <ThemeProvider>

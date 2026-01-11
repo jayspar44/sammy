@@ -22,7 +22,13 @@ export const TopBar = () => {
     };
 
     return (
-        <header className="relative flex items-center justify-between px-6 py-4 bg-surface/80 backdrop-blur-md sticky top-0 z-40 dark:bg-slate-800/80">
+        <header
+            className="absolute top-0 left-0 right-0 flex items-center justify-between px-6 bg-surface/80 backdrop-blur-md z-40 dark:bg-slate-800/80"
+            style={{
+                paddingTop: 'calc(var(--safe-area-top, 0px) + 1rem)',
+                paddingBottom: '1rem'
+            }}
+        >
             {/* Left: Logo and greeting */}
             <div className="flex items-center gap-3">
                 <Wordmark variant="icon" size="sm" />
@@ -38,8 +44,11 @@ export const TopBar = () => {
                 </div>
             </div>
 
-            {/* Center: Version string (absolute positioned, top aligned) */}
-            <div className="absolute left-1/2 top-4 -translate-x-1/2">
+            {/* Center: Version string (absolute positioned, below safe area) */}
+            <div
+                className="absolute left-1/2 -translate-x-1/2"
+                style={{ top: 'calc(var(--safe-area-top, 0px) + 1rem)' }}
+            >
                 <p className="text-slate-400 font-mono text-[10px] dark:text-slate-500">{getVersionString()}</p>
             </div>
 

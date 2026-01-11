@@ -1,3 +1,5 @@
+/* global __BUILD_TIMESTAMP__ */
+
 /**
  * Get the app version
  * @returns {string} App version from package.json
@@ -37,11 +39,27 @@ export const getEnvironment = () => {
 };
 
 /**
- * Get formatted version string with environment
- * @returns {string} Formatted version string (e.g., "v0.1.1 (dev)")
+ * Format build timestamp as yyyy-mm-dd hh:mm (24hr)
+ * @returns {string} Formatted build time
+ */
+const formatBuildTime = () => {
+  if (typeof __BUILD_TIMESTAMP__ === 'undefined') return '';
+  const d = new Date(__BUILD_TIMESTAMP__);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day} ${hours}:${minutes}`;
+};
+
+/**
+ * Get formatted version string with environment and build time
+ * @returns {string} Formatted version string (e.g., "v0.1.1 (dev) 2026-01-11 15:45")
  */
 export const getVersionString = () => {
   const version = getAppVersion();
   const env = getEnvironment();
-  return `v${version} (${env})`;
+  const buildTime = formatBuildTime();
+  return `v${version} (${env}) ${buildTime}`;
 };

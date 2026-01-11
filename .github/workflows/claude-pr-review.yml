@@ -12,7 +12,8 @@ on:
 
 jobs:
   automatic-review:
-    if: github.event_name == 'pull_request'
+    # Disabled - using manual /code-review skill instead (API key switched to subscription)
+    if: false && github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: read
