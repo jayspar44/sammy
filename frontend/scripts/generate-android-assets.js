@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* global Buffer, process */
 
 import sharp from 'sharp';
 import fs from 'fs';
