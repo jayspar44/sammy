@@ -1,6 +1,14 @@
 {
-    "version": "0.10.4",
+    "version": "0.10.5",
     "history": [
+        {
+            "version": "0.10.5",
+            "date": "2026-01-11",
+            "author": "jason",
+            "changes": [
+                "Improve weekly trend card with drink counts and clickable history"
+            ]
+        },
         {
             "version": "0.10.4",
             "date": "2026-01-11",

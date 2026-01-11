@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { Sparkles, Plus, Calendar } from 'lucide-react';
+import { Sparkles, Plus } from 'lucide-react';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import SunProgress from '../components/ui/SunProgress';
@@ -76,8 +76,8 @@ const WeeklyTrend = ({ data = [], currentDateStr }) => {
 
                         return (
                             <div key={i} className="flex-1 h-full flex flex-col justify-end items-center gap-2 group cursor-pointer relative">
-                                {d.val === 0 && (
-                                    <span className="text-[10px] font-bold text-primary animate-fadeIn -mb-1 dark:text-sky-400">0</span>
+                                {d.val !== null && (
+                                    <span className="text-[10px] font-bold text-primary animate-fadeIn -mb-1 dark:text-sky-400">{d.val}</span>
                                 )}
                                 {/* Bar */}
                                 <div
@@ -209,22 +209,16 @@ export default function Home() {
             </Card>
 
             {/* Weekly Trend */}
-            <Card className="p-6 animate-slideUp" style={{ animationDelay: '300ms' }}>
+            <Card
+                className="p-6 animate-slideUp cursor-pointer active:scale-[0.98] transition-transform"
+                style={{ animationDelay: '300ms' }}
+                onClick={() => setShowEditModal(true)}
+            >
                 <div className="flex items-center justify-between mb-6">
-                    <h3 className="font-bold text-slate-800 dark:text-slate-50">Weekly Trend</h3>
+                    <h3 className="font-bold text-slate-800 dark:text-slate-50">Last 7 days</h3>
                 </div>
 
                 <WeeklyTrend data={trends} currentDateStr={manualDate || format(new Date(), 'yyyy-MM-dd')} />
-
-                {/* Edit History Button */}
-                <Button
-                    variant="ghost"
-                    className="w-full mt-6 bg-slate-50 text-slate-600 hover:bg-slate-100 py-2.5 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-                    onClick={() => setShowEditModal(true)}
-                >
-                    <Calendar className="w-4 h-4 mr-2" />
-                    Edit History
-                </Button>
             </Card>
 
 
