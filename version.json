@@ -1,6 +1,14 @@
 {
-    "version": "0.10.6",
+    "version": "0.10.7",
     "history": [
+        {
+            "version": "0.10.7",
+            "date": "2026-01-11",
+            "author": "jason",
+            "changes": [
+                "Add build timestamp to version display on all pages"
+            ]
+        },
         {
             "version": "0.10.6",
             "date": "2026-01-11",
