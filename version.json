@@ -1,6 +1,14 @@
 {
-    "version": "0.10.7",
+    "version": "0.10.8",
     "history": [
+        {
+            "version": "0.10.8",
+            "date": "2026-01-11",
+            "author": "jason",
+            "changes": [
+                "Fix Android status bar edge-to-edge design and icon colors"
+            ]
+        },
         {
             "version": "0.10.7",
             "date": "2026-01-11",

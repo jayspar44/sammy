@@ -23,15 +23,16 @@ export const ThemeProvider = ({ children }) => {
     }, [theme]);
 
     // Update StatusBar based on theme (Android/iOS)
+    // Note: Style.Dark = light/white icons, Style.Light = dark/black icons
     useEffect(() => {
         if (Capacitor.isNativePlatform()) {
             if (theme === 'dark') {
-                // Dark mode: light text on dark background
-                StatusBar.setStyle({ style: Style.Light });
+                // Dark mode: light icons on dark background
+                StatusBar.setStyle({ style: Style.Dark });
                 StatusBar.setBackgroundColor({ color: '#1e293b' }); // slate-800
             } else {
-                // Light mode: dark text on light blue background
-                StatusBar.setStyle({ style: Style.Dark });
+                // Light mode: dark icons on light blue background
+                StatusBar.setStyle({ style: Style.Light });
                 StatusBar.setBackgroundColor({ color: '#0ea5e9' }); // sky-500
             }
         }

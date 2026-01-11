@@ -24,16 +24,17 @@ if (Capacitor.isNativePlatform()) {
     // Not implemented on all Android versions - CSS fallbacks will be used
   });
 
-  // Configure status bar (non-overlay for opaque background)
-  StatusBar.setOverlaysWebView({ overlay: false });
+  // Configure status bar for edge-to-edge display
+  StatusBar.setOverlaysWebView({ overlay: true });
 
   // Set initial status bar based on saved theme
+  // Note: Style.Dark = light/white icons, Style.Light = dark/black icons
   const savedTheme = localStorage.getItem('sammy_pref_theme') || 'light';
   if (savedTheme === 'dark') {
-    StatusBar.setStyle({ style: Style.Light });
+    StatusBar.setStyle({ style: Style.Dark }); // light icons on dark background
     StatusBar.setBackgroundColor({ color: '#1e293b' }); // slate-800
   } else {
-    StatusBar.setStyle({ style: Style.Dark });
+    StatusBar.setStyle({ style: Style.Light }); // dark icons on light background
     StatusBar.setBackgroundColor({ color: '#0ea5e9' }); // sky-500
   }
 }
