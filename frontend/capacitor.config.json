@@ -12,11 +12,11 @@
       "resizeOnFullScreen": true
     },
     "StatusBar": {
-      "overlay": true,
-      "backgroundColor": "#1e293b"
+      "overlay": false,
+      "backgroundColor": "#0ea5e9"
     },
     "SystemBars": {
-      "insetsHandling": "enforce"
+      "insetsHandling": "disable"
     }
   }
 }

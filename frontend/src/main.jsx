@@ -19,11 +19,13 @@ window.addEventListener('unhandledrejection', function (event) {
 
 // Configure status bar for native platforms
 if (Capacitor.isNativePlatform()) {
-  // Initialize safe area plugin (handles older Android WebView < 140)
-  SafeArea.enable();
+  // Initialize safe area plugin (injects CSS variables for older Android WebView)
+  SafeArea.enable().catch(() => {
+    // Not implemented on all Android versions - CSS fallbacks will be used
+  });
 
-  // Configure status bar with overlay
-  StatusBar.setOverlaysWebView({ overlay: true });
+  // Configure status bar (non-overlay for opaque background)
+  StatusBar.setOverlaysWebView({ overlay: false });
 
   // Set initial status bar based on saved theme
   const savedTheme = localStorage.getItem('sammy_pref_theme') || 'light';

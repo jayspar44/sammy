@@ -23,7 +23,8 @@ export const TopBar = () => {
 
     return (
         <header
-            className="absolute top-0 left-0 right-0 flex items-center justify-between px-6 py-4 bg-surface/80 backdrop-blur-md z-40 dark:bg-slate-800/80"
+            className="absolute left-0 right-0 flex items-center justify-between px-6 py-4 bg-surface/80 backdrop-blur-md z-40 dark:bg-slate-800/80"
+            style={{ top: 'var(--safe-area-top, 0px)' }}
         >
             {/* Left: Logo and greeting */}
             <div className="flex items-center gap-3">

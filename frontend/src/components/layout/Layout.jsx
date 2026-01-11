@@ -13,19 +13,28 @@ export const Layout = () => {
 
     return (
         <MobileContainer>
-            {/* Notification bars - sticky at top */}
+            {/* Notification bars - sticky at top, accounting for safe area */}
             {developerMode && (
-                <div className="sticky top-0 bg-amber-100 text-amber-800 text-[10px] font-bold text-center py-1 border-b border-amber-200 z-50 dark:bg-amber-900 dark:text-amber-200 dark:border-amber-800">
+                <div
+                    className="sticky bg-amber-100 text-amber-800 text-[10px] font-bold text-center py-1 border-b border-amber-200 z-50 dark:bg-amber-900 dark:text-amber-200 dark:border-amber-800"
+                    style={{ top: 'var(--safe-area-top, 0px)' }}
+                >
                     Developer Mode Active {spoofDb && "(Spoofing DB)"}
                 </div>
             )}
             {!isOnline && (
-                <div className="sticky top-0 bg-red-600 text-white text-xs font-semibold text-center py-2 border-b border-red-700 z-50">
+                <div
+                    className="sticky bg-red-600 text-white text-xs font-semibold text-center py-2 border-b border-red-700 z-50"
+                    style={{ top: 'var(--safe-area-top, 0px)' }}
+                >
                     ⚠️ No Internet Connection
                 </div>
             )}
             {isOnline && !isApiConnected && (
-                <div className="sticky top-0 bg-orange-600 text-white text-xs font-semibold text-center py-2 border-b border-orange-700 z-50">
+                <div
+                    className="sticky bg-orange-600 text-white text-xs font-semibold text-center py-2 border-b border-orange-700 z-50"
+                    style={{ top: 'var(--safe-area-top, 0px)' }}
+                >
                     ⚠️ Cannot Connect to Server - Check if backend is running
                 </div>
             )}
@@ -37,10 +46,10 @@ export const Layout = () => {
             <div
                 className="absolute inset-0 overflow-y-auto z-10 custom-scrollbar"
                 style={{
-                    paddingTop: '4.5rem', // TopBar height ~56px + 16px spacing (safe-area-top already in MobileContainer)
+                    paddingTop: 'calc(var(--safe-area-top, 0px) + 4.5rem)', // Safe area + TopBar height
                     paddingBottom: isCompanionPage
-                        ? 'calc(1.5rem + 4rem + 4px + 3.75rem + var(--safe-area-bottom, 0))' // Navbar + gap + 4px + chat input (~60px)
-                        : 'calc(1.5rem + 4rem + var(--safe-area-bottom, 0))' // Navbar + gap
+                        ? 'calc(1.5rem + 4rem + 4px + 3.75rem + var(--safe-area-bottom, 0px))' // Navbar + gap + 4px + chat input (~60px)
+                        : 'calc(1.5rem + 4rem + var(--safe-area-bottom, 0px))' // Navbar + gap
                 }}
             >
                 <Outlet />
