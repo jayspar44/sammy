@@ -1,0 +1,287 @@
+#!/usr/bin/env node
+/* global process */
+
+/**
+ * APK Build Script
+ *
+ * Builds an Android APK via Gradle and copies it to Google Drive.
+ *
+ * Usage:
+ *   node scripts/build-apk.js [flavor] [buildType]
+ *
+ * Arguments:
+ *   flavor    - local, dev, prod (default: dev)
+ *   buildType - debug, release (default: debug)
+ *
+ * Examples:
+ *   node scripts/build-apk.js              # Build devDebug
+ *   node scripts/build-apk.js dev debug    # Build devDebug
+ *   node scripts/build-apk.js local debug  # Build localDebug
+ *   node scripts/build-apk.js prod release # Build prodRelease
+ */
+
+import { existsSync, copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
+import { spawn } from 'child_process';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const frontendDir = join(__dirname, '..');
+const androidDir = join(frontendDir, 'android');
+const configPath = join(frontendDir, 'capacitor.config.json');
+
+// Google Drive destination
+const GOOGLE_DRIVE_PATH = 'G:\\My Drive\\sammy';
+
+// ANSI color codes
+const colors = {
+  reset: '\x1b[0m',
+  bright: '\x1b[1m',
+  dim: '\x1b[2m',
+  red: '\x1b[31m',
+  green: '\x1b[32m',
+  yellow: '\x1b[33m',
+  blue: '\x1b[34m',
+  cyan: '\x1b[36m',
+};
+
+// Valid flavors and build types
+const VALID_FLAVORS = ['local', 'dev', 'prod'];
+const VALID_BUILD_TYPES = ['debug', 'release'];
+
+// Flavor configurations (matching android-build.js)
+const flavorConfigs = {
+  local: {
+    appId: 'io.sammy.app.local',
+    appName: 'Sammy Local',
+    server: { androidScheme: 'http', cleartext: true },
+    buildMode: 'android-local'
+  },
+  dev: {
+    appId: 'io.sammy.app.dev',
+    appName: 'Sammy Dev',
+    server: { androidScheme: 'https' },
+    buildMode: 'dev'
+  },
+  prod: {
+    appId: 'io.sammy.app',
+    appName: 'Sammy',
+    server: { androidScheme: 'https' },
+    buildMode: 'production'
+  }
+};
+
+// Parse command line arguments
+const flavor = process.argv[2] || 'dev';
+const buildType = process.argv[3] || 'debug';
+
+// Validate arguments
+if (!VALID_FLAVORS.includes(flavor)) {
+  console.error(`${colors.red}Invalid flavor: ${flavor}${colors.reset}`);
+  console.error(`Valid flavors: ${VALID_FLAVORS.join(', ')}`);
+  process.exit(1);
+}
+
+if (!VALID_BUILD_TYPES.includes(buildType)) {
+  console.error(`${colors.red}Invalid build type: ${buildType}${colors.reset}`);
+  console.error(`Valid build types: ${VALID_BUILD_TYPES.join(', ')}`);
+  process.exit(1);
+}
+
+// Get version from package.json
+function getVersion() {
+  const packageJson = JSON.parse(readFileSync(join(frontendDir, 'package.json'), 'utf-8'));
+  return packageJson.version;
+}
+
+// Generate timestamp in format YYYYMMDD-HHmm
+function getTimestamp() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  return `${year}${month}${day}-${hours}${minutes}`;
+}
+
+// Status logging
+function logStep(status, message) {
+  const icons = {
+    pending: `${colors.dim}[ ]${colors.reset}`,
+    running: `${colors.cyan}[>]${colors.reset}`,
+    success: `${colors.green}[+]${colors.reset}`,
+    error: `${colors.red}[x]${colors.reset}`,
+    warning: `${colors.yellow}[!]${colors.reset}`,
+  };
+  console.log(`${icons[status]} ${message}`);
+}
+
+// Print banner
+function printBanner() {
+  const version = getVersion();
+  const gradleTask = `assemble${capitalize(flavor)}${capitalize(buildType)}`;
+
+  console.log('');
+  console.log(`${colors.bright}========================================${colors.reset}`);
+  console.log(`${colors.bright}  APK BUILD: ${flavor}${capitalize(buildType)} (v${version})${colors.reset}`);
+  console.log(`${colors.bright}========================================${colors.reset}`);
+  console.log(`  Flavor:     ${flavor}`);
+  console.log(`  Build Type: ${buildType}`);
+  console.log(`  Gradle:     ${gradleTask}`);
+  console.log(`  Output:     ${GOOGLE_DRIVE_PATH}`);
+  console.log('');
+}
+
+function capitalize(str) {
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+// Save original config for restoration
+let originalConfig;
+
+// Write the Capacitor config for the build
+function writeConfig() {
+  originalConfig = readFileSync(configPath, 'utf-8');
+  const config = flavorConfigs[flavor];
+  const capConfig = {
+    appId: config.appId,
+    appName: config.appName,
+    webDir: 'dist',
+    server: config.server,
+    plugins: {
+      Keyboard: {
+        resize: 'native',
+        style: 'dark',
+        resizeOnFullScreen: true
+      },
+      StatusBar: {
+        overlay: true
+      },
+      SystemBars: {
+        insetsHandling: 'disable'
+      }
+    }
+  };
+  writeFileSync(configPath, JSON.stringify(capConfig, null, 2));
+  logStep('success', 'Capacitor config updated');
+}
+
+// Restore original config
+function restoreConfig() {
+  if (originalConfig) {
+    writeFileSync(configPath, originalConfig);
+    logStep('success', 'Capacitor config restored');
+  }
+}
+
+// Run a command and return a promise
+function runCommand(command, args, options = {}) {
+  return new Promise((resolve, reject) => {
+    logStep('running', `${command} ${args.join(' ')}`);
+    const proc = spawn(command, args, {
+      cwd: options.cwd || frontendDir,
+      stdio: 'inherit',
+      shell: true,
+      ...options
+    });
+    proc.on('close', (code) => {
+      if (code === 0) {
+        resolve();
+      } else {
+        reject(new Error(`Command failed with code ${code}`));
+      }
+    });
+    proc.on('error', reject);
+  });
+}
+
+// Main execution
+async function main() {
+  printBanner();
+
+  const version = getVersion();
+  const timestamp = getTimestamp();
+  const gradleTask = `assemble${capitalize(flavor)}${capitalize(buildType)}`;
+
+  // APK source path
+  const apkFileName = `app-${flavor}-${buildType}.apk`;
+  const apkSourcePath = join(androidDir, 'app', 'build', 'outputs', 'apk', flavor, buildType, apkFileName);
+
+  // APK destination path with versioned name
+  const destFileName = `sammy-${flavor}-${buildType}-v${version}-${timestamp}.apk`;
+  const apkDestPath = join(GOOGLE_DRIVE_PATH, destFileName);
+
+  // Setup cleanup handler
+  const cleanup = () => {
+    restoreConfig();
+    process.exit(1);
+  };
+  process.on('SIGINT', cleanup);
+  process.on('SIGTERM', cleanup);
+
+  try {
+    // Step 1: Update Capacitor config
+    writeConfig();
+
+    // Step 2: Build frontend
+    const buildMode = flavorConfigs[flavor].buildMode;
+    logStep('running', `Building frontend (mode: ${buildMode})...`);
+    await runCommand('npm', ['run', 'build', '--', '--mode', buildMode]);
+    logStep('success', 'Frontend build complete');
+
+    // Step 3: Sync Capacitor
+    logStep('running', 'Syncing Capacitor...');
+    await runCommand('npx', ['cap', 'sync', 'android']);
+    logStep('success', 'Capacitor sync complete');
+
+    // Step 4: Run Gradle build
+    logStep('running', `Running Gradle: ${gradleTask}...`);
+    await runCommand('.\\gradlew.bat', [gradleTask], { cwd: androidDir });
+    logStep('success', 'Gradle build complete');
+
+    // Restore config before copying
+    restoreConfig();
+
+    // Step 5: Verify APK exists
+    if (!existsSync(apkSourcePath)) {
+      throw new Error(`APK not found at: ${apkSourcePath}`);
+    }
+    logStep('success', `APK built: ${apkFileName}`);
+
+    // Step 6: Ensure Google Drive folder exists
+    if (!existsSync(GOOGLE_DRIVE_PATH)) {
+      mkdirSync(GOOGLE_DRIVE_PATH, { recursive: true });
+      logStep('success', `Created directory: ${GOOGLE_DRIVE_PATH}`);
+    }
+
+    // Step 7: Copy APK to Google Drive
+    logStep('running', 'Copying APK to Google Drive...');
+    copyFileSync(apkSourcePath, apkDestPath);
+    logStep('success', `APK copied to: ${destFileName}`);
+
+    // Success message
+    console.log('');
+    console.log(`${colors.green}${colors.bright}========================================${colors.reset}`);
+    console.log(`${colors.green}${colors.bright}  BUILD SUCCESSFUL!${colors.reset}`);
+    console.log(`${colors.green}${colors.bright}========================================${colors.reset}`);
+    console.log('');
+    console.log(`  ${colors.bright}Source:${colors.reset}`);
+    console.log(`    ${apkSourcePath}`);
+    console.log('');
+    console.log(`  ${colors.bright}Destination:${colors.reset}`);
+    console.log(`    ${apkDestPath}`);
+    console.log('');
+    console.log(`  Install on your phone from Google Drive!`);
+    console.log('');
+
+  } catch (error) {
+    console.log('');
+    logStep('error', `Build failed: ${error.message}`);
+    restoreConfig();
+    process.exit(1);
+  }
+}
+
+main();

@@ -25,8 +25,8 @@ const NavItem = ({ to, icon: Icon }) => (
 export const Navbar = () => {
     return (
         <nav
-            className="absolute left-4 right-4 bg-white/80 backdrop-blur-lg border border-slate-100 px-6 rounded-2xl shadow-lg dark:bg-slate-800/90 dark:border-slate-700"
-            style={{ bottom: '1rem' }}
+            className="absolute left-4 right-4 bg-white/80 backdrop-blur-lg border border-slate-100 px-6 rounded-2xl shadow-lg z-30 dark:bg-slate-800/90 dark:border-slate-700"
+            style={{ bottom: 'calc(1.5rem + var(--safe-area-bottom, 0))' }}
         >
             <div className="flex items-center justify-between h-16 max-w-sm mx-auto">
                 <NavItem to="/" icon={Home} />

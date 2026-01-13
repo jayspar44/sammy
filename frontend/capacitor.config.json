@@ -6,12 +6,16 @@
     "androidScheme": "https"
   },
   "plugins": {
+    "Keyboard": {
+      "resize": "native",
+      "style": "dark",
+      "resizeOnFullScreen": true
+    },
     "StatusBar": {
-      "overlay": true,
-      "backgroundColor": "#1e293b"
+      "overlay": true
     },
     "SystemBars": {
-      "insetsHandling": "enforce"
+      "insetsHandling": "disable"
     }
   }
 }

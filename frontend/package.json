@@ -1,7 +1,7 @@
 {
   "name": "frontend",
   "private": true,
-  "version": "0.9.2",
+  "version": "0.10.9",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -12,7 +12,12 @@
     "android": "node scripts/android-build.js prod",
     "android:dev": "node scripts/android-build.js dev",
     "android:local": "node scripts/android-build.js local",
-    "android:local-livereload": "node scripts/android-build.js local-livereload"
+    "android:local-livereload": "node scripts/android-build.js local-livereload",
+    "generate:android-assets": "node scripts/generate-android-assets.js",
+    "apk": "node scripts/build-apk.js dev debug",
+    "apk:dev": "node scripts/build-apk.js dev debug",
+    "apk:local": "node scripts/build-apk.js local debug",
+    "apk:prod": "node scripts/build-apk.js prod release"
   },
   "dependencies": {
     "@capacitor-community/safe-area": "^8.0.1",
@@ -21,6 +26,7 @@
     "@capacitor/cli": "^8.0.0",
     "@capacitor/core": "^8.0.0",
     "@capacitor/ios": "^8.0.0",
+    "@capacitor/keyboard": "^8.0.0",
     "@capacitor/status-bar": "^8.0.0",
     "axios": "^1.13.2",
     "clsx": "^2.1.1",
@@ -45,6 +51,7 @@
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
     "postcss": "^8.5.6",
+    "sharp": "^0.34.5",
     "tailwindcss": "^4.1.18",
     "vite": "^7.3.0"
   }

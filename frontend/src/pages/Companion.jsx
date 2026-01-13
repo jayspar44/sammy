@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Send } from 'lucide-react';
 import Button from '../components/ui/Button';
 import { cn } from '../utils/cn';
 import { api } from '../api/services';
 import { format } from 'date-fns';
-import { TopBar } from '../components/layout/TopBar';
 import { logger } from '../utils/logger';
 
 const Message = ({ text, sender }) => {
@@ -20,6 +20,40 @@ const Message = ({ text, sender }) => {
                 {text}
             </div>
         </div>
+    );
+};
+
+// Chat input component - rendered via portal outside the scroll area
+const ChatInput = ({ input, setInput, handleSend }) => {
+    const portalTarget = document.getElementById('companion-chat-portal');
+    if (!portalTarget) return null;
+
+    return createPortal(
+        <div
+            className="absolute left-0 right-0 px-4 py-2 z-30"
+            style={{ bottom: 'calc(1.5rem + 4rem + 4px + var(--safe-area-bottom, 0))' }}
+        >
+            <div className="bg-white/95 backdrop-blur-md border border-slate-200 p-2 rounded-[2rem] shadow-xl flex gap-2 dark:bg-slate-800/95 dark:border-slate-700">
+                <input
+                    type="text"
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                    placeholder="Type a message..."
+                    className="flex-1 bg-transparent px-4 text-sm focus:outline-none font-medium text-slate-700 min-w-0 dark:text-slate-200 placeholder:dark:text-slate-500"
+                />
+                <Button
+                    size="icon"
+                    variant="primary"
+                    onClick={handleSend}
+                    disabled={!input.trim()}
+                    className="rounded-full w-10 h-10 shrink-0 p-0 shadow-none"
+                >
+                    <Send className="w-4 h-4 ml-0.5" />
+                </Button>
+            </div>
+        </div>,
+        portalTarget
     );
 };
 
@@ -84,11 +118,9 @@ export default function Companion() {
     };
 
     return (
-        <div className="flex flex-col h-full relative bg-neutral-50 dark:bg-slate-900">
-            <TopBar />
-
+        <>
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4">
+            <div className="p-4 bg-neutral-50 dark:bg-slate-900 min-h-full">
                 {messages.map(msg => (
                     <Message key={msg.id} {...msg} />
                 ))}
@@ -104,28 +136,8 @@ export default function Companion() {
                 <div ref={bottomRef} />
             </div>
 
-            {/* Input Area - in flex flow, above navbar */}
-            <div className="px-4 py-2 bg-neutral-50 dark:bg-slate-900">
-                <div className="bg-white/95 backdrop-blur-md border border-slate-200 p-2 rounded-[2rem] shadow-xl flex gap-2 dark:bg-slate-800/95 dark:border-slate-700">
-                    <input
-                        type="text"
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                        placeholder="Type a message..."
-                        className="flex-1 bg-transparent px-4 text-sm focus:outline-none font-medium text-slate-700 min-w-0 dark:text-slate-200 placeholder:dark:text-slate-500"
-                    />
-                    <Button
-                        size="icon"
-                        variant="primary"
-                        onClick={handleSend}
-                        disabled={!input.trim()}
-                        className="rounded-full w-10 h-10 shrink-0 p-0 shadow-none"
-                    >
-                        <Send className="w-4 h-4 ml-0.5" />
-                    </Button>
-                </div>
-            </div>
-        </div>
+            {/* Chat input - rendered via portal outside the scroll area */}
+            <ChatInput input={input} setInput={setInput} handleSend={handleSend} />
+        </>
     );
 }

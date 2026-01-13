@@ -7,6 +7,8 @@ import Button from '../components/ui/Button';
 import { ArrowRight, Moon, Sun } from 'lucide-react';
 import Wordmark from '../components/ui/Wordmark';
 import { logger } from '../utils/logger';
+import { getVersionString } from '../utils/appConfig';
+import { MobileContainer } from '../components/layout/MobileContainer';
 
 const Login = () => {
     const { loginEmail, signup, user } = useAuth();
@@ -53,21 +55,27 @@ const Login = () => {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50 animate-fadeIn dark:bg-slate-900 relative">
-            {/* Dark Mode Toggle */}
-            <button
-                onClick={toggleTheme}
-                className="absolute top-4 right-4 p-3 rounded-full bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 active:scale-95 transition-all shadow-lg dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-700"
-                aria-label="Toggle dark mode"
-            >
-                {isDark ? (
-                    <Sun className="w-5 h-5" />
-                ) : (
-                    <Moon className="w-5 h-5" />
-                )}
-            </button>
+        <MobileContainer>
+            <div className="min-h-[100dvh] flex items-center justify-center p-4 bg-slate-50 animate-fadeIn dark:bg-slate-900 relative">
+                {/* Version string */}
+                <div className="absolute left-1/2 top-4 -translate-x-1/2">
+                    <p className="text-slate-400 font-mono text-[10px] dark:text-slate-500">{getVersionString()}</p>
+                </div>
 
-            <Card className="w-full max-w-md p-8 shadow-xl bg-white border-slate-100 dark:bg-slate-800 dark:border-slate-700">
+                {/* Dark Mode Toggle */}
+                <button
+                    onClick={toggleTheme}
+                    className="absolute top-4 right-4 p-3 rounded-full bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 active:scale-95 transition-all shadow-lg dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-700"
+                    aria-label="Toggle dark mode"
+                >
+                    {isDark ? (
+                        <Sun className="w-5 h-5" />
+                    ) : (
+                        <Moon className="w-5 h-5" />
+                    )}
+                </button>
+
+                <Card className="w-full max-w-md p-8 shadow-xl bg-white border-slate-100 dark:bg-slate-800 dark:border-slate-700">
                 <div className="text-center mb-8">
                     <Wordmark variant="full" size="lg" className="justify-center" />
                 </div>
@@ -124,7 +132,8 @@ const Login = () => {
                     </Button>
                 </div>
             </Card>
-        </div>
+            </div>
+        </MobileContainer>
     );
 };
 

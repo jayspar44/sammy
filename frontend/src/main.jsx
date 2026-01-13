@@ -19,13 +19,24 @@ window.addEventListener('unhandledrejection', function (event) {
 
 // Configure status bar for native platforms
 if (Capacitor.isNativePlatform()) {
-  // Initialize safe area plugin (handles older Android WebView < 140)
-  SafeArea.enable();
+  // Initialize safe area plugin (injects CSS variables for older Android WebView)
+  SafeArea.enable().catch(() => {
+    // Not implemented on all Android versions - CSS fallbacks will be used
+  });
 
-  // Configure status bar with overlay
+  // Configure status bar for edge-to-edge display
   StatusBar.setOverlaysWebView({ overlay: true });
-  StatusBar.setStyle({ style: Style.Dark });
-  StatusBar.setBackgroundColor({ color: '#f8fafc' });
+
+  // Set initial status bar based on saved theme
+  // Note: Style.Dark = light/white icons, Style.Light = dark/black icons
+  const savedTheme = localStorage.getItem('sammy_pref_theme') || 'light';
+  if (savedTheme === 'dark') {
+    StatusBar.setStyle({ style: Style.Dark }); // light icons on dark background
+    StatusBar.setBackgroundColor({ color: '#1e293b' }); // slate-800
+  } else {
+    StatusBar.setStyle({ style: Style.Light }); // dark icons on light background
+    StatusBar.setBackgroundColor({ color: '#0ea5e9' }); // sky-500
+  }
 }
 
 createRoot(document.getElementById('root')).render(

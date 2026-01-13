@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { StatusBar, Style } from '@capacitor/status-bar';
 
 const ThemeContext = createContext();
 
@@ -17,6 +19,22 @@ export const ThemeProvider = ({ children }) => {
             root.classList.add('dark');
         } else {
             root.classList.remove('dark');
+        }
+    }, [theme]);
+
+    // Update StatusBar based on theme (Android/iOS)
+    // Note: Style.Dark = light/white icons, Style.Light = dark/black icons
+    useEffect(() => {
+        if (Capacitor.isNativePlatform()) {
+            if (theme === 'dark') {
+                // Dark mode: light icons on dark background
+                StatusBar.setStyle({ style: Style.Dark });
+                StatusBar.setBackgroundColor({ color: '#1e293b' }); // slate-800
+            } else {
+                // Light mode: dark icons on light blue background
+                StatusBar.setStyle({ style: Style.Light });
+                StatusBar.setBackgroundColor({ color: '#0ea5e9' }); // sky-500
+            }
         }
     }, [theme]);
 
