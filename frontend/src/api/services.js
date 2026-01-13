@@ -1,5 +1,6 @@
 import client from './client';
 import { logger } from '../utils/logger';
+import axios from 'axios';
 
 const IS_SPOOF_DB = () => localStorage.getItem('sammy_pref_spoofDb') === 'true';
 
@@ -195,6 +196,18 @@ export const api = {
 
         const dateStr = date || new Date().toISOString().split('T')[0];
         const response = await client.post('/chat', { message, date: dateStr });
+        return response.data;
+    },
+
+    // Backend Health/Version
+    getBackendHealth: async () => {
+        if (IS_SPOOF_DB()) {
+            logger.spoof('Getting Backend Health');
+            return { status: 'ok', version: '0.10.9-spoof', timestamp: new Date().toISOString() };
+        }
+        // Use axios directly since /health is public (no auth needed)
+        const baseURL = import.meta.env.VITE_API_URL || '/api';
+        const response = await axios.get(`${baseURL}/health`);
         return response.data;
     },
 };
