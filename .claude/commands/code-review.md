@@ -378,12 +378,58 @@ Problem and fix.
 - ❌ **CHANGES REQUESTED** (has blocking issues)
 ```
 
-### 6. Next Steps
+### 6. Fix Blocking Issues (if any)
+
+If blocking issues are found:
+1. Fix each blocking issue
+2. Commit and push the fix
+3. **MANDATORY**: Document each fix in the report
+
+### 7. Fixed Issues Summary (MANDATORY when issues are fixed)
+
+When blocking issues are fixed during review, you MUST include this section:
+
+```markdown
+---
+
+## Fixed Issues Details
+
+### 🔴 BLOCKING (FIXED): [Issue Title]
+
+**File**: `path/to/file.ext`
+**Line**: XXX
+**Agent**: [Which agent found it]
+
+**Problem**: [Clear explanation of what was wrong and why it was critical]
+
+**Original Code**:
+```[language]
+// The problematic code that was found
+```
+
+**Fixed Code**:
+```[language]
+// The corrected code after the fix
+```
+
+**Commit**: `[hash]` - "[commit message]"
+
+---
+```
+
+This detailed documentation is required so users can:
+- Understand what security/logic issues were caught
+- Verify the fix is correct
+- Learn from the issue to avoid similar problems
+- Audit changes made during the review process
+
+### 8. Next Steps
 
 Based on verdict:
 - **APPROVED**: "Ready to merge! No blocking issues."
 - **APPROVED WITH NOTES**: "Consider addressing X high priority issues before merge."
 - **CHANGES REQUESTED**: "Found X blocking issues that must be fixed."
+- **FIXED AND READY**: "Fixed X blocking issues. See Fixed Issues Details section for full documentation."
 
 ## Error Handling
 
