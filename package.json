@@ -1,6 +1,6 @@
 {
   "name": "sammy",
-  "version": "0.10.9",
+  "version": "0.10.10",
   "description": "AI-based habit companion app",
   "main": "backend/src/index.js",
   "scripts": {
