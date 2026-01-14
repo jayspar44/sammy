@@ -106,8 +106,8 @@ dist
 android/
 ios/
 
-# Claude Code local settings
-.claude/
+# Claude Code local settings (allow commands to be committed)
+.claude/settings.local.json
 
 # Firebase cache
 .firebase/
