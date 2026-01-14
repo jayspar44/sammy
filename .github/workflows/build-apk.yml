@@ -95,7 +95,7 @@ jobs:
             echo "VITE_FIREBASE_CONFIG=${{ secrets.FIREBASE_CLIENT_CONFIG }}" >> .env.$BUILD_MODE
           fi
 
-          cat .env.$BUILD_MODE
+          echo "Environment file created: .env.$BUILD_MODE ($(wc -l < .env.$BUILD_MODE) lines)"
 
       - name: Build web assets
         working-directory: frontend
