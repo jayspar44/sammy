@@ -1,0 +1,34 @@
+{
+  "projectId": "sammy-658",
+  "region": "us-central1",
+  "services": {
+    "backend": {
+      "dev": {
+        "name": "sammy-backend-dev",
+        "hash": "u7dzitmnha-uc",
+        "url": "https://sammy-backend-dev-u7dzitmnha-uc.a.run.app"
+      },
+      "prod": {
+        "name": "sammy-backend-prod",
+        "hash": "u7dzitmnha-uc",
+        "url": "https://sammy-backend-prod-u7dzitmnha-uc.a.run.app"
+      }
+    }
+  },
+  "firebase": {
+    "hosting": {
+      "dev": "sammy-658-dev",
+      "prod": "sammy-658"
+    }
+  },
+  "preview": {
+    "backend": {
+      "urlPattern": "https://pr-{{PR_NUMBER}}---sammy-backend-dev-u7dzitmnha-uc.a.run.app",
+      "tagPattern": "pr-{{PR_NUMBER}}"
+    },
+    "frontend": {
+      "urlPattern": "https://sammy-658--pr-{{PR_NUMBER}}-{{HASH}}.web.app",
+      "channelPattern": "pr-{{PR_NUMBER}}"
+    }
+  }
+}
