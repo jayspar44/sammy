@@ -30,7 +30,7 @@ steps:
           --no-traffic \
           --set-secrets="FIREBASE_SERVICE_ACCOUNT=FIREBASE_SERVICE_ACCOUNT:latest,GEMINI_API_KEY=GEMINI_API_KEY:latest" \
           --set-env-vars="NODE_ENV=dev" \
-          --set-env-vars="^@^ALLOWED_ORIGINS=https://sammy-658-dev.web.app,https://sammy-658.web.app,capacitor://localhost,https://localhost,https://sammy-658--pr-${_PR_NUMBER}*.web.app"
+          --set-env-vars="^@^ALLOWED_ORIGINS=https://sammy-658-dev.web.app,https://sammy-658.web.app,capacitor://localhost,https://localhost"
 
         PREVIEW_URL="https://pr-${_PR_NUMBER}---sammy-backend-dev-u7dzitmnha-uc.a.run.app"
         echo "Backend preview URL: $${PREVIEW_URL}"
@@ -72,7 +72,7 @@ steps:
           --expires 7d \
           --json > /workspace/firebase-deploy.json
 
-        # Extract and display the preview URL
+        # Extract the preview URL and save it
         FRONTEND_URL=$$(cat /workspace/firebase-deploy.json | node -e "
           const data = JSON.parse(require('fs').readFileSync('/dev/stdin', 'utf8'));
           const channels = data.result || {};
@@ -81,6 +81,22 @@ steps:
             console.log(channels[channelId].url);
           }
         ")
+        echo "$${FRONTEND_URL}" > /workspace/frontend-preview-url.txt
+        echo "Frontend preview URL: $${FRONTEND_URL}"
+
+  # Step 5: Update backend CORS with exact frontend URL
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        FRONTEND_URL=$$(cat /workspace/frontend-preview-url.txt)
+        echo "Updating backend CORS to allow: $${FRONTEND_URL}"
+        gcloud run services update sammy-backend-dev \
+          --region ${_REGION} \
+          --tag pr-${_PR_NUMBER} \
+          --update-env-vars="^@^ALLOWED_ORIGINS=https://sammy-658-dev.web.app,https://sammy-658.web.app,capacitor://localhost,https://localhost,$${FRONTEND_URL}"
+
         echo ""
         echo "=========================================="
         echo "PR #${_PR_NUMBER} Preview Environment Ready!"
