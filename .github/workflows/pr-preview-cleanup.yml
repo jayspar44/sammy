@@ -1,0 +1,67 @@
+# GitHub Actions workflow for cleaning up PR preview environments
+#
+# Triggered: When a PR targeting develop is closed (merged or abandoned)
+#
+# Cleans up:
+# - Cloud Run tagged revision
+# - Firebase Hosting preview channel
+
+name: PR Preview Cleanup
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - develop
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+
+    # Authenticate to Google Cloud
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: sammy-658
+
+      - name: Remove Cloud Run tag
+        run: |
+          echo "Removing Cloud Run tag for PR #${{ github.event.pull_request.number }}..."
+          gcloud run services update-traffic sammy-backend-dev \
+            --region us-central1 \
+            --remove-tags pr-${{ github.event.pull_request.number }} || echo "Tag may not exist, continuing..."
+          echo "Cloud Run tag removed (if it existed)"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Remove Firebase preview channel
+        run: |
+          npm install -g firebase-tools
+          echo "Deleting Firebase preview channel for PR #${{ github.event.pull_request.number }}..."
+          firebase hosting:channel:delete pr-${{ github.event.pull_request.number }} \
+            --project sammy-658 \
+            --force || echo "Channel may not exist, continuing..."
+          echo "Firebase preview channel deleted (if it existed)"
+
+      - name: Cleanup Summary
+        run: |
+          echo "## PR #${{ github.event.pull_request.number }} Preview Cleanup Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Cloud Run tag \`pr-${{ github.event.pull_request.number }}\` removed" >> $GITHUB_STEP_SUMMARY
+          echo "- Firebase preview channel \`pr-${{ github.event.pull_request.number }}\` deleted" >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,94 @@
+# Cloud Build configuration for PR Preview environments
+# Triggered by: Pull Request against develop branch
+# Deploys: Backend to Cloud Run (tagged, no traffic) + Frontend to Firebase preview channel
+#
+# Substitution variables:
+#   _PR_NUMBER: Pull request number (provided by trigger)
+#
+# Preview URLs:
+#   Backend:  https://pr-{N}---sammy-backend-dev-u7dzitmnha-uc.a.run.app
+#   Frontend: https://sammy-658--pr-{N}-{hash}.web.app
+
+substitutions:
+  _PR_NUMBER: ''
+  _REGION: us-central1
+
+steps:
+  # Step 1: Build and deploy backend to Cloud Run with PR tag (no traffic)
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        cd backend
+        echo "Deploying backend for PR #${_PR_NUMBER}..."
+        gcloud run deploy sammy-backend-dev \
+          --source . \
+          --region ${_REGION} \
+          --allow-unauthenticated \
+          --tag pr-${_PR_NUMBER} \
+          --no-traffic \
+          --set-secrets="FIREBASE_SERVICE_ACCOUNT=FIREBASE_SERVICE_ACCOUNT:latest,GEMINI_API_KEY=GEMINI_API_KEY:latest" \
+          --set-env-vars="NODE_ENV=dev" \
+          --set-env-vars="^@^ALLOWED_ORIGINS=https://sammy-658-dev.web.app,https://sammy-658.web.app,capacitor://localhost,https://localhost,https://sammy-658--pr-${_PR_NUMBER}*.web.app"
+
+        PREVIEW_URL="https://pr-${_PR_NUMBER}---sammy-backend-dev-u7dzitmnha-uc.a.run.app"
+        echo "Backend preview URL: $${PREVIEW_URL}"
+        echo "$${PREVIEW_URL}" > /workspace/backend-preview-url.txt
+
+  # Step 2: Get Firebase config and create frontend env file
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        BACKEND_URL=$$(cat /workspace/backend-preview-url.txt)
+        FIREBASE_CONFIG=$$(gcloud secrets versions access latest --secret=FIREBASE_CLIENT_CONFIG)
+        echo "VITE_API_URL=$${BACKEND_URL}/api" > /workspace/frontend/.env.production
+        echo "VITE_FIREBASE_CONFIG=$${FIREBASE_CONFIG}" >> /workspace/frontend/.env.production
+        echo "Created .env.production pointing to preview backend:"
+        cat /workspace/frontend/.env.production
+
+  # Step 3: Install frontend dependencies and build
+  - name: 'node:22'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        cd frontend
+        npm ci
+        npm run build
+
+  # Step 4: Deploy frontend to Firebase Hosting preview channel
+  - name: 'node:22'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        npm install -g firebase-tools
+        cd frontend
+        firebase hosting:channel:deploy pr-${_PR_NUMBER} \
+          --project sammy-658 \
+          --expires 7d \
+          --json > /workspace/firebase-deploy.json
+
+        # Extract and display the preview URL
+        FRONTEND_URL=$$(cat /workspace/firebase-deploy.json | node -e "
+          const data = JSON.parse(require('fs').readFileSync('/dev/stdin', 'utf8'));
+          const channels = data.result || {};
+          const channelId = Object.keys(channels)[0];
+          if (channelId && channels[channelId].url) {
+            console.log(channels[channelId].url);
+          }
+        ")
+        echo ""
+        echo "=========================================="
+        echo "PR #${_PR_NUMBER} Preview Environment Ready!"
+        echo "=========================================="
+        echo "Frontend: $${FRONTEND_URL}"
+        echo "Backend:  https://pr-${_PR_NUMBER}---sammy-backend-dev-u7dzitmnha-uc.a.run.app"
+        echo "=========================================="
+
+timeout: '1800s'
+options:
+  logging: CLOUD_LOGGING_ONLY

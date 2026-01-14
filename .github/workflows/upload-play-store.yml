@@ -1,0 +1,183 @@
+# GitHub Actions workflow for uploading to Play Store
+#
+# Triggered: Manual (workflow_dispatch)
+#
+# Features:
+# - Build signed AAB (Android App Bundle)
+# - Upload to Play Store Internal/Alpha/Beta track
+# - Uses production API by default
+#
+# Prerequisites:
+# 1. Play Console account verified
+# 2. App created in Play Console
+# 3. Service account with API access
+# 4. GitHub secrets configured
+#
+# Required Secrets:
+# - KEYSTORE_BASE64: Base64 encoded release keystore
+# - KEYSTORE_PASSWORD: Keystore password
+# - KEY_ALIAS: Key alias
+# - KEY_PASSWORD: Key password
+# - FIREBASE_CLIENT_CONFIG: Firebase client config JSON
+# - PLAY_SERVICE_ACCOUNT_JSON: Play Store service account JSON
+
+name: Upload to Play Store
+
+on:
+  workflow_dispatch:
+    inputs:
+      track:
+        description: 'Release track'
+        required: true
+        default: 'internal'
+        type: choice
+        options:
+          - internal
+          - alpha
+          - beta
+      release_notes:
+        description: 'Release notes (optional)'
+        required: false
+        default: 'Bug fixes and improvements'
+
+env:
+  NODE_VERSION: '22'
+  JAVA_VERSION: '17'
+
+jobs:
+  build-and-upload:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Get version from package.json
+        id: version
+        working-directory: frontend
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Create production environment file
+        working-directory: frontend
+        run: |
+          echo "VITE_API_URL=https://sammy-backend-prod-u7dzitmnha-uc.a.run.app/api" > .env.production
+          echo "VITE_FIREBASE_CONFIG=${{ secrets.FIREBASE_CLIENT_CONFIG }}" >> .env.production
+
+      - name: Build web assets
+        working-directory: frontend
+        run: npm run build -- --mode production
+
+      - name: Update Capacitor config for production
+        working-directory: frontend
+        run: |
+          cat > capacitor.config.json << EOF
+          {
+            "appId": "io.sammy.app",
+            "appName": "Sammy",
+            "webDir": "dist",
+            "server": {
+              "androidScheme": "https"
+            },
+            "plugins": {
+              "Keyboard": {
+                "resize": "native",
+                "style": "dark",
+                "resizeOnFullScreen": true
+              },
+              "StatusBar": {
+                "overlay": true
+              },
+              "SystemBars": {
+                "insetsHandling": "disable"
+              }
+            }
+          }
+          EOF
+
+      - name: Sync Capacitor
+        working-directory: frontend
+        run: npx cap sync android
+
+      - name: Configure release signing
+        working-directory: frontend/android/app
+        run: |
+          # Decode keystore
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > release.keystore
+          ls -la release.keystore
+
+          # Add signing config to build.gradle
+          sed -i '/buildTypes {/i\
+              signingConfigs {\
+                  release {\
+                      storeFile file("release.keystore")\
+                      storePassword System.getenv("KEYSTORE_PASSWORD")\
+                      keyAlias System.getenv("KEY_ALIAS")\
+                      keyPassword System.getenv("KEY_PASSWORD")\
+                  }\
+              }' build.gradle
+
+          # Update release buildType to use signing config
+          sed -i '/release {/,/}/ s/minifyEnabled false/signingConfig signingConfigs.release\n            minifyEnabled false/' build.gradle
+
+          echo "Updated build.gradle with signing config"
+
+      - name: Build Release AAB
+        working-directory: frontend/android
+        run: |
+          chmod +x ./gradlew
+          ./gradlew bundleProdRelease
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
+      - name: Upload AAB as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sammy-prod-release-${{ steps.version.outputs.version }}-${{ github.run_number }}
+          path: frontend/android/app/build/outputs/bundle/prodRelease/app-prod-release.aab
+          retention-days: 90
+
+      - name: Upload to Play Store
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: io.sammy.app
+          releaseFiles: frontend/android/app/build/outputs/bundle/prodRelease/app-prod-release.aab
+          track: ${{ inputs.track }}
+          status: completed
+          releaseName: v${{ steps.version.outputs.version }}
+          whatsNewDirectory: ''
+          inAppUpdatePriority: 0
+
+      - name: Build Summary
+        run: |
+          echo "## Play Store Upload Complete!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Setting | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Version** | v${{ steps.version.outputs.version }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Track** | ${{ inputs.track }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Package** | io.sammy.app |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Check the [Play Console](https://play.google.com/console) for release status." >> $GITHUB_STEP_SUMMARY
