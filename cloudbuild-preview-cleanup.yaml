@@ -23,6 +23,7 @@ steps:
         echo "Cloud Run tag pr-${_PR_NUMBER} removed (if it existed)"
 
   # Step 2: Delete the Firebase Hosting preview channel
+  # Note: Preview channels are deployed to sammy-658-dev (dev site), not sammy-658 (prod)
   - name: 'node:22'
     entrypoint: 'bash'
     args:
@@ -31,6 +32,7 @@ steps:
         npm install -g firebase-tools
         echo "Deleting Firebase preview channel for PR #${_PR_NUMBER}..."
         firebase hosting:channel:delete pr-${_PR_NUMBER} \
+          --site sammy-658-dev \
           --project sammy-658 \
           --force || echo "Channel may not exist, continuing..."
         echo "Firebase preview channel pr-${_PR_NUMBER} deleted (if it existed)"

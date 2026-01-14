@@ -54,7 +54,9 @@ jobs:
         run: |
           npm install -g firebase-tools
           echo "Deleting Firebase preview channel for PR #${{ github.event.pull_request.number }}..."
+          # Note: Preview channels are deployed to sammy-658-dev (dev site), not sammy-658 (prod)
           firebase hosting:channel:delete pr-${{ github.event.pull_request.number }} \
+            --site sammy-658-dev \
             --project sammy-658 \
             --force || echo "Channel may not exist, continuing..."
           echo "Firebase preview channel deleted (if it existed)"
