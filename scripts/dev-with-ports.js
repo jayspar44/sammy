@@ -209,11 +209,12 @@ const frontendEnv = {
     ...process.env,
     PORT: frontendPort.toString(),
     BACKEND_PORT: backendPort.toString(),
-    FORCE_COLOR: '1',
-    BROWSER: openBrowser ? undefined : 'none' // Control browser opening
+    FORCE_COLOR: '1'
 };
 
-const frontendProcess = spawn('npm', ['start'], {
+// Use vite directly with --open flag for browser control
+const frontendArgs = openBrowser ? ['vite', '--open'] : ['vite'];
+const frontendProcess = spawn('npx', frontendArgs, {
     cwd: path.join(__dirname, '..', 'frontend'),
     env: frontendEnv,
     shell: true,
