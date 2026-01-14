@@ -1,6 +1,14 @@
 {
-    "version": "0.11.2",
+    "version": "0.11.3",
     "history": [
+        {
+            "version": "0.11.3",
+            "date": "2026-01-14",
+            "author": "jason",
+            "changes": [
+                "Add live version/timestamp display from health API with HMR tracking"
+            ]
+        },
         {
             "version": "0.11.2",
             "date": "2026-01-14",

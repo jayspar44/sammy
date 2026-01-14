@@ -10,6 +10,7 @@ import { cn } from '../utils/cn';
 import { api } from '../api/services';
 import { logger } from '../utils/logger';
 import { App } from '@capacitor/app';
+import { fetchBackendInfo, getBackendInfo } from '../utils/appConfig';
 import { TypicalWeekModal } from '../components/common/TypicalWeekModal';
 
 export default function Settings() {
@@ -36,6 +37,7 @@ export default function Settings() {
     const [costInput, setCostInput] = useState(10);
     const [calsInput, setCalsInput] = useState(150);
     const [appInfo, setAppInfo] = useState({ id: '', version: '', build: '' });
+    const [backendInfo, setBackendInfo] = useState(getBackendInfo());
     const [showTypicalWeekModal, setShowTypicalWeekModal] = useState(false);
 
     useEffect(() => {
@@ -53,6 +55,12 @@ export default function Settings() {
             setAppInfo({ id: 'web', version: import.meta.env.VITE_APP_VERSION || 'unknown', build: '' });
         });
     }, []);
+
+    useEffect(() => {
+        if (!backendInfo) {
+            fetchBackendInfo().then(setBackendInfo);
+        }
+    }, [backendInfo]);
 
     const handleSaveProfile = async () => {
         await updateProfileConfig({
@@ -379,7 +387,7 @@ export default function Settings() {
                     <h3 className="text-sm font-bold uppercase tracking-wider">App Info</h3>
                 </div>
                 <div className="text-xs text-slate-400 space-y-1 dark:text-slate-500">
-                    <p>Sammy: v{__APP_VERSION__}</p>
+                    <p>Version: v{backendInfo?.version || __APP_VERSION__}</p>
                     {appInfo.version && appInfo.id !== 'web' && (
                         <p>Native: v{appInfo.version}{appInfo.build ? ` (${appInfo.build})` : ''}</p>
                     )}
@@ -405,8 +413,13 @@ export default function Settings() {
                             <span className="ml-2 px-1.5 py-0.5 bg-green-100 text-green-600 rounded text-[10px] font-medium">PROD</span>
                         )}
                     </p>
+                    {backendInfo && (
+                        <p>
+                            Server started: {new Date(backendInfo.serverStartTime).toLocaleString()}
+                        </p>
+                    )}
                     <p>
-                        Built: {new Date(__BUILD_TIMESTAMP__).toLocaleString()}
+                        Frontend built: {new Date(__BUILD_TIMESTAMP__).toLocaleString()}
                     </p>
                     <p>
                         Commit: {__GIT_HASH__}

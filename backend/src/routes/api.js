@@ -1,6 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const rateLimit = require('express-rate-limit');
+
+// Capture at module load - updates when nodemon restarts
+const serverStartTime = new Date().toISOString();
+const pkg = require('../../package.json');
 const { verifyToken } = require('../controllers/authController');
 const { logDrink, getStats, updateLog, deleteLog, getStatsRange } = require('../controllers/logController');
 
@@ -14,8 +18,12 @@ const chatLimiter = rateLimit({
 });
 
 
-// Health check
-router.get('/health', (req, res) => res.send('OK'));
+// Health check (public - returns version and server start time)
+router.get('/health', (req, res) => res.json({
+    status: 'OK',
+    version: pkg.version,
+    serverStartTime
+}));
 
 // Protected Routes
 router.use(verifyToken);

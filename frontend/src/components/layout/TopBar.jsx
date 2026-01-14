@@ -1,14 +1,24 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Settings } from 'lucide-react';
 import { useUserPreferences } from '../../contexts/UserPreferencesContext';
-import { getVersionString } from '../../utils/appConfig';
+import { getVersionString, fetchBackendInfo, getBackendInfo, onHmrUpdate } from '../../utils/appConfig';
 import Wordmark from '../ui/Wordmark';
 
 export const TopBar = () => {
     const { firstName, profileLoading } = useUserPreferences();
     const location = useLocation();
     const navigate = useNavigate();
+    const [, forceUpdate] = useState(0);
+
+    // Re-render when backend info loads or HMR updates (for live version string)
+    useEffect(() => {
+        if (!getBackendInfo()) {
+            fetchBackendInfo().then(() => forceUpdate(n => n + 1));
+        }
+        // Subscribe to HMR updates to refresh timestamp
+        return onHmrUpdate(() => forceUpdate(n => n + 1));
+    }, []);
 
     const displayName = firstName || 'Friend';
 

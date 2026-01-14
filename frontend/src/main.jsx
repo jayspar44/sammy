@@ -7,6 +7,10 @@ import { SafeArea } from '@capacitor-community/safe-area'
 import './index.css'
 import App from './App.jsx'
 import { logger } from './utils/logger'
+import { fetchBackendInfo } from './utils/appConfig'
+
+// Fetch backend info early (before render) for version display
+fetchBackendInfo();
 
 // Global error handlers (silent in production)
 window.onerror = function (msg, url, line, col, error) {
