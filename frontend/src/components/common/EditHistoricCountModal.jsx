@@ -35,6 +35,7 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
             setModifiedCounts({});
             setModifiedGoals({});
             setDeletedDates({});
+            setWeekDataCache({}); // Clear cache to ensure fresh data on reopen
             setEditMode('count');
         } else {
             setTimeout(() => setIsVisible(false), 300);
