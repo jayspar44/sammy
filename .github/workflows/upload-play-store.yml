@@ -118,12 +118,20 @@ jobs:
         working-directory: frontend
         run: npx cap sync android
 
-      - name: Configure release signing
+      - name: Configure release signing and versioning
         working-directory: frontend/android/app
         run: |
           # Decode keystore
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > release.keystore
           ls -la release.keystore
+
+          # Update versionCode (use run number to auto-increment)
+          sed -i "s/versionCode 1/versionCode ${{ github.run_number }}/" build.gradle
+
+          # Update versionName to match package.json
+          sed -i 's/versionName "1.0"/versionName "${{ steps.version.outputs.version }}"/' build.gradle
+
+          echo "Set versionCode=${{ github.run_number }}, versionName=${{ steps.version.outputs.version }}"
 
           # Add signing config to build.gradle
           sed -i '/buildTypes {/i\
@@ -177,6 +185,7 @@ jobs:
           echo "| Setting | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|---------|-------|" >> $GITHUB_STEP_SUMMARY
           echo "| **Version** | v${{ steps.version.outputs.version }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Version Code** | ${{ github.run_number }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **Track** | ${{ inputs.track }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **Package** | io.sammy.app |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
