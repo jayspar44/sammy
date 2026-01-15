@@ -363,7 +363,7 @@ echo "backend/.env" >> .gitignore
 ### For Secrets in Code
 ```javascript
 // BEFORE (blocked)
-const API_KEY = "AIzaSyDaGmWKa4JsXZ-HjGw7ISLn_3namBGewQe";
+const API_KEY = "AIzaSy0123456789ABCDEFGHIJKLMNOPQRSTUV";
 
 // AFTER (safe)
 const API_KEY = process.env.GOOGLE_API_KEY;
