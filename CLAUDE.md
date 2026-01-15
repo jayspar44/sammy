@@ -39,7 +39,8 @@ sammy-1/
 │       ├── feature-start.md # Feature branch creation
 │       ├── lint-check.md    # ESLint validation
 │       ├── version.md       # Version bumping
-│       └── build-app.md     # Android APK builds
+│       ├── build-app.md     # Android APK builds
+│       └── upload-play-store.md # Play Store uploads
 ├── .github/workflows/        # GitHub Actions
 │   ├── build-apk.yml        # On-demand APK/AAB builds
 │   ├── upload-play-store.yml # Play Store uploads
@@ -307,6 +308,7 @@ npm run lint --prefix backend
 | `/pr-merge <pr-number>`    | Squash merge PR with auto-sync       |
 | `/version [type] [msg]`    | Bump version (auto-detects if omitted)|
 | `/build-app [env]`         | Build Android APK to Google Drive    |
+| `/upload-play-store`       | Upload app to Play Store via GitHub Actions |
 | `/architect <mode> <topic>`| Architecture expert (GCP, GitHub, Play Store) |
 
 ## Firebase
@@ -590,6 +592,7 @@ The project includes custom Claude Code slash commands (`.claude/commands/`) for
 | `/pr-merge` | Squash merge PR with auto-sync | `/pr-merge <pr-number> [--no-sync] [--delete-branch]` |
 | `/version` | Bump version (patch/minor/major) | `/version [patch\|minor\|major] [description]` |
 | `/build-app` | Build Android APK to Google Drive | `/build-app [local\|dev\|prod]` |
+| `/upload-play-store` | Upload app to Play Store via GitHub Actions | `/upload-play-store [--prod\|--dev] [--internal\|--alpha\|--beta]` |
 | `/architect` | Architecture expert consultation/review | `/architect [consult\|review\|audit] <topic-or-path>` |
 
 ### Workflow Examples

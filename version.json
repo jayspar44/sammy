@@ -1,6 +1,14 @@
 {
-    "version": "0.11.4",
+    "version": "0.11.5",
     "history": [
+        {
+            "version": "0.11.5",
+            "date": "2026-01-15",
+            "author": "jason",
+            "changes": [
+                "Add /upload-play-store skill for Play Store uploads via GitHub Actions"
+            ]
+        },
         {
             "version": "0.11.4",
             "date": "2026-01-15",
