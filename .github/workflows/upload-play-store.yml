@@ -135,6 +135,16 @@ jobs:
 
           echo "Set versionCode=${{ github.run_number }}, versionName=${{ steps.version.outputs.version }}"
 
+          # Add product flavors for prod build
+          sed -i '/buildTypes {/i\
+              flavorDimensions = ["environment"]\
+              productFlavors {\
+                  prod {\
+                      dimension "environment"\
+                      resValue "string", "app_name", "Sammy"\
+                  }\
+              }' build.gradle
+
           # Add signing config to build.gradle
           sed -i '/buildTypes {/i\
               signingConfigs {\
@@ -149,7 +159,7 @@ jobs:
           # Update release buildType to use signing config
           sed -i '/release {/,/}/ s/minifyEnabled false/signingConfig signingConfigs.release\n            minifyEnabled false/' build.gradle
 
-          echo "Updated build.gradle with signing config"
+          echo "Updated build.gradle with signing config and product flavors"
 
       - name: Build Release AAB
         working-directory: frontend/android
