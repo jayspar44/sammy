@@ -67,8 +67,9 @@ steps:
       - |
         npm install -g firebase-tools
         cd frontend
+        # Use --only dev to target sammy-658-dev site (defined in .firebaserc)
         firebase hosting:channel:deploy pr-${_PR_NUMBER} \
-          --site sammy-658-dev \
+          --only dev \
           --project sammy-658 \
           --expires 7d \
           --json > /workspace/firebase-deploy.json
