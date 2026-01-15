@@ -39,6 +39,14 @@ on:
         description: 'Release notes (optional)'
         required: false
         default: 'Bug fixes and improvements'
+      status:
+        description: 'Release status (draft for new apps, completed to roll out)'
+        required: true
+        default: 'draft'
+        type: choice
+        options:
+          - draft
+          - completed
 
 env:
   NODE_VERSION: '22'
@@ -185,7 +193,7 @@ jobs:
           packageName: io.sammy.app
           releaseFiles: frontend/android/app/build/outputs/bundle/prodRelease/app-prod-release.aab
           track: ${{ inputs.track }}
-          status: completed
+          status: ${{ inputs.status }}
           releaseName: v${{ steps.version.outputs.version }}
           whatsNewDirectory: ''
           inAppUpdatePriority: 0
@@ -199,6 +207,7 @@ jobs:
           echo "| **Version** | v${{ steps.version.outputs.version }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **Version Code** | ${{ github.run_number }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **Track** | ${{ inputs.track }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Status** | ${{ inputs.status }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **Package** | io.sammy.app |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Check the [Play Console](https://play.google.com/console) for release status." >> $GITHUB_STEP_SUMMARY
