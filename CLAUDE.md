@@ -299,13 +299,15 @@ npm run lint --prefix backend
 | Command                    | Description                          |
 |----------------------------|--------------------------------------|
 | `/feature-start <name>`    | Create and switch to feature branch  |
+| `/commit-push [-m "msg"]`  | Safe commit with lint + security scan |
+| `/security-scan [--staged]`| Pre-commit scan for secrets/sensitive files |
 | `/lint-check [--fix]`      | Run ESLint (with optional auto-fix)  |
 | `/code-review [pr\|branch]`| Multi-agent code review (4 agents)   |
 | `/pr-flow`                 | Autonomous PR workflow with auto-fix |
 | `/pr-merge <pr-number>`    | Squash merge PR with auto-sync       |
 | `/version [type] [msg]`    | Bump version (auto-detects if omitted)|
 | `/build-app [env]`         | Build Android APK to Google Drive    |
-| `/architect <mode> <topic>`| Architecture consultation/review     |
+| `/architect <mode> <topic>`| Architecture expert (GCP, GitHub, Play Store) |
 
 ## Firebase
 
@@ -564,7 +566,10 @@ Always verify you're not about to commit secrets:
 ```bash
 git status          # Check what's staged
 git diff --cached   # Review staged changes
+/security-scan      # Run security scan (RECOMMENDED)
 ```
+
+**Use `/commit-push` instead of `git commit`** - it automatically runs lint and security checks before committing.
 
 If you see any `.env` file (except `.env.example` or `.env.template`), **STOP** and ensure it's in `.gitignore`.
 
@@ -577,6 +582,8 @@ The project includes custom Claude Code slash commands (`.claude/commands/`) for
 | Command | Description | Usage |
 |---------|-------------|-------|
 | `/feature-start` | Create and switch to new feature branch | `/feature-start <name> [base-branch]` |
+| `/commit-push` | Safe commit with lint + security scan | `/commit-push [-m "msg"] [--no-push]` |
+| `/security-scan` | Pre-commit scan for secrets/sensitive files | `/security-scan [--staged \| --all]` |
 | `/lint-check` | Run ESLint on frontend and backend | `/lint-check [--fix]` |
 | `/code-review` | Multi-agent code review (4 parallel agents) | `/code-review [pr-number\|branch]` |
 | `/pr-flow` | Autonomous PR workflow with auto-fix | `/pr-flow [--no-fix] [--auto-merge]` |
@@ -591,9 +598,15 @@ The project includes custom Claude Code slash commands (`.claude/commands/`) for
 ```bash
 /feature-start my-feature    # Create feature branch from develop
 # ... make changes ...
-/lint-check --fix            # Fix linting issues
-/code-review                 # Pre-PR review (4-agent analysis)
+/commit-push -m "feat: Add feature"  # Safe commit (lint + security scan)
+# ... more changes ...
 /pr-flow                     # Create PR, auto-fix issues, merge
+```
+
+**Safe Committing (prevents secrets from reaching GitHub):**
+```bash
+/commit-push -m "fix: Bug fix"  # Runs lint-check + security-scan before commit
+/security-scan                  # Run security scan manually
 ```
 
 **Version Bump and Release:**
@@ -607,6 +620,8 @@ The project includes custom Claude Code slash commands (`.claude/commands/`) for
 /architect review frontend/src/contexts/AuthContext.jsx
 /architect consult offline-first state management strategy
 /architect audit authentication flow
+/architect consult Cloud Run scaling strategy
+/architect review .github/workflows/pr-validation.yml
 ```
 
 ### Multi-Agent Code Review

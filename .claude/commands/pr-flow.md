@@ -30,6 +30,7 @@ Complete end-to-end PR lifecycle with autonomous code review and issue fixing.
 
 1. **Pre-Flight Checks**
    - Runs `/lint-check --fix` to fix code quality issues
+   - Runs `/security-scan --staged` to detect secrets (BLOCKS if found)
    - Commits any uncommitted changes
    - Pushes to remote
 
@@ -115,7 +116,25 @@ if [[ -n $(git status --porcelain) ]]; then
   HAS_CHANGES=true
 fi
 
-# 4. Commit changes if any
+# 4. Stage changes and run security scan
+echo ""
+echo "🔒 Running security scan..."
+git add .
+/security-scan --staged
+
+SECURITY_EXIT=$?
+if [[ $SECURITY_EXIT -ne 0 ]]; then
+  echo ""
+  echo "❌ Security scan failed!"
+  echo "   Secrets or sensitive files detected in staged changes."
+  echo "   Fix issues before creating PR."
+  echo ""
+  echo "   To see details: /security-scan --staged"
+  exit 1
+fi
+echo "✅ Security scan passed"
+
+# 5. Commit changes if any
 if [[ "$HAS_CHANGES" == "true" ]]; then
   echo ""
   echo "📦 Committing changes..."
@@ -156,7 +175,7 @@ if [[ "$HAS_CHANGES" == "true" ]]; then
   echo "✅ Committed: $COMMIT_MSG"
 fi
 
-# 5. Push to remote
+# 6. Push to remote
 echo ""
 echo "⬆️  Pushing to origin/$CURRENT_BRANCH..."
 
@@ -639,25 +658,30 @@ Merge now? → Yes, merge now
 ## Integration with Other Skills
 
 **Calls these skills automatically:**
-- `/lint-check --fix` - Before creating PR
+- `/lint-check --fix` - Before creating PR (fixes code quality issues)
+- `/security-scan --staged` - Before committing (BLOCKS if secrets found)
 - `/code-review {pr-number}` - For reviewing (4 parallel agents)
 - `/pr-merge {pr-number}` - When user confirms merge
 
 **Skills that work well with pr-flow:**
-- `/feature-start` - Create branch before
-- `/version` - Bump version first
+- `/feature-start` - Create branch before starting work
+- `/version` - Bump version before PR
+- `/commit-push` - For intermediate commits during development
 
 **Full workflow:**
 ```bash
 /feature-start my-feature    # Create branch
 # ... make changes ...
+/commit-push -m "wip: Progress"  # Safe intermediate commit
+# ... more changes ...
 /version minor "Add feature" # Bump version
 /pr-flow                     # Do everything else!
 ```
 
 ## Notes
 
-- **Pre-flight**: Always runs lint-check --fix before creating PR
+- **Pre-flight**: Always runs lint-check --fix and security-scan before creating PR
+- **Security first**: BLOCKS PR creation if secrets or sensitive files detected
 - **Smart targeting**: Auto-detects develop→main or feature→develop
 - **Autonomous**: Fixes issues without human intervention (within limits)
 - **Safe**: Max iterations, stuck detection, graceful failures
@@ -666,6 +690,13 @@ Merge now? → Yes, merge now
 - **Efficient**: Parallel agents for code review (4 simultaneous)
 
 ## Troubleshooting
+
+### "Security scan failed"
+Secrets or sensitive files detected. Run `/security-scan --staged` to see details.
+Common fixes:
+- `git reset HEAD <file>` to unstage sensitive files
+- Move secrets to `.env` files (which are gitignored)
+- Use environment variables instead of hardcoded values
 
 ### "No commits to create PR from"
 Your branch is up to date with target. Make some changes first.

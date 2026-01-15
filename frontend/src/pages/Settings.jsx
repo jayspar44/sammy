@@ -387,7 +387,8 @@ export default function Settings() {
                     <h3 className="text-sm font-bold uppercase tracking-wider">App Info</h3>
                 </div>
                 <div className="text-xs text-slate-400 space-y-1 dark:text-slate-500">
-                    <p>Version: v{backendInfo?.version || __APP_VERSION__}</p>
+                    <p>Sammy: v{__APP_VERSION__}</p>
+                    <p>Backend: {backendInfo?.version ? `v${backendInfo.version}` : 'loading...'}</p>
                     {appInfo.version && appInfo.id !== 'web' && (
                         <p>Native: v{appInfo.version}{appInfo.build ? ` (${appInfo.build})` : ''}</p>
                     )}

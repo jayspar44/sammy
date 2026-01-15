@@ -55,6 +55,7 @@ const formatBuildTime = () => {
 
 // Cached backend info from health endpoint
 let cachedBackendInfo = null;
+let fetchPromise = null; // In-flight promise for deduplication
 
 // Track last code update time (HMR in dev, or page load)
 let lastCodeUpdate = new Date();
@@ -87,19 +88,31 @@ if (import.meta.hot) {
 }
 
 /**
- * Fetch backend info from health endpoint (cached)
+ * Fetch backend info from health endpoint (cached, with deduplication)
+ * Uses the API service wrapper for consistency with project conventions.
  * @returns {Promise<object|null>} Backend info or null if failed
  */
 export const fetchBackendInfo = async () => {
+  // Return cached result if available
   if (cachedBackendInfo) return cachedBackendInfo;
-  try {
-    const response = await fetch('/api/health');
-    if (!response.ok) throw new Error('Failed');
-    cachedBackendInfo = await response.json();
-    return cachedBackendInfo;
-  } catch {
-    return null;
-  }
+
+  // Return in-flight promise to deduplicate concurrent calls
+  if (fetchPromise) return fetchPromise;
+
+  // Dynamic import to avoid circular dependency (services imports from utils)
+  fetchPromise = (async () => {
+    try {
+      const { getHealth } = await import('../api/services');
+      cachedBackendInfo = await getHealth();
+      return cachedBackendInfo;
+    } catch {
+      return null;
+    } finally {
+      fetchPromise = null;
+    }
+  })();
+
+  return fetchPromise;
 };
 
 /**
