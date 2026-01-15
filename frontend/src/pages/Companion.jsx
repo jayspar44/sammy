@@ -2,26 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Send } from 'lucide-react';
 import Button from '../components/ui/Button';
-import { cn } from '../utils/cn';
+import ChatMessage from '../components/common/ChatMessage';
 import { api } from '../api/services';
 import { format } from 'date-fns';
 import { logger } from '../utils/logger';
-
-const Message = ({ text, sender }) => {
-    const isUser = sender === 'user';
-    return (
-        <div className={cn("flex mb-4 animate-slideUp", isUser ? "justify-end" : "justify-start")}>
-            <div className={cn(
-                "max-w-[80%] p-3 text-sm leading-relaxed shadow-sm transition-all",
-                isUser
-                    ? "bg-primary text-white rounded-2xl rounded-tr-none dark:bg-sky-600"
-                    : "bg-surface text-slate-700 border border-slate-100 rounded-2xl rounded-tl-none dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700"
-            )}>
-                {text}
-            </div>
-        </div>
-    );
-};
 
 // Chat input component - rendered via portal outside the scroll area
 const ChatInput = ({ input, setInput, handleSend }) => {
@@ -122,7 +106,7 @@ export default function Companion() {
             {/* Messages */}
             <div className="p-4 bg-neutral-50 dark:bg-slate-900 min-h-full">
                 {messages.map(msg => (
-                    <Message key={msg.id} {...msg} />
+                    <ChatMessage key={msg.id} {...msg} />
                 ))}
                 {isTyping && (
                     <div className="flex justify-start mb-4 animate-pulse">
