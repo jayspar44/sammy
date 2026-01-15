@@ -1,8 +1,27 @@
+import axios from 'axios';
 import client from './client';
 import { logger } from '../utils/logger';
-import axios from 'axios';
 
 const IS_SPOOF_DB = () => localStorage.getItem('sammy_pref_spoofDb') === 'true';
+
+// Public API client (no auth required) - used for health endpoint before Firebase init
+const publicClient = axios.create({
+    baseURL: import.meta.env.VITE_API_URL || '/api',
+    timeout: 5000,
+});
+
+/**
+ * Get backend health info (public endpoint, no auth required)
+ * @returns {Promise<{status: string, version: string, serverStartTime: string}|null>}
+ */
+export const getHealth = async () => {
+    try {
+        const response = await publicClient.get('/health');
+        return response.data;
+    } catch {
+        return null;
+    }
+};
 
 // Mock Data
 // Helper to generate mock trends relative to a date
@@ -196,18 +215,6 @@ export const api = {
 
         const dateStr = date || new Date().toISOString().split('T')[0];
         const response = await client.post('/chat', { message, date: dateStr });
-        return response.data;
-    },
-
-    // Backend Health/Version
-    getBackendHealth: async () => {
-        if (IS_SPOOF_DB()) {
-            logger.spoof('Getting Backend Health');
-            return { status: 'ok', version: '0.10.9-spoof', timestamp: new Date().toISOString() };
-        }
-        // Use axios directly since /health is public (no auth needed)
-        const baseURL = import.meta.env.VITE_API_URL || '/api';
-        const response = await axios.get(`${baseURL}/health`);
         return response.data;
     },
 };
