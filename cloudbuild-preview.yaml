@@ -117,14 +117,7 @@ steps:
         BACKEND_URL="https://pr-${_PR_NUMBER}---sammy-backend-dev-u7dzitmnha-uc.a.run.app"
 
         # Get GitHub token from Secret Manager
-        echo "Attempting to access GITHUB_TOKEN secret..."
-        GITHUB_TOKEN=$$(gcloud secrets versions access latest --secret=GITHUB_TOKEN --project=sammy-658 2>&1)
-        if echo "$$GITHUB_TOKEN" | grep -q "^ghp_"; then
-          echo "Successfully retrieved GitHub token"
-        else
-          echo "Secret access result: $$GITHUB_TOKEN"
-          GITHUB_TOKEN=""
-        fi
+        GITHUB_TOKEN=$$(gcloud secrets versions access latest --secret=GITHUB_TOKEN --project=sammy-658 2>/dev/null || echo "")
 
         if [ -n "$$GITHUB_TOKEN" ]; then
           echo "Posting preview URLs to GitHub PR #${_PR_NUMBER}..."
