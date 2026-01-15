@@ -388,7 +388,7 @@ export default function Settings() {
                 </div>
                 <div className="text-xs text-slate-400 space-y-1 dark:text-slate-500">
                     <p>Sammy: v{__APP_VERSION__}</p>
-                    <p>Backend: v{backendInfo?.version || 'loading...'}</p>
+                    <p>Backend: {backendInfo?.version ? `v${backendInfo.version}` : 'loading...'}</p>
                     {appInfo.version && appInfo.id !== 'web' && (
                         <p>Native: v{appInfo.version}{appInfo.build ? ` (${appInfo.build})` : ''}</p>
                     )}
