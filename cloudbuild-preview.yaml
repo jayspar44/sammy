@@ -105,6 +105,57 @@ steps:
         echo "Backend:  https://pr-${_PR_NUMBER}---sammy-backend-dev-u7dzitmnha-uc.a.run.app"
         echo "=========================================="
 
+  # Step 6: Post preview URLs to GitHub PR as comment
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        FRONTEND_URL=$$(cat /workspace/frontend-preview-url.txt)
+        BACKEND_URL="https://pr-${_PR_NUMBER}---sammy-backend-dev-u7dzitmnha-uc.a.run.app"
+
+        # Get GitHub token from Secret Manager
+        GITHUB_TOKEN=$$(gcloud secrets versions access latest --secret=GITHUB_TOKEN 2>/dev/null || echo "")
+
+        if [ -n "$$GITHUB_TOKEN" ]; then
+          echo "Posting preview URLs to GitHub PR #${_PR_NUMBER}..."
+
+          # Create comment body
+          COMMENT_BODY=$$(cat <<EOF
+        ## 🚀 Preview Environment Ready!
+
+        Your PR preview has been deployed and is ready for testing.
+
+        ### Preview URLs
+        - **Frontend:** $${FRONTEND_URL}
+        - **Backend:** $${BACKEND_URL}
+
+        ### Testing
+        1. Open the frontend URL above
+        2. Navigate to **Settings** page
+        3. Verify the **Backend version** displays correctly
+
+        The preview will expire in 7 days or when the PR is closed.
+
+        ---
+        <sub>Deployed by Cloud Build • [View logs](https://console.cloud.google.com/cloud-build/builds;region=us-central1)</sub>
+        EOF
+          )
+
+          # Post comment to GitHub PR
+          curl -X POST \
+            -H "Authorization: token $$GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/jayspar44/sammy/issues/${_PR_NUMBER}/comments" \
+            -d "{\"body\": $(echo "$$COMMENT_BODY" | jq -Rs .)}"
+
+          echo "✅ Preview URLs posted to GitHub PR #${_PR_NUMBER}"
+        else
+          echo "⚠️  GITHUB_TOKEN secret not found - skipping GitHub comment"
+          echo "   To enable automatic PR comments, create a GitHub token with 'repo' scope"
+          echo "   and store it in Secret Manager as 'GITHUB_TOKEN'"
+        fi
+
 timeout: '1800s'
 options:
   logging: CLOUD_LOGGING_ONLY
