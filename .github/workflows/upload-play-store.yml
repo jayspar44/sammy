@@ -114,9 +114,11 @@ jobs:
           }
           EOF
 
-      - name: Sync Capacitor
+      - name: Add and sync Capacitor Android
         working-directory: frontend
-        run: npx cap sync android
+        run: |
+          npx cap add android
+          npx cap sync android
 
       - name: Configure release signing and versioning
         working-directory: frontend/android/app
