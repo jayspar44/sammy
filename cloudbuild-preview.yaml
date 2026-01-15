@@ -68,6 +68,7 @@ steps:
         npm install -g firebase-tools
         cd frontend
         firebase hosting:channel:deploy pr-${_PR_NUMBER} \
+          --site sammy-658-dev \
           --project sammy-658 \
           --expires 7d \
           --json > /workspace/firebase-deploy.json
