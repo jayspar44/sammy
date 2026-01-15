@@ -3,9 +3,10 @@
 # Triggered: Manual (workflow_dispatch)
 #
 # Features:
-# - Build signed AAB (Android App Bundle)
+# - Build signed AAB (Android App Bundle) for prod or dev flavor
 # - Upload to Play Store Internal/Alpha/Beta track
-# - Uses production API by default
+# - Supports both io.sammy.app (prod) and io.sammy.app.dev (dev)
+# - Auto-increments versionCode using GitHub run number
 #
 # Prerequisites:
 # 1. Play Console account verified
@@ -26,6 +27,14 @@ name: Upload to Play Store
 on:
   workflow_dispatch:
     inputs:
+      flavor:
+        description: 'App flavor (prod = io.sammy.app, dev = io.sammy.app.dev)'
+        required: true
+        default: 'prod'
+        type: choice
+        options:
+          - prod
+          - dev
       track:
         description: 'Release track'
         required: true
@@ -85,11 +94,17 @@ jobs:
         working-directory: frontend
         run: npm ci
 
-      - name: Create production environment file
+      - name: Create environment file
         working-directory: frontend
         run: |
-          echo "VITE_API_URL=https://sammy-backend-prod-u7dzitmnha-uc.a.run.app/api" > .env.production
+          if [ "${{ inputs.flavor }}" = "prod" ]; then
+            API_URL="https://sammy-backend-prod-u7dzitmnha-uc.a.run.app/api"
+          else
+            API_URL="https://sammy-backend-dev-u7dzitmnha-uc.a.run.app/api"
+          fi
+          echo "VITE_API_URL=$API_URL" > .env.production
           echo "VITE_FIREBASE_CONFIG=${{ secrets.FIREBASE_CLIENT_CONFIG }}" >> .env.production
+          echo "Building ${{ inputs.flavor }} flavor with API: $API_URL"
 
       - name: Build web assets
         working-directory: frontend
@@ -143,10 +158,15 @@ jobs:
 
           echo "Set versionCode=${{ github.run_number }}, versionName=${{ steps.version.outputs.version }}"
 
-          # Add product flavors for prod build
+          # Add product flavors for prod and dev builds
           sed -i '/buildTypes {/i\
               flavorDimensions = ["environment"]\
               productFlavors {\
+                  dev {\
+                      dimension "environment"\
+                      applicationIdSuffix ".dev"\
+                      resValue "string", "app_name", "Sammy (Dev)"\
+                  }\
                   prod {\
                       dimension "environment"\
                       resValue "string", "app_name", "Sammy"\
@@ -173,7 +193,11 @@ jobs:
         working-directory: frontend/android
         run: |
           chmod +x ./gradlew
-          ./gradlew bundleProdRelease
+          FLAVOR="${{ inputs.flavor }}"
+          # Capitalize first letter for gradle task
+          FLAVOR_CAP="$(echo ${FLAVOR:0:1} | tr '[:lower:]' '[:upper:]')${FLAVOR:1}"
+          echo "Building bundle${FLAVOR_CAP}Release..."
+          ./gradlew bundle${FLAVOR_CAP}Release
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
@@ -182,32 +206,38 @@ jobs:
       - name: Upload AAB as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: sammy-prod-release-${{ steps.version.outputs.version }}-${{ github.run_number }}
-          path: frontend/android/app/build/outputs/bundle/prodRelease/app-prod-release.aab
+          name: sammy-${{ inputs.flavor }}-release-${{ steps.version.outputs.version }}-${{ github.run_number }}
+          path: frontend/android/app/build/outputs/bundle/${{ inputs.flavor }}Release/app-${{ inputs.flavor }}-release.aab
           retention-days: 90
 
       - name: Upload to Play Store
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
-          packageName: io.sammy.app
-          releaseFiles: frontend/android/app/build/outputs/bundle/prodRelease/app-prod-release.aab
+          packageName: ${{ inputs.flavor == 'prod' && 'io.sammy.app' || 'io.sammy.app.dev' }}
+          releaseFiles: frontend/android/app/build/outputs/bundle/${{ inputs.flavor }}Release/app-${{ inputs.flavor }}-release.aab
           track: ${{ inputs.track }}
           status: ${{ inputs.status }}
-          releaseName: v${{ steps.version.outputs.version }}
+          releaseName: v${{ steps.version.outputs.version }}${{ inputs.flavor == 'dev' && '-dev' || '' }}
           whatsNewDirectory: ''
           inAppUpdatePriority: 0
 
       - name: Build Summary
         run: |
+          if [ "${{ inputs.flavor }}" = "prod" ]; then
+            PACKAGE_NAME="io.sammy.app"
+          else
+            PACKAGE_NAME="io.sammy.app.dev"
+          fi
           echo "## Play Store Upload Complete!" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Setting | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|---------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Flavor** | ${{ inputs.flavor }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **Version** | v${{ steps.version.outputs.version }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **Version Code** | ${{ github.run_number }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **Track** | ${{ inputs.track }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **Status** | ${{ inputs.status }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Package** | io.sammy.app |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Package** | $PACKAGE_NAME |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Check the [Play Console](https://play.google.com/console) for release status." >> $GITHUB_STEP_SUMMARY
