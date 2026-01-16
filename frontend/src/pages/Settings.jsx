@@ -388,7 +388,7 @@ export default function Settings() {
                 </div>
                 <div className="text-xs text-slate-400 space-y-1 dark:text-slate-500">
                     <p>Sammy: v{__APP_VERSION__}</p>
-                    <p>Backend: {backendInfo?.version ? `v${backendInfo.version}` : 'loading...'}</p>
+                    <p>Backend: {backendInfo?.version ? `v${backendInfo.version}` : 'unavailable'}</p>
                     {appInfo.version && appInfo.id !== 'web' && (
                         <p>Native: v{appInfo.version}{appInfo.build ? ` (${appInfo.build})` : ''}</p>
                     )}
@@ -414,13 +414,15 @@ export default function Settings() {
                             <span className="ml-2 px-1.5 py-0.5 bg-green-100 text-green-600 rounded text-[10px] font-medium">PROD</span>
                         )}
                     </p>
-                    {backendInfo && (
+                    {backendInfo?.serverStartTime && (
                         <p>
                             Server started: {new Date(backendInfo.serverStartTime).toLocaleString()}
                         </p>
                     )}
                     <p>
-                        Frontend built: {new Date(__BUILD_TIMESTAMP__).toLocaleString()}
+                        Frontend built: {typeof __BUILD_TIMESTAMP__ !== 'undefined' && !isNaN(new Date(__BUILD_TIMESTAMP__).getTime())
+                            ? new Date(__BUILD_TIMESTAMP__).toLocaleString()
+                            : 'unknown'}
                     </p>
                     <p>
                         Commit: {__GIT_HASH__}

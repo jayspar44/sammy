@@ -39,12 +39,20 @@ export const getEnvironment = () => {
 };
 
 /**
+ * Check if a Date object is valid
+ * @param {Date} d - Date to validate
+ * @returns {boolean} True if valid date
+ */
+const isValidDate = (d) => d instanceof Date && !isNaN(d.getTime());
+
+/**
  * Format build timestamp as yyyy-mm-dd hh:mm (24hr)
  * @returns {string} Formatted build time
  */
 const formatBuildTime = () => {
   if (typeof __BUILD_TIMESTAMP__ === 'undefined') return '';
   const d = new Date(__BUILD_TIMESTAMP__);
+  if (!isValidDate(d)) return '';
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
@@ -124,9 +132,10 @@ export const getBackendInfo = () => cachedBackendInfo;
 /**
  * Format a date as yyyy-mm-dd hh:mm (24hr)
  * @param {Date} d - Date to format
- * @returns {string} Formatted date string
+ * @returns {string} Formatted date string, or 'unknown' if invalid
  */
 const formatDateTime = (d) => {
+  if (!isValidDate(d)) return 'unknown';
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
@@ -147,17 +156,19 @@ export const getVersionString = () => {
 
   // In local dev mode, show the most recent update time
   if (import.meta.env.DEV) {
-    const backendTime = cachedBackendInfo ? new Date(cachedBackendInfo.serverStartTime) : null;
+    const backendTime = cachedBackendInfo?.serverStartTime ? new Date(cachedBackendInfo.serverStartTime) : null;
     // Use the most recent: HMR update or backend restart
-    const latestTime = backendTime && backendTime > lastCodeUpdate ? backendTime : lastCodeUpdate;
+    const latestTime = backendTime && isValidDate(backendTime) && backendTime > lastCodeUpdate ? backendTime : lastCodeUpdate;
     const formatted = formatDateTime(latestTime);
     return `v${version} (${env}) ${formatted}`;
   }
 
   // Production: use backend start time if available
-  if (cachedBackendInfo) {
-    const formatted = formatDateTime(new Date(cachedBackendInfo.serverStartTime));
-    return `v${version} (${env}) ${formatted}`;
+  if (cachedBackendInfo?.serverStartTime) {
+    const d = new Date(cachedBackendInfo.serverStartTime);
+    if (isValidDate(d)) {
+      return `v${version} (${env}) ${formatDateTime(d)}`;
+    }
   }
 
   // Fallback to baked-in values

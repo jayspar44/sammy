@@ -1,21 +1,21 @@
 {
-  "appId": "io.sammy.app.dev",
-  "appName": "Sammy Dev",
-  "webDir": "dist",
-  "server": {
-    "androidScheme": "https"
-  },
-  "plugins": {
-    "Keyboard": {
-      "resize": "native",
-      "style": "dark",
-      "resizeOnFullScreen": true
-    },
-    "StatusBar": {
-      "overlay": true
-    },
-    "SystemBars": {
-      "insetsHandling": "disable"
-    }
-  }
+    "appId":  "io.sammy.app.dev",
+    "webDir":  "dist",
+    "appName":  "Sammy (Dev)",
+    "server":  {
+                   "androidScheme":  "https"
+               },
+    "plugins":  {
+                    "Keyboard":  {
+                                     "resizeOnFullScreen":  true,
+                                     "style":  "dark",
+                                     "resize":  "native"
+                                 },
+                    "StatusBar":  {
+                                      "overlay":  true
+                                  },
+                    "SystemBars":  {
+                                       "insetsHandling":  "disable"
+                                   }
+                }
 }
