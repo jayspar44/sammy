@@ -1,9 +1,26 @@
 # Changelog
 
-All notable changes to this project are documented in this file.
+All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [0.12.0](https://github.com/jayspar44/sammy/compare/v0.11.1...v0.12.0) (2026-01-16)
+
+
+### Features
+
+* Add configurable release status to Play Store workflow ([e8e988e](https://github.com/jayspar44/sammy/commit/e8e988e825b2d9912621e3da918f23063057a46a))
+* add conventional commits, release skill, husky pre-commit security hook ([02813e2](https://github.com/jayspar44/sammy/commit/02813e20fb2e2c2eb7fb82353f55a04af8c1e770))
+* Add dev flavor support to Play Store workflow ([75aba6b](https://github.com/jayspar44/sammy/commit/75aba6ba5f97da2e86171359c9c321d76e8c3b13))
+* Add GitHub issue creation for unfixed HIGH items in pr-flow ([2985b53](https://github.com/jayspar44/sammy/commit/2985b5379363fead892b5e4e712e17fa39eb8aaf))
+
+
+### Bug Fixes
+
+* Add Android platform before Capacitor sync in workflow ([1e081dd](https://github.com/jayspar44/sammy/commit/1e081dda7ed0d8c22074e1db48c89a6c026b983a))
+* Add product flavors to workflow build.gradle ([52186ae](https://github.com/jayspar44/sammy/commit/52186aef186138650c30b591b699a2a5789d3c0b))
+* Auto-increment versionCode in Play Store workflow ([297bd7d](https://github.com/jayspar44/sammy/commit/297bd7de69179626f6b85456a46d01baaf60c8e3))
+* clarify security-scan exception handling ([698313b](https://github.com/jayspar44/sammy/commit/698313bdc4102f631eb4d1f74ed309d03951bf52))
+* Target correct Firebase site (sammy-658-dev) in cleanup workflows ([2f73c3a](https://github.com/jayspar44/sammy/commit/2f73c3af64fa00354a44e5f502c465fda7f55197))
+* Use Java 21 for Capacitor build in workflow ([c54c0b1](https://github.com/jayspar44/sammy/commit/c54c0b16d38242231b9be43af3e1f537c3524c8d))
 
 ## [0.11.6] - 2026-01-16
 
