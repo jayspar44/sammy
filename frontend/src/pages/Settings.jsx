@@ -387,7 +387,7 @@ export default function Settings() {
                     <h3 className="text-sm font-bold uppercase tracking-wider">App Info</h3>
                 </div>
                 <div className="text-xs text-slate-400 space-y-1 dark:text-slate-500">
-                    <p>Sammy: v{__APP_VERSION__}</p>
+                    <p>Sammy: v{__APP_VERSION__}+{__GIT_HASH__?.slice(0, 7) || 'unknown'}</p>
                     <p>Backend: {backendInfo?.version ? `v${backendInfo.version}` : 'unavailable'}</p>
                     {appInfo.version && appInfo.id !== 'web' && (
                         <p>Native: v{appInfo.version}{appInfo.build ? ` (${appInfo.build})` : ''}</p>

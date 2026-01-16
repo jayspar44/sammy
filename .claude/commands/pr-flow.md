@@ -95,6 +95,32 @@ fi
 echo "Target branch:  $TARGET_BRANCH"
 echo ""
 
+# 1b. Check for unreleased commits
+echo "📦 Checking release status..."
+LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+if [ -n "$LAST_TAG" ]; then
+  UNRELEASED_COUNT=$(git log $LAST_TAG..HEAD --oneline | wc -l)
+  if [ "$UNRELEASED_COUNT" -gt 0 ]; then
+    echo "⚠️  Found $UNRELEASED_COUNT commits since $LAST_TAG"
+    echo ""
+    # Use AskUserQuestion to prompt:
+    # {
+    #   "question": "You have {UNRELEASED_COUNT} commits since {LAST_TAG}. Run /release before creating PR?",
+    #   "header": "Version",
+    #   "options": [
+    #     { "label": "Yes, release first (Recommended)", "description": "Auto-bump version, then create PR" },
+    #     { "label": "No, continue with current version", "description": "PR will use existing version" }
+    #   ]
+    # }
+    # If user selects "Yes": Run /release skill, then continue with PR flow.
+  else
+    echo "✅ No unreleased commits"
+  fi
+else
+  echo "ℹ️  No release tags found (use /release --first for initial release)"
+fi
+echo ""
+
 # 2. Check for changes
 HAS_CHANGES=false
 if [[ -n $(git status --porcelain) ]]; then
@@ -665,7 +691,7 @@ Merge now? → Yes, merge now
 
 **Skills that work well with pr-flow:**
 - `/feature-start` - Create branch before starting work
-- `/version` - Bump version before PR
+- `/release` - Create a release before PR (auto-bumps version based on commits)
 - `/commit-push` - For intermediate commits during development
 
 **Full workflow:**
@@ -674,7 +700,7 @@ Merge now? → Yes, merge now
 # ... make changes ...
 /commit-push -m "wip: Progress"  # Safe intermediate commit
 # ... more changes ...
-/version minor "Add feature" # Bump version
+/release                     # Auto-bump version based on commits
 /pr-flow                     # Do everything else!
 ```
 

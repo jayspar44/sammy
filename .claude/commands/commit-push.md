@@ -8,6 +8,64 @@ argument-hint: [-m "message"] [--no-push] [--skip-lint] [--skip-security]
 
 Commits and pushes changes with automatic lint checking and security scanning to prevent bad code and secrets from reaching GitHub.
 
+## CRITICAL: Checkpoint-Based Execution
+
+**This skill uses checkpoints to track progress. When resuming, check completion status first.**
+
+### Execution Checkpoints
+
+Update the todo list with these checkpoints. Before ANY action, verify previous checkpoints are complete:
+
+```
+[ ] CHECKPOINT 1: git status - verified changes exist
+[ ] CHECKPOINT 2: /lint-check --fix - completed (or --skip-lint flag)
+[ ] CHECKPOINT 3: git add . - staged changes
+[ ] CHECKPOINT 4: /security-scan --staged - completed (or --skip-security flag) <<< CRITICAL
+[ ] CHECKPOINT 5: Commit message confirmed
+[ ] CHECKPOINT 6: git commit executed
+[ ] CHECKPOINT 7: git push executed (or --no-push flag)
+```
+
+### Resume Logic
+
+When returning to this skill after any interruption:
+1. Check which checkpoints are marked complete in the todo list
+2. Resume from the first incomplete checkpoint
+3. **NEVER skip ahead** - if checkpoint 4 is incomplete, do NOT proceed to checkpoint 6
+
+**STOP CONDITION**: If checkpoint 6 (git commit) is about to run but checkpoint 4 (security-scan) is incomplete, STOP and complete checkpoint 4 first.
+
+### Husky Backup
+
+The Husky pre-commit hook (`.husky/pre-commit`) provides a safety net by blocking commits with secrets at the git level.
+
+---
+
+## Commit Message Format (Conventional Commits)
+
+This project uses [Conventional Commits](https://www.conventionalcommits.org/) for automated versioning.
+
+**Format**: `<type>: <description>`
+
+| Type | When to Use | Version Bump |
+|------|-------------|--------------|
+| `feat:` | New feature or capability | MINOR |
+| `fix:` | Bug fix | PATCH |
+| `feat!:` | Breaking change | MAJOR |
+| `chore:` | Maintenance, deps, configs | None |
+| `docs:` | Documentation only | None |
+| `refactor:` | Code restructuring | None |
+| `perf:` | Performance improvement | None |
+| `test:` | Adding/updating tests | None |
+
+**Examples:**
+- `feat: add dark mode toggle`
+- `fix: resolve login redirect bug`
+- `feat!: change API response format` (breaking)
+- `chore: update eslint config`
+
+**Commit hooks enforce this format.** Invalid messages will be rejected. Subject must be lowercase.
+
 ## Arguments
 
 - **-m "message"**: Commit message (prompted if not provided)
@@ -22,13 +80,13 @@ Commits and pushes changes with automatic lint checking and security scanning to
 /commit-push
 
 # With commit message
-/commit-push -m "feat: Add user profile page"
+/commit-push -m "feat: add user profile page"
 
 # Commit only, no push
-/commit-push -m "wip: Work in progress" --no-push
+/commit-push -m "wip: work in progress" --no-push
 
 # Skip lint (if already ran manually)
-/commit-push -m "fix: Bug fix" --skip-lint
+/commit-push -m "fix: bug fix" --skip-lint
 ```
 
 ## Pre-Commit Checks
@@ -233,26 +291,26 @@ fi
 ```bash
 if [[ -z "$COMMIT_MSG" ]]; then
   # Prompt for commit message using AskUserQuestion
-  # Options:
+  # Options should include conventional commit types:
   # - feat: New feature
   # - fix: Bug fix
   # - chore: Maintenance
   # - refactor: Code refactoring
   # - docs: Documentation
+  # - perf: Performance improvement
+  # - test: Tests
   # - Custom message
 
   # Use AskUserQuestion to get commit type and message
-  # Then construct: "type: description"
+  # The message MUST follow conventional commits format: "type: description"
 fi
 
-# Get version for prefix
-VERSION=$(node -p "require('./version.json').version" 2>/dev/null || echo "")
+# Validate conventional commit format
+# The commitlint hook will reject invalid formats, but we should ensure
+# the message follows the pattern: type: description
+# Valid types: feat, fix, chore, docs, refactor, perf, test, build, ci, style
 
-if [[ -n "$VERSION" ]]; then
-  FULL_MSG="v$VERSION: $COMMIT_MSG"
-else
-  FULL_MSG="$COMMIT_MSG"
-fi
+FULL_MSG="$COMMIT_MSG"
 ```
 
 ### 7. Commit
@@ -365,7 +423,7 @@ If you expected changes, check:
 
 ### Example 1: Standard Commit
 ```bash
-/commit-push -m "feat: Add dark mode toggle"
+/commit-push -m "feat: add dark mode toggle"
 
 # Output:
 # ════════════════════════════════════════
@@ -386,7 +444,7 @@ If you expected changes, check:
 # ✅ Security scan passed
 #
 # 💾 Committing...
-# ✅ Committed: v0.11.4: feat: Add dark mode toggle
+# ✅ Committed: feat: Add dark mode toggle
 #
 # ⬆️  Pushing to remote...
 # ✅ Pushed to origin/feature/dark-mode
@@ -398,7 +456,7 @@ If you expected changes, check:
 
 ### Example 2: Blocked by Security
 ```bash
-/commit-push -m "feat: Add firebase config"
+/commit-push -m "feat: add firebase config"
 
 # Output:
 # ════════════════════════════════════════
@@ -432,7 +490,7 @@ If you expected changes, check:
 
 # Output:
 # ...
-# ✅ Committed: v0.11.4: wip: Partial feature
+# ✅ Committed: chore: Partial feature (wip)
 #
 # ℹ️  Skipping push (--no-push)
 #    Run 'git push' when ready
@@ -446,12 +504,12 @@ If you expected changes, check:
 # Full feature workflow
 /feature-start my-feature     # Create branch
 # ... make changes ...
-/commit-push -m "feat: Add feature"  # Safe commit + push
+/commit-push -m "feat: add feature"  # Safe commit + push
 /pr-flow                      # Create PR with review
 
 # Quick fix workflow
 # ... fix bug ...
-/commit-push -m "fix: Bug fix"  # Safe commit + push
+/commit-push -m "fix: bug fix"  # Safe commit + push
 ```
 
 ### Called by /pr-flow
@@ -469,8 +527,9 @@ This skill prioritizes **preventing secrets from ever reaching GitHub**:
 
 ## Notes
 
-- **Pre-commit hooks**: This is like a pre-commit hook but with more intelligence
-- **Version prefix**: Automatically adds version from version.json
+- **Conventional commits**: Messages must follow `type: description` format
+- **Commit hooks**: The commitlint hook validates message format
 - **Co-author**: Adds Claude co-author for attribution
 - **Branch detection**: Handles new branches automatically
 - **Non-destructive**: Lint --fix only fixes safe auto-fixable issues
+- **Release workflow**: Use `/release` to bump version based on commits

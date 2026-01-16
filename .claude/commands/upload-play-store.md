@@ -34,13 +34,40 @@ All arguments are optional. Missing parameters will be prompted interactively.
 
 ## Steps
 
-1. **Parse CLI arguments** for any pre-specified options:
+1. **Check for unreleased commits**
+
+   Before prompting for parameters, check if there are commits since the last release tag:
+
+   ```bash
+   LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+   if [ -n "$LAST_TAG" ]; then
+     UNRELEASED_COUNT=$(git log $LAST_TAG..HEAD --oneline | wc -l)
+   else
+     UNRELEASED_COUNT=0
+   fi
+   ```
+
+   If UNRELEASED_COUNT > 0, use AskUserQuestion:
+   ```json
+   {
+     "question": "You have {UNRELEASED_COUNT} commits since last release ({LAST_TAG}). Create a new release first?",
+     "header": "Unreleased",
+     "options": [
+       { "label": "Yes, run /release first (Recommended)", "description": "Bump version based on commits, then upload" },
+       { "label": "No, upload current version", "description": "Upload without version bump" }
+     ]
+   }
+   ```
+
+   If user selects "Yes": Run `/release` skill first (using Skill tool), then continue with upload.
+
+2. **Parse CLI arguments** for any pre-specified options:
    - Check for `--prod` or `--dev` to set flavor
    - Check for `--internal`, `--alpha`, or `--beta` to set track
    - Check for `--draft` or `--completed` to set status
    - Check for `-m "notes"` to set release notes
 
-2. **Prompt for missing parameters** using AskUserQuestion:
+3. **Prompt for missing parameters** using AskUserQuestion:
    - If flavor not specified: Ask "Production or Development?"
      - Production (Recommended) - For real releases to users
      - Development - For testing with dev backend
@@ -55,7 +82,7 @@ All arguments are optional. Missing parameters will be prompted interactively.
      - Use default - "Bug fixes and improvements"
      - Custom - Enter custom release notes
 
-3. **Trigger the GitHub workflow**:
+4. **Trigger the GitHub workflow**:
    ```bash
    gh workflow run upload-play-store.yml \
      -f flavor=<flavor> \
@@ -64,21 +91,21 @@ All arguments are optional. Missing parameters will be prompted interactively.
      -f release_notes="<notes>"
    ```
 
-4. **Show initial confirmation**: Display all selected parameters and that the workflow was triggered
+5. **Show initial confirmation**: Display all selected parameters and that the workflow was triggered
 
-5. **Get the workflow run ID** (wait a few seconds for it to be created):
+6. **Get the workflow run ID** (wait a few seconds for it to be created):
    ```bash
    sleep 3
    RUN_ID=$(gh run list --workflow=upload-play-store.yml -L 1 --json databaseId -q '.[0].databaseId')
    ```
 
-6. **Monitor the workflow in background**: Use `run_in_background: true` to watch without blocking:
+7. **Monitor the workflow in background**: Use `run_in_background: true` to watch without blocking:
    ```bash
    gh run watch $RUN_ID
    ```
    Tell the user you're monitoring in the background and they can continue working.
 
-7. **Report final result**: When the workflow completes, check the result and notify the user:
+8. **Report final result**: When the workflow completes, check the result and notify the user:
    ```bash
    CONCLUSION=$(gh run view $RUN_ID --json conclusion -q '.conclusion')
    ```
