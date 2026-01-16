@@ -2,6 +2,8 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.12.1](https://github.com/jayspar44/sammy/compare/v0.12.0...v0.12.1) (2026-01-16)
+
 ## [0.12.0](https://github.com/jayspar44/sammy/compare/v0.11.1...v0.12.0) (2026-01-16)
 
 
