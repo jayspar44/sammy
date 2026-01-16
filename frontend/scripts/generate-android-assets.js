@@ -197,8 +197,8 @@ async function generateLegacySplashScreens() {
     );
     console.log(`  ✓ ${density}/portrait/light (${dimensions.portrait.width}x${dimensions.portrait.height})`);
 
-    // Dark mode - Portrait
-    const portDarkDir = path.join(ANDROID_RES, `drawable-night-port-${density}`);
+    // Dark mode - Portrait (orientation-night-density order)
+    const portDarkDir = path.join(ANDROID_RES, `drawable-port-night-${density}`);
     ensureDir(portDarkDir);
     const portDarkPath = path.join(portDarkDir, 'splash.png');
     await createSplashScreen(
@@ -223,8 +223,8 @@ async function generateLegacySplashScreens() {
     );
     console.log(`  ✓ ${density}/landscape/light (${dimensions.landscape.width}x${dimensions.landscape.height})`);
 
-    // Dark mode - Landscape
-    const landDarkDir = path.join(ANDROID_RES, `drawable-night-land-${density}`);
+    // Dark mode - Landscape (orientation-night-density order)
+    const landDarkDir = path.join(ANDROID_RES, `drawable-land-night-${density}`);
     ensureDir(landDarkDir);
     const landDarkPath = path.join(landDarkDir, 'splash.png');
     await createSplashScreen(
@@ -263,8 +263,8 @@ async function generateAndroid12SplashIcons() {
   }
   console.log(`  ✓ drawable-v31/splash_icon.png (${ANDROID_12_SPLASH_SIZE}x${ANDROID_12_SPLASH_SIZE})`);
 
-  // Dark mode
-  const darkDir = path.join(ANDROID_RES, 'drawable-v31-night');
+  // Dark mode (night mode BEFORE version qualifier)
+  const darkDir = path.join(ANDROID_RES, 'drawable-night-v31');
   ensureDir(darkDir);
   const darkPath = path.join(darkDir, 'splash_icon.png');
 
@@ -279,7 +279,7 @@ async function generateAndroid12SplashIcons() {
       .png()
       .toFile(darkPath);
   }
-  console.log(`  ✓ drawable-v31-night/splash_icon.png (${ANDROID_12_SPLASH_SIZE}x${ANDROID_12_SPLASH_SIZE})`);
+  console.log(`  ✓ drawable-night-v31/splash_icon.png (${ANDROID_12_SPLASH_SIZE}x${ANDROID_12_SPLASH_SIZE})`);
 }
 
 /**

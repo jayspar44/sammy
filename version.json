@@ -1,6 +1,14 @@
 {
-    "version": "0.11.5",
+    "version": "0.11.6",
     "history": [
+        {
+            "version": "0.11.6",
+            "date": "2026-01-16",
+            "author": "jason",
+            "changes": [
+                "Fix version display NaN and ensure Cloud Build routes traffic to latest"
+            ]
+        },
         {
             "version": "0.11.5",
             "date": "2026-01-15",
