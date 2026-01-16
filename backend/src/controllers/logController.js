@@ -1,5 +1,5 @@
 const { db, isReady } = require('../services/firebase');
-const { calculateStats } = require('../services/statsService');
+const { calculateStats, calculateCumulativeStats } = require('../services/statsService');
 const admin = require('firebase-admin');
 
 const logDrink = async (req, res) => {
@@ -318,4 +318,56 @@ const getStatsRange = async (req, res) => {
     }
 };
 
-module.exports = { logDrink, getStats, updateLog, deleteLog, getStatsRange };
+const getCumulativeStats = async (req, res) => {
+    const { uid } = req.user;
+    const { mode = 'target', range = '90d', date } = req.query;
+
+    // Validate mode
+    if (!['target', 'benchmark'].includes(mode)) {
+        return res.status(400).json({ error: 'Mode must be "target" or "benchmark"' });
+    }
+
+    // Validate range
+    if (!['90d', 'all'].includes(range)) {
+        return res.status(400).json({ error: 'Range must be "90d" or "all"' });
+    }
+
+    // Allow client to specify anchor date for timezone handling
+    const clientDate = date;
+    const todayStr = clientDate || new Date().toISOString().split('T')[0];
+    const anchorDate = new Date(todayStr);
+
+    // Mock mode if DB not connected
+    if (!isReady) {
+        const mockSeries = [];
+        let cumulative = 0;
+        for (let i = 89; i >= 0; i--) {
+            const d = new Date(anchorDate);
+            d.setDate(anchorDate.getDate() - i);
+            const daily = Math.floor(Math.random() * 5) - 1; // -1 to 3
+            cumulative += daily;
+            mockSeries.push({
+                date: d.toISOString().split('T')[0],
+                cumulative,
+                daily
+            });
+        }
+        return res.json({
+            series: mockSeries,
+            summary: { totalSaved: cumulative, totalDays: 90, avgPerWeek: Math.round(cumulative / 13 * 10) / 10 },
+            mode,
+            range,
+            hasTypicalWeek: true
+        });
+    }
+
+    try {
+        const stats = await calculateCumulativeStats(uid, mode, range, anchorDate);
+        res.json(stats);
+    } catch (error) {
+        req.log.error({ err: error }, 'Error fetching cumulative stats');
+        res.status(500).json({ error: 'Failed to fetch cumulative stats' });
+    }
+};
+
+module.exports = { logDrink, getStats, updateLog, deleteLog, getStatsRange, getCumulativeStats };

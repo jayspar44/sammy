@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { Zap, Calendar, TrendingDown, Wallet } from 'lucide-react';
 import Card from '../components/ui/Card';
+import CumulativeSavingsChart from '../components/insights/CumulativeSavingsChart';
 import { cn } from '../utils/cn';
 import { api } from '../api/services';
 import { useAuth } from '../contexts/AuthContext';
@@ -189,6 +190,11 @@ export default function Insights() {
                     <span>Today</span>
                 </div>
             </Card>
+
+            {/* Cumulative Drinks Saved Chart */}
+            <div className="mt-6">
+                <CumulativeSavingsChart />
+            </div>
         </div>
     );
 }
