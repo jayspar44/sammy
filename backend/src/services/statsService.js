@@ -237,6 +237,15 @@ const calculateCumulativeStats = async (userId, mode, range, anchorDate) => {
         startDate.setDate(anchorDate.getDate() - 89); // 90 days including today
     }
 
+    // Never show data before user's registration date
+    if (registeredDate) {
+        const regDateNormalized = new Date(registeredDate);
+        regDateNormalized.setHours(0, 0, 0, 0);
+        if (startDate < regDateNormalized) {
+            startDate = regDateNormalized;
+        }
+    }
+
     const startDateStr = startDate.toISOString().split('T')[0];
 
     // Fetch all logs from start date
