@@ -21,7 +21,7 @@ import { logger } from '../../utils/logger';
 const CumulativeSavingsChart = () => {
     const { user } = useAuth();
     const { isDark } = useTheme();
-    const { manualDate } = useUserPreferences();
+    const { manualDate, typicalWeek } = useUserPreferences();
 
     const [mode, setMode] = useState('target'); // 'target' or 'benchmark'
     const [range, setRange] = useState('90d'); // '90d' or 'all'
@@ -48,8 +48,8 @@ const CumulativeSavingsChart = () => {
         loadData();
     }, [user, mode, range, manualDate]);
 
-    // Disable benchmark mode if user hasn't set typicalWeek
-    const canUseBenchmark = data?.hasTypicalWeek ?? false;
+    // Check if user has set typicalWeek from profile context (not API response)
+    const canUseBenchmark = typicalWeek !== null && Object.keys(typicalWeek).length > 0;
 
     // Format data for chart - sample if too many points
     const chartData = (() => {
