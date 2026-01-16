@@ -7,18 +7,60 @@ const ThemeContext = createContext();
 export const useTheme = () => useContext(ThemeContext);
 
 export const ThemeProvider = ({ children }) => {
-    // Initialize theme from localStorage, default to 'light'
+    // Initialize theme from localStorage, default to 'system'
     const [theme, setTheme] = useState(() => {
-        return localStorage.getItem('sammy_pref_theme') || 'light';
+        return localStorage.getItem('sammy_pref_theme') || 'system';
     });
+
+    // Get system preference
+    const getSystemPreference = () => {
+        return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    };
+
+    // Resolve effective theme (system -> dark/light)
+    const resolveTheme = (themeValue) => {
+        if (themeValue === 'system') {
+            return getSystemPreference();
+        }
+        return themeValue;
+    };
 
     // Apply theme to document root
     useEffect(() => {
         const root = document.documentElement;
-        if (theme === 'dark') {
+        const effectiveTheme = resolveTheme(theme);
+
+        if (effectiveTheme === 'dark') {
             root.classList.add('dark');
         } else {
             root.classList.remove('dark');
+        }
+    }, [theme]);
+
+    // Listen for system preference changes when theme is 'system'
+    useEffect(() => {
+        if (theme !== 'system') return;
+
+        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        const handleChange = () => {
+            const root = document.documentElement;
+            const effectiveTheme = resolveTheme('system');
+
+            if (effectiveTheme === 'dark') {
+                root.classList.add('dark');
+            } else {
+                root.classList.remove('dark');
+            }
+        };
+
+        // Modern browsers
+        if (mediaQuery.addEventListener) {
+            mediaQuery.addEventListener('change', handleChange);
+            return () => mediaQuery.removeEventListener('change', handleChange);
+        } else {
+            // Fallback for older browsers
+            mediaQuery.addListener(handleChange);
+            return () => mediaQuery.removeListener(handleChange);
         }
     }, [theme]);
 
@@ -26,7 +68,8 @@ export const ThemeProvider = ({ children }) => {
     // Note: Style.Dark = light/white icons, Style.Light = dark/black icons
     useEffect(() => {
         if (Capacitor.isNativePlatform()) {
-            if (theme === 'dark') {
+            const effectiveTheme = resolveTheme(theme);
+            if (effectiveTheme === 'dark') {
                 // Dark mode: light icons on dark background
                 StatusBar.setStyle({ style: Style.Dark });
                 StatusBar.setBackgroundColor({ color: '#1e293b' }); // slate-800
@@ -44,14 +87,21 @@ export const ThemeProvider = ({ children }) => {
     }, [theme]);
 
     const toggleTheme = () => {
-        setTheme(prev => prev === 'light' ? 'dark' : 'light');
+        setTheme(prev => {
+            if (prev === 'light') return 'dark';
+            if (prev === 'dark') return 'system';
+            return 'light'; // system -> light
+        });
     };
 
+    const effectiveTheme = resolveTheme(theme);
+
     const value = {
-        theme,
+        theme, // 'light', 'dark', or 'system'
+        effectiveTheme, // resolved to 'light' or 'dark'
         setTheme,
         toggleTheme,
-        isDark: theme === 'dark'
+        isDark: effectiveTheme === 'dark'
     };
 
     return (
