@@ -116,6 +116,7 @@ const ChatMessage = ({ text, sender }) => {
                     <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
                         components={markdownComponents}
+                        skipHtml={true}
                     >
                         {text}
                     </ReactMarkdown>

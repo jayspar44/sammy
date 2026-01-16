@@ -49,7 +49,23 @@ export default defineConfig({
       }
     }
   },
+  optimizeDeps: {
+    include: ['react-markdown', 'remark-gfm'],
+    esbuildOptions: {
+      // Ensure proper handling of ESM modules in Capacitor WebView
+      target: 'es2020'
+    }
+  },
   build: {
     outDir: 'dist',
+    target: 'es2020',
+    // Ensure source maps for debugging in Capacitor
+    sourcemap: true,
+    // Prevent code splitting issues in Capacitor WebView
+    rollupOptions: {
+      output: {
+        manualChunks: undefined
+      }
+    }
   }
 })
