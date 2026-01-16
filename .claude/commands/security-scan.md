@@ -91,15 +91,19 @@ Scans for sensitive data being logged. This is a **WARNING** (not blocking) beca
 - For frontend: Remove or guard with `if (import.meta.env.DEV)`
 - For backend: Generally OK, but review before merging
 
-### 4. Exception Patterns (Allowed)
+### 4. Filename Exceptions (Bypass Sensitive File Check)
 
-These files are safe even if they match blocking patterns:
-- `.env.example`
+These files bypass the sensitive **filename** check but are **still content-scanned** for secrets:
+- `.env.example` - template files are meant to be committed
 - `.env.template`
 - `.env.*.example`
 - `.env.*.template`
-- `.env.local.template`
-- `.env.production.example`
+
+### 5. Content Scan Exceptions (Skip Content Scanning)
+
+These files are skipped entirely (no content scanning):
+- `.husky/pre-commit` - contains regex patterns that look like secrets
+- Binary files (images, fonts, etc.)
 
 ## Steps
 
@@ -138,13 +142,13 @@ For each file, check against blocking patterns:
 BLOCKING_FILES = []
 
 For each file in FILES:
-  # Skip exceptions first
+  # Skip filename exceptions (templates) - these will still be content-scanned later
   if file matches any of:
     - \.env\.example$
     - \.env\.template$
     - \.env\..*\.example$
     - \.env\..*\.template$
-  then SKIP
+  then SKIP (filename check only, content scan still runs)
 
   # Check blocking patterns
   if file matches any of:
@@ -219,6 +223,9 @@ For each file in FILES (excluding BLOCKING_FILES):
 
   # Skip image files only (NOT .md - docs can contain pasted secrets!)
   if file ends with .png, .jpg, .jpeg, .gif, .svg, .ico, .webp: SKIP
+
+  # Skip husky pre-commit hook (contains regex patterns that look like secrets)
+  if file is .husky/pre-commit: SKIP
 
   For each pattern in SECRET_PATTERNS:
     matches = grep -nE pattern file
