@@ -43,6 +43,37 @@ const generateMockTrends = (baseDateStr) => {
     return trends;
 };
 
+// Helper to generate mock cumulative stats
+const generateMockCumulativeStats = (baseDateStr, range) => {
+    const days = range === 'all' ? 180 : 90;
+    const series = [];
+    const baseDate = new Date(baseDateStr);
+    let cumulative = 0;
+
+    for (let i = days - 1; i >= 0; i--) {
+        const d = new Date(baseDate);
+        d.setDate(baseDate.getDate() - i);
+        const dateStr = d.toISOString().split('T')[0];
+        // Random daily savings between -2 and 3
+        const daily = Math.floor(Math.random() * 6) - 2;
+        cumulative += daily;
+        series.push({ date: dateStr, cumulative, daily });
+    }
+
+    const weeks = days / 7;
+    return {
+        series,
+        summary: {
+            totalSaved: cumulative,
+            totalDays: days,
+            avgPerWeek: Math.round((cumulative / weeks) * 10) / 10
+        },
+        mode: 'target',
+        range,
+        hasTypicalWeek: true
+    };
+};
+
 // Helper to generate mock range stats
 const generateMockRangeStats = (startDate, endDate) => {
     const mockData = {};
@@ -215,6 +246,23 @@ export const api = {
 
         const dateStr = date || new Date().toISOString().split('T')[0];
         const response = await client.post('/chat', { message, date: dateStr });
+        return response.data;
+    },
+
+    getCumulativeStats: async (mode = 'target', range = '90d', date) => {
+        let dateStr = date;
+        if (!dateStr) {
+            dateStr = new Date().toISOString().split('T')[0];
+        }
+
+        if (IS_SPOOF_DB()) {
+            logger.spoof(`Get Cumulative Stats: mode=${mode}, range=${range}`);
+            return generateMockCumulativeStats(dateStr, range);
+        }
+
+        const response = await client.get('/stats/cumulative', {
+            params: { mode, range, date: dateStr }
+        });
         return response.data;
     },
 };

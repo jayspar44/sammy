@@ -206,4 +206,124 @@ Period Totals:
     `.trim();
 };
 
-module.exports = { calculateStats, getContextSummary };
+/**
+ * Calculates cumulative drinks saved over time.
+ * @param {string} userId - The user's ID.
+ * @param {string} mode - 'target' (vs daily goal) or 'benchmark' (vs typical week).
+ * @param {string} range - '90d' or 'all'.
+ * @param {Date} anchorDate - The date to anchor calculations from (usually "today").
+ * @returns {Promise<Object>} Object containing series data and summary.
+ */
+const calculateCumulativeStats = async (userId, mode, range, anchorDate) => {
+    const userRef = db.collection('users').doc(userId);
+    const userDoc = await userRef.get();
+    const userData = userDoc.exists ? userDoc.data() : {};
+
+    // User settings
+    const globalLimit = userData.dailyGoal ?? 2;
+    const typicalWeek = userData.typicalWeek || null;
+    const registeredDate = userData.registeredDate
+        ? new Date(userData.registeredDate)
+        : null;
+
+    // Determine start date based on range
+    let startDate;
+    if (range === 'all' && registeredDate) {
+        startDate = new Date(registeredDate);
+        startDate.setHours(0, 0, 0, 0);
+    } else {
+        // Default to 90 days
+        startDate = new Date(anchorDate);
+        startDate.setDate(anchorDate.getDate() - 89); // 90 days including today
+    }
+
+    const startDateStr = startDate.toISOString().split('T')[0];
+
+    // Fetch all logs from start date
+    const logsSnapshot = await userRef.collection('logs')
+        .where('date', '>=', startDateStr)
+        .get();
+
+    // Build logs map
+    const logsMap = {};
+    logsSnapshot.forEach(doc => {
+        const data = doc.data();
+        let count = 0;
+        let limit = globalLimit;
+
+        if (data.habits && data.habits.drinking) {
+            count = data.habits.drinking.count || 0;
+            if (data.habits.drinking.goal !== undefined) {
+                limit = data.habits.drinking.goal;
+            }
+        } else if (data.count !== undefined) {
+            count = data.count;
+        }
+
+        logsMap[data.date] = { count, limit };
+    });
+
+    // Day of week mapping for typicalWeek
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
+    // Build cumulative series
+    const series = [];
+    let cumulativeSaved = 0;
+    let totalDays = 0;
+
+    // Iterate from start date to anchor date
+    const currentDate = new Date(startDate);
+    while (currentDate <= anchorDate) {
+        const dateStr = currentDate.toISOString().split('T')[0];
+        const log = logsMap[dateStr];
+
+        let dailySaved = 0;
+
+        if (log !== undefined) {
+            // We have data for this day
+            const actualDrinks = log.count;
+            let comparison;
+
+            if (mode === 'benchmark' && typicalWeek) {
+                const dayOfWeek = dayNames[currentDate.getDay()];
+                comparison = typicalWeek[dayOfWeek] ?? globalLimit;
+            } else {
+                // Target mode: use the day's logged goal or global limit
+                comparison = log.limit;
+            }
+
+            dailySaved = comparison - actualDrinks; // Can be negative
+        }
+        // If no log, dailySaved stays 0 (neutral for missing data)
+
+        cumulativeSaved += dailySaved;
+        totalDays++;
+
+        series.push({
+            date: dateStr,
+            cumulative: cumulativeSaved,
+            daily: dailySaved
+        });
+
+        currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    // Calculate summary stats
+    const totalSaved = cumulativeSaved;
+    const weeks = totalDays / 7;
+    const avgPerWeek = weeks > 0 ? Math.round((totalSaved / weeks) * 10) / 10 : 0;
+
+    return {
+        series,
+        summary: {
+            totalSaved,
+            totalDays,
+            avgPerWeek
+        },
+        mode,
+        range,
+        hasTypicalWeek: typicalWeek !== null
+    };
+};
+
+module.exports = { calculateStats, getContextSummary, calculateCumulativeStats };
