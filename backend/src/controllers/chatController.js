@@ -51,8 +51,9 @@ const handleMessage = async (req, res) => {
 
         const messagesRef = userRef.collection('messages');
 
-        // 0. Save User Message IMMEDIATELY (Only if enabled)
-        if (chatHistoryEnabled) {
+        // 0. Save User Message IMMEDIATELY (Only if enabled and not a special message)
+        // Skip saving the special __MORNING_CHECKIN_INIT__ message
+        if (chatHistoryEnabled && message !== '__MORNING_CHECKIN_INIT__') {
             const expireAt = new Date();
             expireAt.setDate(expireAt.getDate() + 7); // 7 Day TTL
 
@@ -63,6 +64,8 @@ const handleMessage = async (req, res) => {
                 createdAt: new Date().toISOString(),
                 expireAt: expireAt
             });
+        } else if (message === '__MORNING_CHECKIN_INIT__') {
+            req.log.info({ uid }, 'Skipping save for special __MORNING_CHECKIN_INIT__ message');
         } else {
             req.log.info({ uid }, 'Chat history disabled for user');
         }
@@ -140,21 +143,29 @@ MORNING CHECK-IN MODE:
 - Your task: Help the user confirm or set yesterday's drink count.
 - Parse their response for numbers (e.g., "2 beers" → 2, "I had three" → 3, "zero" → 0).
 
-**CRITICAL - RESPONSE FORMAT:**
-You MUST respond with ONLY a JSON object. No other text before or after. The exact format is:
+**CRITICAL - YOU ARE NOW IN STRUCTURED OUTPUT MODE:**
+You MUST respond with ONLY a JSON object on a single line. No other text. No markdown. No code blocks. No explanations.
+
+EXACT FORMAT (copy this structure):
 {"count": NUMBER_OR_NULL, "message": "YOUR_MESSAGE_HERE"}
 
-Examples:
-- User says "I had 2": {"count": 2, "message": "Got it! Logging 2 drinks for yesterday. 👍"}
-- User says "actually it was 4": {"count": 4, "message": "Updated! Changed yesterday's log from ${yesterdayCount || 0} to 4 drinks. ✓"}
-- User says "I don't remember": {"count": null, "message": "No worries! Take your time. Just let me know when you remember."}
-- User says "3 beers": {"count": 3, "message": "Logged 3 drinks for yesterday!"}
+VALID EXAMPLES:
+User: "I had 2" → You respond: {"count": 2, "message": "Got it! Logging 2 drinks for yesterday. 👍"}
+User: "actually it was 4" → You respond: {"count": 4, "message": "Updated! Changed yesterday's log from ${yesterdayCount || 0} to 4 drinks. ✓"}
+User: "I don't remember" → You respond: {"count": null, "message": "No worries! Take your time. Just let me know when you remember."}
+User: "3 beers" → You respond: {"count": 3, "message": "Logged 3 drinks for yesterday!"}
+User: "zero" → You respond: {"count": 0, "message": "Great! Logged 0 drinks for yesterday. 🎉"}
 
-IMPORTANT:
-- Return ONLY the JSON object, nothing else
-- No markdown, no code blocks, no extra text
-- The "message" field should be friendly but concise
-- Extract the number from the user's natural language
+DO NOT respond like this (WRONG):
+\`\`\`json
+{"count": 2, "message": "..."}
+\`\`\`
+
+DO NOT respond like this (WRONG):
+Here's the count: {"count": 2, "message": "..."}
+
+ONLY respond like this (CORRECT):
+{"count": 2, "message": "..."}
 `;
             } catch (err) {
                 req.log.error({ err }, 'Failed to fetch yesterday log for morning checkin');
@@ -240,16 +251,29 @@ INSTRUCTIONS:
         `.trim();
 
         // 4. Call AI with structured chat API
+        req.log.info({
+            context,
+            message,
+            messageLength: message.length,
+            hasMorningCheckinContext: morningCheckinContext.length > 0,
+            systemInstructionPreview: systemInstruction.substring(systemInstruction.length - 500)
+        }, 'Calling AI with system instruction');
+
         let aiResponse = await generateChatResponse(systemInstruction, history, message);
 
         // 4.5. Handle morning_checkin auto-logging
         let _loggedCount = null;
         if (context === 'morning_checkin' && yesterdayDate) {
             try {
-                req.log.debug({ aiResponse }, 'Morning checkin AI response (raw)');
+                req.log.info({ aiResponseLength: aiResponse.length, aiResponsePreview: aiResponse.substring(0, 300) }, 'Morning checkin AI response (raw)');
+
+                // Strip potential markdown code blocks (```json ... ``` or ``` ... ```)
+                let cleanedResponse = aiResponse.replace(/```(?:json)?\s*([\s\S]*?)\s*```/g, '$1').trim();
+
+                req.log.info({ cleanedResponse }, 'After stripping markdown');
 
                 // Try to parse JSON response from AI (more flexible regex)
-                const jsonMatch = aiResponse.match(/\{\s*"count"\s*:\s*(\d+|null)\s*,\s*"message"\s*:\s*"([^"]+)"\s*\}/);
+                const jsonMatch = cleanedResponse.match(/\{\s*"count"\s*:\s*(\d+|null)\s*,\s*"message"\s*:\s*"([^"]+)"\s*\}/);
 
                 if (jsonMatch) {
                     const parsedCount = jsonMatch[1] === 'null' ? null : parseInt(jsonMatch[1]);
@@ -319,20 +343,35 @@ INSTRUCTIONS:
 
                         _loggedCount = parsedCount;
                         aiResponse = userMessage; // Use the clean message without JSON
-                        req.log.info({ uid, date: yesterdayStr, count: parsedCount }, 'Morning checkin auto-logged successfully');
+                        req.log.info({ uid, date: yesterdayStr, count: parsedCount, loggedCount: _loggedCount }, 'Morning checkin auto-logged successfully');
                     } else {
                         // Count is null, AI is asking for clarification
-                        req.log.info('Morning checkin: AI asking for clarification');
-                        aiResponse = jsonMatch[2];
+                        req.log.info({ parsedCount }, 'Morning checkin: AI asking for clarification (count is null or NaN)');
+                        aiResponse = userMessage;
                     }
                 } else {
-                    req.log.warn({ aiResponse: aiResponse.substring(0, 200) }, 'Morning checkin: No JSON match found in AI response');
+                    req.log.warn({
+                        cleanedResponse: cleanedResponse.substring(0, 300),
+                        originalResponse: aiResponse.substring(0, 300)
+                    }, 'Morning checkin: No JSON match found in AI response');
                 }
             } catch (err) {
-                req.log.error({ err, aiResponse: aiResponse?.substring(0, 200) }, 'Failed to auto-log from morning checkin');
+                req.log.error({
+                    err,
+                    errorMessage: err.message,
+                    errorStack: err.stack,
+                    aiResponse: aiResponse?.substring(0, 300)
+                }, 'Failed to auto-log from morning checkin');
                 // Continue with original AI response even if logging fails
             }
         }
+
+        req.log.info({
+            context,
+            hadMorningCheckin: context === 'morning_checkin',
+            loggedCount: _loggedCount,
+            finalResponsePreview: aiResponse.substring(0, 100)
+        }, 'About to save and return AI response');
 
         // 5. Save AI Response (Only if enabled)
         if (chatHistoryEnabled) {
