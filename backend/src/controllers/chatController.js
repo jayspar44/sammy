@@ -107,17 +107,54 @@ const handleMessage = async (req, res) => {
                     }
                 }
 
+                // Handle initial greeting request
+                if (message === '__MORNING_CHECKIN_INIT__') {
+                    let greetingMessage;
+                    if (yesterdayCount !== null && yesterdayCount !== undefined) {
+                        greetingMessage = `Good morning! ☀️ Yesterday you logged ${yesterdayCount} drink${yesterdayCount !== 1 ? 's' : ''}. Does that look right, or do you want to update it?`;
+                    } else {
+                        greetingMessage = "Good morning! ☀️ How did yesterday go? How many drinks did you have?";
+                    }
+
+                    // Save the greeting to chat history
+                    if (chatHistoryEnabled) {
+                        const expireAt = new Date();
+                        expireAt.setDate(expireAt.getDate() + 7);
+
+                        await messagesRef.add({
+                            text: greetingMessage,
+                            sender: 'sammy',
+                            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                            createdAt: new Date().toISOString(),
+                            expireAt: expireAt
+                        });
+                    }
+
+                    return res.json({ text: greetingMessage, sender: 'sammy', timestamp: new Date() });
+                }
+
                 morningCheckinContext = `
 MORNING CHECK-IN MODE:
 - This is a morning check-in flow. The user is confirming or updating yesterday's (${yesterdayStr}) drinking log.
-- Yesterday's existing log: ${yesterdayCount !== null ? `${yesterdayCount} drinks` : 'No log yet'}
+- Yesterday's existing log: ${yesterdayCount !== null && yesterdayCount !== undefined ? `${yesterdayCount} drinks` : 'No log yet'}
 - Your task: Help the user confirm or set yesterday's drink count.
 - Parse their response for numbers (e.g., "2 beers" → 2, "I had three" → 3, "zero" → 0).
-- CRITICAL: You MUST respond with a JSON object containing the drink count.
-- Response format: {"count": <number>, "message": "<your friendly response>"}
-- Example: {"count": 2, "message": "Got it! Logging 2 drinks for yesterday. 👍"}
-- If updating existing: {"count": 4, "message": "Updated! Changed yesterday's log from ${yesterdayCount} to 4 drinks. ✓"}
-- If the user's message doesn't contain a clear number, ask for clarification and use {"count": null, "message": "<clarification question>"}
+
+**CRITICAL - RESPONSE FORMAT:**
+You MUST respond with ONLY a JSON object. No other text before or after. The exact format is:
+{"count": NUMBER_OR_NULL, "message": "YOUR_MESSAGE_HERE"}
+
+Examples:
+- User says "I had 2": {"count": 2, "message": "Got it! Logging 2 drinks for yesterday. 👍"}
+- User says "actually it was 4": {"count": 4, "message": "Updated! Changed yesterday's log from ${yesterdayCount || 0} to 4 drinks. ✓"}
+- User says "I don't remember": {"count": null, "message": "No worries! Take your time. Just let me know when you remember."}
+- User says "3 beers": {"count": 3, "message": "Logged 3 drinks for yesterday!"}
+
+IMPORTANT:
+- Return ONLY the JSON object, nothing else
+- No markdown, no code blocks, no extra text
+- The "message" field should be friendly but concise
+- Extract the number from the user's natural language
 `;
             } catch (err) {
                 req.log.error({ err }, 'Failed to fetch yesterday log for morning checkin');
@@ -209,27 +246,41 @@ INSTRUCTIONS:
         let _loggedCount = null;
         if (context === 'morning_checkin' && yesterdayDate) {
             try {
-                // Try to parse JSON response from AI
-                const jsonMatch = aiResponse.match(/\{[^}]*"count"\s*:\s*(\d+|null)[^}]*"message"\s*:\s*"([^"]+)"[^}]*\}/);
+                req.log.debug({ aiResponse }, 'Morning checkin AI response (raw)');
+
+                // Try to parse JSON response from AI (more flexible regex)
+                const jsonMatch = aiResponse.match(/\{\s*"count"\s*:\s*(\d+|null)\s*,\s*"message"\s*:\s*"([^"]+)"\s*\}/);
+
                 if (jsonMatch) {
                     const parsedCount = jsonMatch[1] === 'null' ? null : parseInt(jsonMatch[1]);
                     const userMessage = jsonMatch[2];
 
-                    if (parsedCount !== null) {
+                    req.log.info({ parsedCount, yesterdayCount }, 'Morning checkin: parsed AI response');
+
+                    if (parsedCount !== null && !isNaN(parsedCount)) {
                         // Log the drink count for yesterday
                         const yesterdayStr = yesterdayDate.toISOString().split('T')[0];
 
-                        if (yesterdayCount !== null) {
+                        if (yesterdayCount !== null && yesterdayCount !== undefined) {
                             // Update existing log
+                            req.log.info({ yesterdayStr, parsedCount, yesterdayCount }, 'Updating existing log');
                             const { updateLog } = require('./logController');
                             await new Promise((resolve, reject) => {
                                 const mockRes = {
                                     json: (data) => {
-                                        if (data.success) resolve(data);
-                                        else reject(new Error(data.error));
+                                        if (data.success) {
+                                            req.log.info({ yesterdayStr, parsedCount }, 'Log update successful');
+                                            resolve(data);
+                                        } else {
+                                            req.log.error({ data }, 'Log update failed');
+                                            reject(new Error(data.error));
+                                        }
                                     },
                                     status: (_code) => ({
-                                        json: (data) => reject(new Error(data.error))
+                                        json: (data) => {
+                                            req.log.error({ data }, 'Log update status error');
+                                            reject(new Error(data.error));
+                                        }
                                     })
                                 };
                                 const mockReq = {
@@ -241,6 +292,7 @@ INSTRUCTIONS:
                             });
                         } else {
                             // Create new log
+                            req.log.info({ yesterdayStr, parsedCount }, 'Creating new log');
                             const yesterdayLogRef = db.collection('users').doc(uid).collection('logs').doc(yesterdayStr);
                             const userRef = db.collection('users').doc(uid);
                             const userDoc = await userRef.get();
@@ -261,18 +313,23 @@ INSTRUCTIONS:
                                 },
                                 timestamp: admin.firestore.FieldValue.serverTimestamp()
                             }, { merge: true });
+
+                            req.log.info({ yesterdayStr, parsedCount }, 'New log created successfully');
                         }
 
                         _loggedCount = parsedCount;
                         aiResponse = userMessage; // Use the clean message without JSON
-                        req.log.info({ uid, date: yesterdayStr, count: parsedCount }, 'Morning checkin auto-logged');
+                        req.log.info({ uid, date: yesterdayStr, count: parsedCount }, 'Morning checkin auto-logged successfully');
                     } else {
                         // Count is null, AI is asking for clarification
+                        req.log.info('Morning checkin: AI asking for clarification');
                         aiResponse = jsonMatch[2];
                     }
+                } else {
+                    req.log.warn({ aiResponse: aiResponse.substring(0, 200) }, 'Morning checkin: No JSON match found in AI response');
                 }
             } catch (err) {
-                req.log.error({ err }, 'Failed to auto-log from morning checkin');
+                req.log.error({ err, aiResponse: aiResponse?.substring(0, 200) }, 'Failed to auto-log from morning checkin');
                 // Continue with original AI response even if logging fails
             }
         }
@@ -291,8 +348,12 @@ INSTRUCTIONS:
             });
         }
 
-        // 6. Return
-        res.json({ text: aiResponse, sender: 'sammy', timestamp: new Date() });
+        // 6. Return (include loggedCount if morning checkin)
+        const response = { text: aiResponse, sender: 'sammy', timestamp: new Date() };
+        if (_loggedCount !== null) {
+            response.loggedCount = _loggedCount;
+        }
+        res.json(response);
 
     } catch (error) {
         req.log.error({ err: error }, 'Error in chat handler');

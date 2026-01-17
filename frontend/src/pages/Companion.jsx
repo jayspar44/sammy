@@ -5,7 +5,7 @@ import { Send } from 'lucide-react';
 import Button from '../components/ui/Button';
 import ChatMessage from '../components/common/ChatMessage';
 import { api } from '../api/services';
-import { format, subDays } from 'date-fns';
+import { format } from 'date-fns';
 import { logger } from '../utils/logger';
 
 // Chat input component - rendered via portal outside the scroll area
@@ -66,33 +66,25 @@ export default function Companion() {
 
     const handleMorningCheckin = useCallback(async () => {
         try {
-            // Calculate yesterday's date
-            const yesterday = subDays(new Date(), 1);
-            const yesterdayStr = format(yesterday, 'yyyy-MM-dd');
+            // Send initial greeting through API to persist in database
+            const todayStr = format(new Date(), 'yyyy-MM-dd');
+            const response = await api.sendMessage(
+                '__MORNING_CHECKIN_INIT__',
+                todayStr,
+                'morning_checkin'
+            );
 
-            // Fetch yesterday's stats
-            const stats = await api.getStats(yesterdayStr);
-            const yesterdayCount = stats?.today?.count;
-
-            let openingMessage;
-            if (yesterdayCount !== undefined && yesterdayCount !== null) {
-                // Has existing log
-                openingMessage = `Good morning! ☀️ Yesterday you logged ${yesterdayCount} drink${yesterdayCount !== 1 ? 's' : ''}. Does that look right, or do you want to update it?`;
-            } else {
-                // No log yet
-                openingMessage = "Good morning! ☀️ How did yesterday go? How many drinks did you have?";
-            }
-
+            // Display the greeting message from the backend
             setMessages([{
-                id: 'morning-checkin',
-                text: openingMessage,
+                id: Date.now(),
+                text: response.text,
                 sender: 'sammy'
             }]);
         } catch (err) {
             logger.error('Failed to initialize morning check-in', err);
             // Fallback to generic message
             setMessages([{
-                id: 'morning-checkin',
+                id: 'morning-checkin-fallback',
                 text: "Good morning! ☀️ How did yesterday go? How many drinks did you have?",
                 sender: 'sammy'
             }]);
