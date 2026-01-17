@@ -207,14 +207,18 @@ export const api = {
         return response.data;
     },
 
-    sendMessage: async (message, date) => {
+    sendMessage: async (message, date, context = null) => {
         if (IS_SPOOF_DB()) {
-            logger.spoof(`Chat Message: ${message}`);
-            return { reply: "I'm in Developer Mode! I can't really think right now, but you look great!" };
+            logger.spoof(`Chat Message: ${message}`, { context });
+            return { text: "I'm in Developer Mode! I can't really think right now, but you look great!" };
         }
 
         const dateStr = date || new Date().toISOString().split('T')[0];
-        const response = await client.post('/chat', { message, date: dateStr });
+        const payload = { message, date: dateStr };
+        if (context) {
+            payload.context = context;
+        }
+        const response = await client.post('/chat', payload);
         return response.data;
     },
 };

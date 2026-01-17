@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { useLocation } from 'react-router-dom';
 import { Send } from 'lucide-react';
 import Button from '../components/ui/Button';
 import ChatMessage from '../components/common/ChatMessage';
 import { api } from '../api/services';
-import { format } from 'date-fns';
+import { format, subDays } from 'date-fns';
 import { logger } from '../utils/logger';
 
 // Chat input component - rendered via portal outside the scroll area
@@ -42,27 +43,79 @@ const ChatInput = ({ input, setInput, handleSend }) => {
 };
 
 export default function Companion() {
+    const location = useLocation();
     const bottomRef = useRef(null);
     const [input, setInput] = useState('');
     const [isTyping, setIsTyping] = useState(false);
     const [messages, setMessages] = useState([]);
+    const [chatContext, setChatContext] = useState(null); // 'morning_checkin' or null
 
     useEffect(() => {
-        const loadHistory = async () => {
-            try {
-                const history = await api.getChatHistory();
-                if (history && history.length > 0) {
-                    setMessages(history);
-                } else {
-                    // Default welcome if no history
-                    setMessages([{ id: 'welcome', text: "Hi! How are you feeling today?", sender: 'sammy' }]);
-                }
-            } catch (err) {
-                logger.error('Failed to load chat history', err);
+        const initChat = async () => {
+            // Check if we're coming from a notification tap
+            const routeContext = location.state?.context;
+
+            if (routeContext === 'morning_checkin') {
+                // Handle morning check-in flow
+                setChatContext('morning_checkin');
+                await handleMorningCheckin();
+            } else {
+                // Normal chat flow - load history
+                await loadHistory();
             }
         };
-        loadHistory();
-    }, []);
+
+        initChat();
+    }, [location.state?.context]);
+
+    const loadHistory = async () => {
+        try {
+            const history = await api.getChatHistory();
+            if (history && history.length > 0) {
+                setMessages(history);
+            } else {
+                // Default welcome if no history
+                setMessages([{ id: 'welcome', text: "Hi! How are you feeling today?", sender: 'sammy' }]);
+            }
+        } catch (err) {
+            logger.error('Failed to load chat history', err);
+        }
+    };
+
+    const handleMorningCheckin = async () => {
+        try {
+            // Calculate yesterday's date
+            const yesterday = subDays(new Date(), 1);
+            const yesterdayStr = format(yesterday, 'yyyy-MM-dd');
+
+            // Fetch yesterday's stats
+            const stats = await api.getStats(yesterdayStr);
+            const yesterdayCount = stats?.today?.count;
+
+            let openingMessage;
+            if (yesterdayCount !== undefined && yesterdayCount !== null) {
+                // Has existing log
+                openingMessage = `Good morning! ☀️ Yesterday you logged ${yesterdayCount} drink${yesterdayCount !== 1 ? 's' : ''}. Does that look right, or do you want to update it?`;
+            } else {
+                // No log yet
+                openingMessage = "Good morning! ☀️ How did yesterday go? How many drinks did you have?";
+            }
+
+            setMessages([{
+                id: 'morning-checkin',
+                text: openingMessage,
+                sender: 'sammy'
+            }]);
+        } catch (err) {
+            logger.error('Failed to initialize morning check-in', err);
+            // Fallback to generic message
+            setMessages([{
+                id: 'morning-checkin',
+                text: "Good morning! ☀️ How did yesterday go? How many drinks did you have?",
+                sender: 'sammy'
+            }]);
+        }
+    };
 
     const scrollToBottom = () => {
         bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -82,7 +135,8 @@ export default function Companion() {
 
         try {
             const todayStr = format(new Date(), 'yyyy-MM-dd');
-            const response = await api.sendMessage(userMsg.text, todayStr);
+            // Pass context to API if we're in morning_checkin mode
+            const response = await api.sendMessage(userMsg.text, todayStr, chatContext);
 
             setIsTyping(false);
             setMessages(prev => [...prev, {
@@ -90,6 +144,11 @@ export default function Companion() {
                 text: response.text,
                 sender: 'sammy'
             }]);
+
+            // If this was a morning checkin conversation, clear the context after first exchange
+            if (chatContext === 'morning_checkin') {
+                setChatContext(null);
+            }
         } catch (err) {
             logger.error('Failed to send message', err);
             setIsTyping(false);

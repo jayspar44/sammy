@@ -7,7 +7,7 @@ const admin = require('firebase-admin');
 const handleMessage = async (req, res) => {
     const { uid } = req.user;
     // Allow client to specify 'today' date to ensure context matches user's local day
-    const { message, date } = req.body;
+    const { message, date, context } = req.body;
 
     if (!message) {
         return res.status(400).json({ error: 'Message is required' });
@@ -85,6 +85,45 @@ const handleMessage = async (req, res) => {
 
         const currentDayName = anchorDate.toLocaleDateString('en-US', { weekday: 'long' });
 
+        // Handle morning_checkin context
+        let morningCheckinContext = "";
+        let yesterdayDate = null;
+        let yesterdayCount = null;
+        if (context === 'morning_checkin') {
+            // Calculate yesterday's date
+            yesterdayDate = new Date(anchorDate);
+            yesterdayDate.setDate(anchorDate.getDate() - 1);
+            const yesterdayStr = yesterdayDate.toISOString().split('T')[0];
+
+            // Fetch yesterday's log
+            try {
+                const yesterdayLogRef = db.collection('users').doc(uid).collection('logs').doc(yesterdayStr);
+                const yesterdayLog = await yesterdayLogRef.get();
+
+                if (yesterdayLog.exists) {
+                    const logData = yesterdayLog.data();
+                    if (logData.habits && logData.habits.drinking) {
+                        yesterdayCount = logData.habits.drinking.count;
+                    }
+                }
+
+                morningCheckinContext = `
+MORNING CHECK-IN MODE:
+- This is a morning check-in flow. The user is confirming or updating yesterday's (${yesterdayStr}) drinking log.
+- Yesterday's existing log: ${yesterdayCount !== null ? `${yesterdayCount} drinks` : 'No log yet'}
+- Your task: Help the user confirm or set yesterday's drink count.
+- Parse their response for numbers (e.g., "2 beers" → 2, "I had three" → 3, "zero" → 0).
+- CRITICAL: You MUST respond with a JSON object containing the drink count.
+- Response format: {"count": <number>, "message": "<your friendly response>"}
+- Example: {"count": 2, "message": "Got it! Logging 2 drinks for yesterday. 👍"}
+- If updating existing: {"count": 4, "message": "Updated! Changed yesterday's log from ${yesterdayCount} to 4 drinks. ✓"}
+- If the user's message doesn't contain a clear number, ask for clarification and use {"count": null, "message": "<clarification question>"}
+`;
+            } catch (err) {
+                req.log.error({ err }, 'Failed to fetch yesterday log for morning checkin');
+            }
+        }
+
         // Gather typical week baseline if set
         const typicalWeek = userData.typicalWeek || null;
         let typicalWeekContext = "";
@@ -128,7 +167,7 @@ ${contextSummary}
 
         const systemInstruction = `
 You are Sammy, a compassionate, intelligent AI habit companion helping users reduce alcohol consumption.
-
+${morningCheckinContext}
 IDENTITY & TONE:
 - Talk like a real person, not a cheerleader or motivational poster.
 - Be supportive but casual - more like a thoughtful friend than a life coach.
@@ -164,7 +203,79 @@ INSTRUCTIONS:
         `.trim();
 
         // 4. Call AI with structured chat API
-        const aiResponse = await generateChatResponse(systemInstruction, history, message);
+        let aiResponse = await generateChatResponse(systemInstruction, history, message);
+
+        // 4.5. Handle morning_checkin auto-logging
+        let loggedCount = null;
+        if (context === 'morning_checkin' && yesterdayDate) {
+            try {
+                // Try to parse JSON response from AI
+                const jsonMatch = aiResponse.match(/\{[^}]*"count"\s*:\s*(\d+|null)[^}]*"message"\s*:\s*"([^"]+)"[^}]*\}/);
+                if (jsonMatch) {
+                    const parsedCount = jsonMatch[1] === 'null' ? null : parseInt(jsonMatch[1]);
+                    const userMessage = jsonMatch[2];
+
+                    if (parsedCount !== null) {
+                        // Log the drink count for yesterday
+                        const yesterdayStr = yesterdayDate.toISOString().split('T')[0];
+
+                        if (yesterdayCount !== null) {
+                            // Update existing log
+                            const { updateLog } = require('./logController');
+                            await new Promise((resolve, reject) => {
+                                const mockRes = {
+                                    json: (data) => {
+                                        if (data.success) resolve(data);
+                                        else reject(new Error(data.error));
+                                    },
+                                    status: (code) => ({
+                                        json: (data) => reject(new Error(data.error))
+                                    })
+                                };
+                                const mockReq = {
+                                    user: { uid },
+                                    body: { date: yesterdayStr, newCount: parsedCount, source: 'morning_checkin' },
+                                    log: req.log
+                                };
+                                updateLog(mockReq, mockRes).catch(reject);
+                            });
+                        } else {
+                            // Create new log
+                            const yesterdayLogRef = db.collection('users').doc(uid).collection('logs').doc(yesterdayStr);
+                            const userRef = db.collection('users').doc(uid);
+                            const userDoc = await userRef.get();
+                            const userData = userDoc.exists ? userDoc.data() : {};
+
+                            await yesterdayLogRef.set({
+                                userId: uid,
+                                date: yesterdayStr,
+                                habits: {
+                                    drinking: {
+                                        count: parsedCount,
+                                        goal: userData.dailyGoal || 2,
+                                        cost: userData.avgDrinkCost || 10,
+                                        cals: userData.avgDrinkCals || 150,
+                                        updatedAt: new Date().toISOString(),
+                                        source: 'morning_checkin'
+                                    }
+                                },
+                                timestamp: admin.firestore.FieldValue.serverTimestamp()
+                            }, { merge: true });
+                        }
+
+                        loggedCount = parsedCount;
+                        aiResponse = userMessage; // Use the clean message without JSON
+                        req.log.info({ uid, date: yesterdayStr, count: parsedCount }, 'Morning checkin auto-logged');
+                    } else {
+                        // Count is null, AI is asking for clarification
+                        aiResponse = jsonMatch[2];
+                    }
+                }
+            } catch (err) {
+                req.log.error({ err }, 'Failed to auto-log from morning checkin');
+                // Continue with original AI response even if logging fails
+            }
+        }
 
         // 5. Save AI Response (Only if enabled)
         if (chatHistoryEnabled) {
