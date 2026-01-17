@@ -206,7 +206,7 @@ INSTRUCTIONS:
         let aiResponse = await generateChatResponse(systemInstruction, history, message);
 
         // 4.5. Handle morning_checkin auto-logging
-        let loggedCount = null;
+        let _loggedCount = null;
         if (context === 'morning_checkin' && yesterdayDate) {
             try {
                 // Try to parse JSON response from AI
@@ -228,7 +228,7 @@ INSTRUCTIONS:
                                         if (data.success) resolve(data);
                                         else reject(new Error(data.error));
                                     },
-                                    status: (code) => ({
+                                    status: (_code) => ({
                                         json: (data) => reject(new Error(data.error))
                                     })
                                 };
@@ -263,7 +263,7 @@ INSTRUCTIONS:
                             }, { merge: true });
                         }
 
-                        loggedCount = parsedCount;
+                        _loggedCount = parsedCount;
                         aiResponse = userMessage; // Use the clean message without JSON
                         req.log.info({ uid, date: yesterdayStr, count: parsedCount }, 'Morning checkin auto-logged');
                     } else {
