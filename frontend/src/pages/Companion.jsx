@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation } from 'react-router-dom';
 import { Send } from 'lucide-react';
@@ -50,25 +50,7 @@ export default function Companion() {
     const [messages, setMessages] = useState([]);
     const [chatContext, setChatContext] = useState(null); // 'morning_checkin' or null
 
-    useEffect(() => {
-        const initChat = async () => {
-            // Check if we're coming from a notification tap
-            const routeContext = location.state?.context;
-
-            if (routeContext === 'morning_checkin') {
-                // Handle morning check-in flow
-                setChatContext('morning_checkin');
-                await handleMorningCheckin();
-            } else {
-                // Normal chat flow - load history
-                await loadHistory();
-            }
-        };
-
-        initChat();
-    }, [location.state?.context]);
-
-    const loadHistory = async () => {
+    const loadHistory = useCallback(async () => {
         try {
             const history = await api.getChatHistory();
             if (history && history.length > 0) {
@@ -80,9 +62,9 @@ export default function Companion() {
         } catch (err) {
             logger.error('Failed to load chat history', err);
         }
-    };
+    }, []);
 
-    const handleMorningCheckin = async () => {
+    const handleMorningCheckin = useCallback(async () => {
         try {
             // Calculate yesterday's date
             const yesterday = subDays(new Date(), 1);
@@ -115,7 +97,25 @@ export default function Companion() {
                 sender: 'sammy'
             }]);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        const initChat = async () => {
+            // Check if we're coming from a notification tap
+            const routeContext = location.state?.context;
+
+            if (routeContext === 'morning_checkin') {
+                // Handle morning check-in flow
+                setChatContext('morning_checkin');
+                await handleMorningCheckin();
+            } else {
+                // Normal chat flow - load history
+                await loadHistory();
+            }
+        };
+
+        initChat();
+    }, [location.state?.context, handleMorningCheckin, loadHistory]);
 
     const scrollToBottom = () => {
         bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
