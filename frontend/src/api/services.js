@@ -1,7 +1,27 @@
+import axios from 'axios';
 import client from './client';
 import { logger } from '../utils/logger';
 
 const IS_SPOOF_DB = () => localStorage.getItem('sammy_pref_spoofDb') === 'true';
+
+// Public API client (no auth required) - used for health endpoint before Firebase init
+const publicClient = axios.create({
+    baseURL: import.meta.env.VITE_API_URL || '/api',
+    timeout: 5000,
+});
+
+/**
+ * Get backend health info (public endpoint, no auth required)
+ * @returns {Promise<{status: string, version: string, serverStartTime: string}|null>}
+ */
+export const getHealth = async () => {
+    try {
+        const response = await publicClient.get('/health');
+        return response.data;
+    } catch {
+        return null;
+    }
+};
 
 // Mock Data
 // Helper to generate mock trends relative to a date

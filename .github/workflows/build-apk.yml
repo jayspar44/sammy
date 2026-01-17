@@ -1,0 +1,232 @@
+# GitHub Actions workflow for building Android APKs and AABs
+#
+# Triggered: Manual (workflow_dispatch)
+#
+# Features:
+# - Build debug or release APKs/AABs
+# - Support all product flavors (dev, prod)
+# - Configurable API URL (for preview environments)
+# - Upload artifact for download
+#
+# Usage:
+# 1. Go to Actions > Build Android
+# 2. Click "Run workflow"
+# 3. Enter API URL and select flavor/build type/output format
+# 4. Download from workflow artifacts
+
+name: Build Android
+
+on:
+  workflow_dispatch:
+    inputs:
+      api_url:
+        description: 'Backend API URL (e.g., https://sammy-backend-dev-xxx.run.app/api)'
+        required: true
+        default: 'https://sammy-backend-dev-u7dzitmnha-uc.a.run.app/api'
+      flavor:
+        description: 'Product flavor'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - prod
+      build_type:
+        description: 'Build type'
+        required: true
+        default: 'debug'
+        type: choice
+        options:
+          - debug
+          - release
+      output_format:
+        description: 'Output format (AAB required for Play Store)'
+        required: true
+        default: 'apk'
+        type: choice
+        options:
+          - apk
+          - aab
+
+env:
+  NODE_VERSION: '22'
+  JAVA_VERSION: '17'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Create environment file
+        working-directory: frontend
+        run: |
+          # Determine the build mode based on flavor
+          if [ "${{ inputs.flavor }}" = "prod" ]; then
+            BUILD_MODE="production"
+          else
+            BUILD_MODE="dev"
+          fi
+
+          echo "Creating .env.$BUILD_MODE with API URL: ${{ inputs.api_url }}"
+          echo "VITE_API_URL=${{ inputs.api_url }}" > .env.$BUILD_MODE
+
+          # Also get Firebase config from secrets
+          if [ -n "${{ secrets.FIREBASE_CLIENT_CONFIG }}" ]; then
+            echo "VITE_FIREBASE_CONFIG=${{ secrets.FIREBASE_CLIENT_CONFIG }}" >> .env.$BUILD_MODE
+          fi
+
+          echo "Environment file created: .env.$BUILD_MODE ($(wc -l < .env.$BUILD_MODE) lines)"
+
+      - name: Build web assets
+        working-directory: frontend
+        run: |
+          if [ "${{ inputs.flavor }}" = "prod" ]; then
+            npm run build -- --mode production
+          else
+            npm run build -- --mode dev
+          fi
+
+      - name: Update Capacitor config
+        working-directory: frontend
+        run: |
+          # Determine app configuration based on flavor
+          if [ "${{ inputs.flavor }}" = "prod" ]; then
+            APP_ID="io.sammy.app"
+            APP_NAME="Sammy"
+          else
+            APP_ID="io.sammy.app.dev"
+            APP_NAME="Sammy (Dev)"
+          fi
+
+          # Create capacitor config
+          cat > capacitor.config.json << EOF
+          {
+            "appId": "$APP_ID",
+            "appName": "$APP_NAME",
+            "webDir": "dist",
+            "server": {
+              "androidScheme": "https"
+            },
+            "plugins": {
+              "Keyboard": {
+                "resize": "native",
+                "style": "dark",
+                "resizeOnFullScreen": true
+              },
+              "StatusBar": {
+                "overlay": true
+              },
+              "SystemBars": {
+                "insetsHandling": "disable"
+              }
+            }
+          }
+          EOF
+
+          cat capacitor.config.json
+
+      - name: Sync Capacitor
+        working-directory: frontend
+        run: npx cap sync android
+
+      # Add signing config for release builds
+      - name: Configure release signing
+        if: inputs.build_type == 'release'
+        working-directory: frontend/android/app
+        run: |
+          # Decode keystore
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > release.keystore
+          ls -la release.keystore
+
+          # Add signing config to build.gradle
+          # Insert signingConfigs block before buildTypes
+          sed -i '/buildTypes {/i\
+              signingConfigs {\
+                  release {\
+                      storeFile file("release.keystore")\
+                      storePassword System.getenv("KEYSTORE_PASSWORD")\
+                      keyAlias System.getenv("KEY_ALIAS")\
+                      keyPassword System.getenv("KEY_PASSWORD")\
+                  }\
+              }' build.gradle
+
+          # Update release buildType to use signing config
+          sed -i '/release {/,/}/ s/minifyEnabled false/signingConfig signingConfigs.release\n            minifyEnabled false/' build.gradle
+
+          echo "Updated build.gradle with signing config"
+
+      # Build based on output format and build type
+      - name: Build Android
+        working-directory: frontend/android
+        run: |
+          chmod +x ./gradlew
+          FLAVOR="${{ inputs.flavor == 'prod' && 'Prod' || 'Dev' }}"
+          BUILD_TYPE="${{ inputs.build_type == 'release' && 'Release' || 'Debug' }}"
+
+          if [ "${{ inputs.output_format }}" = "aab" ]; then
+            echo "Building AAB: bundle${FLAVOR}${BUILD_TYPE}"
+            ./gradlew bundle${FLAVOR}${BUILD_TYPE}
+          else
+            echo "Building APK: assemble${FLAVOR}${BUILD_TYPE}"
+            ./gradlew assemble${FLAVOR}${BUILD_TYPE}
+          fi
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
+      # Upload APK artifact
+      - name: Upload APK
+        if: inputs.output_format == 'apk'
+        uses: actions/upload-artifact@v4
+        with:
+          name: sammy-${{ inputs.flavor }}-${{ inputs.build_type }}-${{ github.run_number }}
+          path: frontend/android/app/build/outputs/apk/${{ inputs.flavor }}/${{ inputs.build_type }}/app-${{ inputs.flavor }}-${{ inputs.build_type }}.apk
+          retention-days: ${{ inputs.build_type == 'release' && 30 || 14 }}
+
+      # Upload AAB artifact
+      - name: Upload AAB
+        if: inputs.output_format == 'aab'
+        uses: actions/upload-artifact@v4
+        with:
+          name: sammy-${{ inputs.flavor }}-${{ inputs.build_type }}-aab-${{ github.run_number }}
+          path: frontend/android/app/build/outputs/bundle/${{ inputs.flavor }}${{ inputs.build_type == 'release' && 'Release' || 'Debug' }}/app-${{ inputs.flavor }}-${{ inputs.build_type }}.aab
+          retention-days: ${{ inputs.build_type == 'release' && 90 || 14 }}
+
+      - name: Build Summary
+        run: |
+          echo "## Build Complete!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Setting | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Flavor** | ${{ inputs.flavor }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Build Type** | ${{ inputs.build_type }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Output Format** | ${{ inputs.output_format }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **API URL** | ${{ inputs.api_url }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Run Number** | ${{ github.run_number }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ inputs.output_format }}" = "aab" ]; then
+            echo "Download the AAB from the **Artifacts** section. Upload to Play Console manually." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Download the APK from the **Artifacts** section." >> $GITHUB_STEP_SUMMARY
+          fi

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { Sparkles, Plus } from 'lucide-react';
+import { Sparkles, Plus, Pencil } from 'lucide-react';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import SunProgress from '../components/ui/SunProgress';
@@ -219,6 +219,15 @@ export default function Home() {
                 </div>
 
                 <WeeklyTrend data={trends} currentDateStr={manualDate || format(new Date(), 'yyyy-MM-dd')} />
+
+                <Button
+                    variant="ghost"
+                    className="w-full mt-4 text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+                    onClick={() => setShowEditModal(true)}
+                >
+                    <Pencil className="w-4 h-4 mr-2" />
+                    Edit History
+                </Button>
             </Card>
 
 

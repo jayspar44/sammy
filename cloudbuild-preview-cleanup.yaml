@@ -1,0 +1,53 @@
+# Cloud Build configuration for PR Preview cleanup
+# Triggered by: Pull Request closed/merged against develop branch
+# Cleans up: Cloud Run tag + Firebase Hosting preview channel
+#
+# Substitution variables:
+#   _PR_NUMBER: Pull request number (provided by trigger)
+
+substitutions:
+  _PR_NUMBER: ''
+  _REGION: us-central1
+
+steps:
+  # Step 1: Remove the Cloud Run tag
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "Removing Cloud Run tag for PR #${_PR_NUMBER}..."
+        gcloud run services update-traffic sammy-backend-dev \
+          --region ${_REGION} \
+          --remove-tags pr-${_PR_NUMBER} || echo "Tag may not exist, continuing..."
+        echo "Cloud Run tag pr-${_PR_NUMBER} removed (if it existed)"
+
+  # Step 2: Delete the Firebase Hosting preview channel
+  # Note: Preview channels are deployed to sammy-658-dev (dev site), not sammy-658 (prod)
+  - name: 'node:22'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        npm install -g firebase-tools
+        echo "Deleting Firebase preview channel for PR #${_PR_NUMBER}..."
+        firebase hosting:channel:delete pr-${_PR_NUMBER} \
+          --site sammy-658-dev \
+          --project sammy-658 \
+          --force || echo "Channel may not exist, continuing..."
+        echo "Firebase preview channel pr-${_PR_NUMBER} deleted (if it existed)"
+
+  # Step 3: Log cleanup completion
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo ""
+        echo "=========================================="
+        echo "PR #${_PR_NUMBER} Preview Cleanup Complete"
+        echo "=========================================="
+
+timeout: '600s'
+options:
+  logging: CLOUD_LOGGING_ONLY

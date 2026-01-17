@@ -1,7 +1,7 @@
 {
   "name": "frontend",
   "private": true,
-  "version": "0.10.10",
+  "version": "0.12.2",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -35,7 +35,9 @@
     "lucide-react": "^0.562.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
+    "react-markdown": "^10.1.0",
     "react-router-dom": "^7.11.0",
+    "remark-gfm": "^4.0.1",
     "scheduler": "^0.27.0",
     "tailwind-merge": "^3.4.0"
   },

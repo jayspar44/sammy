@@ -22,6 +22,9 @@ steps:
           --set-env-vars="NODE_ENV=${_ENV}" \
           --set-env-vars="^@^ALLOWED_ORIGINS=https://sammy-658-dev.web.app,https://sammy-658.web.app,capacitor://localhost,https://localhost"
 
+        # Ensure traffic is routed to latest (needed when PR preview tags exist)
+        gcloud run services update-traffic sammy-backend-${_ENV} --region ${_REGION} --to-latest
+
   # Step 2: Get Cloud Run URL and Firebase config, create frontend env file
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: 'bash'
