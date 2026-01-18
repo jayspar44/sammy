@@ -28,13 +28,18 @@ on:
   workflow_dispatch:
     inputs:
       flavor:
-        description: 'App flavor (prod = io.sammy.app, dev = io.sammy.app.dev)'
+        description: 'App flavor (prod = io.sammy.app, dev = io.sammy.app.dev, preview = io.sammy.app.preview)'
         required: true
         default: 'prod'
         type: choice
         options:
           - prod
           - dev
+          - preview
+      pr_number:
+        description: 'PR number (required for preview flavor)'
+        required: false
+        type: string
       track:
         description: 'Release track'
         required: true
@@ -94,6 +99,14 @@ jobs:
         working-directory: frontend
         run: npm ci
 
+      - name: Validate preview inputs
+        if: inputs.flavor == 'preview'
+        run: |
+          if [ -z "${{ inputs.pr_number }}" ]; then
+            echo "::error::Preview flavor requires pr_number input"
+            exit 1
+          fi
+
       - name: Create environment file
         working-directory: frontend
         env:
@@ -103,6 +116,9 @@ jobs:
           if [ "${{ inputs.flavor }}" = "prod" ]; then
             BUILD_MODE="production"
             API_URL="https://sammy-backend-prod-u7dzitmnha-uc.a.run.app/api"
+          elif [ "${{ inputs.flavor }}" = "preview" ]; then
+            BUILD_MODE="preview"
+            API_URL="https://pr-${{ inputs.pr_number }}---sammy-backend-dev-u7dzitmnha-uc.a.run.app/api"
           else
             BUILD_MODE="dev"
             API_URL="https://sammy-backend-dev-u7dzitmnha-uc.a.run.app/api"
@@ -124,6 +140,8 @@ jobs:
         run: |
           if [ "${{ inputs.flavor }}" = "prod" ]; then
             npm run build -- --mode production
+          elif [ "${{ inputs.flavor }}" = "preview" ]; then
+            npm run build -- --mode preview
           else
             npm run build -- --mode dev
           fi
@@ -156,6 +174,9 @@ jobs:
           if [ "${{ inputs.flavor }}" = "prod" ]; then
             APP_ID="io.sammy.app"
             APP_NAME="Sammy"
+          elif [ "${{ inputs.flavor }}" = "preview" ]; then
+            APP_ID="io.sammy.app.preview"
+            APP_NAME="Sammy PR#${{ inputs.pr_number }}"
           else
             APP_ID="io.sammy.app.dev"
             APP_NAME="Sammy (Dev)"
@@ -276,19 +297,30 @@ jobs:
       - name: Upload AAB as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: sammy-${{ inputs.flavor }}-release-${{ steps.version.outputs.version }}-${{ github.run_number }}
+          name: sammy-${{ inputs.flavor }}${{ inputs.flavor == 'preview' && format('-pr{0}', inputs.pr_number) || '' }}-release-${{ steps.version.outputs.version }}-${{ github.run_number }}
           path: frontend/android/app/build/outputs/bundle/release/app-release.aab
           retention-days: 90
+
+      - name: Determine package name
+        id: package
+        run: |
+          if [ "${{ inputs.flavor }}" = "prod" ]; then
+            echo "name=io.sammy.app" >> $GITHUB_OUTPUT
+          elif [ "${{ inputs.flavor }}" = "preview" ]; then
+            echo "name=io.sammy.app.preview" >> $GITHUB_OUTPUT
+          else
+            echo "name=io.sammy.app.dev" >> $GITHUB_OUTPUT
+          fi
 
       - name: Upload to Play Store
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
-          packageName: ${{ inputs.flavor == 'prod' && 'io.sammy.app' || 'io.sammy.app.dev' }}
+          packageName: ${{ steps.package.outputs.name }}
           releaseFiles: frontend/android/app/build/outputs/bundle/release/app-release.aab
           track: ${{ inputs.track }}
           status: ${{ inputs.status }}
-          releaseName: v${{ steps.version.outputs.version }}${{ inputs.flavor == 'dev' && '-dev' || '' }}
+          releaseName: v${{ steps.version.outputs.version }}${{ inputs.flavor == 'dev' && '-dev' || '' }}${{ inputs.flavor == 'preview' && format('-pr{0}', inputs.pr_number) || '' }}
           whatsNewDirectory: ''
           inAppUpdatePriority: 0
 
@@ -296,18 +328,27 @@ jobs:
         run: |
           if [ "${{ inputs.flavor }}" = "prod" ]; then
             PACKAGE_NAME="io.sammy.app"
+            API_URL="https://sammy-backend-prod-u7dzitmnha-uc.a.run.app/api"
+          elif [ "${{ inputs.flavor }}" = "preview" ]; then
+            PACKAGE_NAME="io.sammy.app.preview"
+            API_URL="https://pr-${{ inputs.pr_number }}---sammy-backend-dev-u7dzitmnha-uc.a.run.app/api"
           else
             PACKAGE_NAME="io.sammy.app.dev"
+            API_URL="https://sammy-backend-dev-u7dzitmnha-uc.a.run.app/api"
           fi
           echo "## Play Store Upload Complete!" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Setting | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|---------|-------|" >> $GITHUB_STEP_SUMMARY
           echo "| **Flavor** | ${{ inputs.flavor }} |" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ inputs.flavor }}" = "preview" ]; then
+            echo "| **PR Number** | ${{ inputs.pr_number }} |" >> $GITHUB_STEP_SUMMARY
+          fi
           echo "| **Version** | v${{ steps.version.outputs.version }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **Version Code** | ${{ github.run_number }} x 100 = $(( ${{ github.run_number }} * 100 )) |" >> $GITHUB_STEP_SUMMARY
           echo "| **Track** | ${{ inputs.track }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **Status** | ${{ inputs.status }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **Package** | $PACKAGE_NAME |" >> $GITHUB_STEP_SUMMARY
+          echo "| **API URL** | $API_URL |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Check the [Play Console](https://play.google.com/console) for release status." >> $GITHUB_STEP_SUMMARY

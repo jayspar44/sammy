@@ -17,7 +17,9 @@
     "apk": "node scripts/build-apk.js dev debug",
     "apk:dev": "node scripts/build-apk.js dev debug",
     "apk:local": "node scripts/build-apk.js local debug",
-    "apk:prod": "node scripts/build-apk.js prod release"
+    "apk:preview": "node scripts/build-apk.js preview debug",
+    "apk:prod": "node scripts/build-apk.js prod release",
+    "android:preview": "node scripts/android-build.js preview"
   },
   "dependencies": {
     "@capacitor-community/safe-area": "^8.0.1",
