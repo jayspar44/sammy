@@ -1,12 +1,22 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation } from 'react-router-dom';
-import { Send } from 'lucide-react';
+import { Send, Bell } from 'lucide-react';
 import Button from '../components/ui/Button';
 import ChatMessage from '../components/common/ChatMessage';
 import { api } from '../api/services';
-import { format } from 'date-fns';
+import { format, subDays } from 'date-fns';
 import { logger } from '../utils/logger';
+
+// Inline status message component (not a chat bubble)
+const StatusMessage = ({ icon: Icon, text }) => (
+    <div className="flex items-center justify-center gap-2 py-3 my-4">
+        <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-full">
+            {Icon && <Icon className="w-4 h-4 text-amber-600 dark:text-amber-400" />}
+            <span className="text-sm font-medium text-amber-700 dark:text-amber-300">{text}</span>
+        </div>
+    </div>
+);
 
 // Chat input component - rendered via portal outside the scroll area
 const ChatInput = ({ input, setInput, handleSend }) => {
@@ -47,6 +57,7 @@ export default function Companion() {
     const bottomRef = useRef(null);
     const [input, setInput] = useState('');
     const [isTyping, setIsTyping] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
     const [messages, setMessages] = useState([]);
     const [chatContext, setChatContext] = useState(null); // 'morning_checkin' or null
 
@@ -54,19 +65,34 @@ export default function Companion() {
         try {
             const history = await api.getChatHistory();
             if (history && history.length > 0) {
-                setMessages(history);
-            } else {
-                // Default welcome if no history
-                setMessages([{ id: 'welcome', text: "Hi! How are you feeling today?", sender: 'sammy' }]);
+                return history;
             }
+            return [];
         } catch (err) {
             logger.error('Failed to load chat history', err);
+            return [];
         }
     }, []);
 
     const handleMorningCheckin = useCallback(async () => {
+        setIsLoading(true);
         try {
-            // Send initial greeting through API to persist in database
+            // Load existing chat history first
+            const history = await loadHistory();
+
+            // Calculate yesterday's date for display
+            const yesterday = subDays(new Date(), 1);
+            const yesterdayFormatted = format(yesterday, 'EEEE, MMM d'); // e.g., "Friday, Jan 17"
+
+            // Add inline status message about morning check-in
+            const statusMessage = {
+                id: 'morning-checkin-status',
+                type: 'status',
+                icon: 'bell',
+                text: `Morning check-in for ${yesterdayFormatted}`
+            };
+
+            // Send request to backend to get personalized greeting and persist it
             const todayStr = format(new Date(), 'yyyy-MM-dd');
             const response = await api.sendMessage(
                 '__MORNING_CHECKIN_INIT__',
@@ -74,25 +100,45 @@ export default function Companion() {
                 'morning_checkin'
             );
 
-            // Display the greeting message from the backend
-            setMessages([{
-                id: Date.now(),
-                text: response.text,
-                sender: 'sammy'
-            }]);
+            // Display history + status + greeting
+            setMessages([
+                ...history,
+                statusMessage,
+                {
+                    id: Date.now(),
+                    text: response.text,
+                    sender: 'sammy'
+                }
+            ]);
         } catch (err) {
             logger.error('Failed to initialize morning check-in', err);
-            // Fallback to generic message
-            setMessages([{
-                id: 'morning-checkin-fallback',
-                text: "Good morning! ☀️ How did yesterday go? How many drinks did you have?",
-                sender: 'sammy'
-            }]);
+            // Fallback: show history + status + generic message
+            const history = await loadHistory();
+            const yesterday = subDays(new Date(), 1);
+            const yesterdayFormatted = format(yesterday, 'EEEE, MMM d');
+
+            setMessages([
+                ...history,
+                {
+                    id: 'morning-checkin-status',
+                    type: 'status',
+                    icon: 'bell',
+                    text: `Morning check-in for ${yesterdayFormatted}`
+                },
+                {
+                    id: 'morning-checkin-fallback',
+                    text: "Good morning! ☀️ How did yesterday go? How many drinks did you have?",
+                    sender: 'sammy'
+                }
+            ]);
+        } finally {
+            setIsLoading(false);
         }
-    }, []);
+    }, [loadHistory]);
 
     useEffect(() => {
         const initChat = async () => {
+            setIsLoading(true);
             // Check if we're coming from a notification tap
             const routeContext = location.state?.context;
 
@@ -102,7 +148,13 @@ export default function Companion() {
                 await handleMorningCheckin();
             } else {
                 // Normal chat flow - load history
-                await loadHistory();
+                const history = await loadHistory();
+                if (history.length > 0) {
+                    setMessages(history);
+                } else {
+                    setMessages([{ id: 'welcome', text: "Hi! How are you feeling today?", sender: 'sammy' }]);
+                }
+                setIsLoading(false);
             }
         };
 
@@ -152,21 +204,43 @@ export default function Companion() {
         }
     };
 
+    // Loading indicator component
+    const LoadingIndicator = () => (
+        <div className="flex flex-col items-center justify-center py-12">
+            <div className="flex gap-1 mb-3">
+                <div className="w-3 h-3 bg-primary-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                <div className="w-3 h-3 bg-primary-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                <div className="w-3 h-3 bg-primary-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+            </div>
+            <span className="text-sm text-slate-500 dark:text-slate-400">Loading chat...</span>
+        </div>
+    );
+
     return (
         <>
             {/* Messages */}
             <div className="p-4 bg-neutral-50 dark:bg-slate-900 min-h-full">
-                {messages.map(msg => (
-                    <ChatMessage key={msg.id} {...msg} />
-                ))}
-                {isTyping && (
-                    <div className="flex justify-start mb-4 animate-pulse">
-                        <div className="bg-white border border-slate-100 rounded-2xl rounded-tl-none p-4 flex gap-1 dark:bg-slate-800 dark:border-slate-700">
-                            <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce dark:bg-slate-500" style={{ animationDelay: '0ms' }} />
-                            <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce dark:bg-slate-500" style={{ animationDelay: '150ms' }} />
-                            <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce dark:bg-slate-500" style={{ animationDelay: '300ms' }} />
-                        </div>
-                    </div>
+                {isLoading ? (
+                    <LoadingIndicator />
+                ) : (
+                    <>
+                        {messages.map(msg => (
+                            msg.type === 'status' ? (
+                                <StatusMessage key={msg.id} icon={Bell} text={msg.text} />
+                            ) : (
+                                <ChatMessage key={msg.id} {...msg} />
+                            )
+                        ))}
+                        {isTyping && (
+                            <div className="flex justify-start mb-4 animate-pulse">
+                                <div className="bg-white border border-slate-100 rounded-2xl rounded-tl-none p-4 flex gap-1 dark:bg-slate-800 dark:border-slate-700">
+                                    <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce dark:bg-slate-500" style={{ animationDelay: '0ms' }} />
+                                    <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce dark:bg-slate-500" style={{ animationDelay: '150ms' }} />
+                                    <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce dark:bg-slate-500" style={{ animationDelay: '300ms' }} />
+                                </div>
+                            </div>
+                        )}
+                    </>
                 )}
                 <div ref={bottomRef} />
             </div>

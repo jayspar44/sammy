@@ -112,11 +112,18 @@ const handleMessage = async (req, res) => {
 
                 // Handle initial greeting request
                 if (message === '__MORNING_CHECKIN_INIT__') {
+                    // Format yesterday's date for clear display (e.g., "Friday, January 17")
+                    const yesterdayFormatted = yesterdayDate.toLocaleDateString('en-US', {
+                        weekday: 'long',
+                        month: 'long',
+                        day: 'numeric'
+                    });
+
                     let greetingMessage;
                     if (yesterdayCount !== null && yesterdayCount !== undefined) {
-                        greetingMessage = `Good morning! ☀️ Yesterday you logged ${yesterdayCount} drink${yesterdayCount !== 1 ? 's' : ''}. Does that look right, or do you want to update it?`;
+                        greetingMessage = `Good morning! ☀️ I have ${yesterdayCount} drink${yesterdayCount !== 1 ? 's' : ''} logged for ${yesterdayFormatted}. Is that correct, or would you like to update it? Just tell me the number.`;
                     } else {
-                        greetingMessage = "Good morning! ☀️ How did yesterday go? How many drinks did you have?";
+                        greetingMessage = `Good morning! ☀️ I don't have a log for ${yesterdayFormatted} yet. How many drinks did you have? Just tell me the number and I'll log it for you.`;
                     }
 
                     // Save the greeting to chat history
@@ -136,36 +143,44 @@ const handleMessage = async (req, res) => {
                     return res.json({ text: greetingMessage, sender: 'sammy', timestamp: new Date() });
                 }
 
+                // Format date for the AI prompt
+                const yesterdayFormattedForPrompt = yesterdayDate.toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    month: 'long',
+                    day: 'numeric'
+                });
+
                 morningCheckinContext = `
 MORNING CHECK-IN MODE:
-- This is a morning check-in flow. The user is confirming or updating yesterday's (${yesterdayStr}) drinking log.
-- Yesterday's existing log: ${yesterdayCount !== null && yesterdayCount !== undefined ? `${yesterdayCount} drinks` : 'No log yet'}
-- Your task: Help the user confirm or set yesterday's drink count.
-- Parse their response for numbers (e.g., "2 beers" → 2, "I had three" → 3, "zero" → 0).
+**IMPORTANT DATE CONTEXT:**
+- TODAY is ${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+- You are asking about YESTERDAY which was ${yesterdayFormattedForPrompt} (${yesterdayStr})
+- NEVER confuse these dates. Always refer to ${yesterdayFormattedForPrompt} when talking about the log.
 
-**CRITICAL - YOU ARE NOW IN STRUCTURED OUTPUT MODE:**
-You MUST respond with ONLY a JSON object on a single line. No other text. No markdown. No code blocks. No explanations.
+**CURRENT LOG STATUS:**
+${yesterdayCount !== null && yesterdayCount !== undefined ? `- Yesterday (${yesterdayFormattedForPrompt}) has ${yesterdayCount} drink${yesterdayCount !== 1 ? 's' : ''} logged` : `- No log exists yet for ${yesterdayFormattedForPrompt}`}
 
-EXACT FORMAT (copy this structure):
-{"count": NUMBER_OR_NULL, "message": "YOUR_MESSAGE_HERE"}
+**YOUR TASK:**
+- Parse the user's response to extract the drink count for ${yesterdayFormattedForPrompt}
+- Numbers can be digits ("2") or words ("two", "zero", "none")
+- "none", "zero", "0", "didn't drink" all mean 0 drinks
+- If they confirm the existing count, use that count
 
-VALID EXAMPLES:
-User: "I had 2" → You respond: {"count": 2, "message": "Got it! Logging 2 drinks for yesterday. 👍"}
-User: "actually it was 4" → You respond: {"count": 4, "message": "Updated! Changed yesterday's log from ${yesterdayCount || 0} to 4 drinks. ✓"}
-User: "I don't remember" → You respond: {"count": null, "message": "No worries! Take your time. Just let me know when you remember."}
-User: "3 beers" → You respond: {"count": 3, "message": "Logged 3 drinks for yesterday!"}
-User: "zero" → You respond: {"count": 0, "message": "Great! Logged 0 drinks for yesterday. 🎉"}
+**CRITICAL - STRUCTURED OUTPUT MODE:**
+You MUST respond with ONLY a JSON object. No other text before or after.
 
-DO NOT respond like this (WRONG):
-\`\`\`json
-{"count": 2, "message": "..."}
-\`\`\`
+FORMAT: {"count": NUMBER_OR_NULL, "message": "YOUR_MESSAGE"}
 
-DO NOT respond like this (WRONG):
-Here's the count: {"count": 2, "message": "..."}
+EXAMPLES:
+User: "2" → {"count": 2, "message": "Got it! Logged 2 drinks for ${yesterdayFormattedForPrompt}. 👍"}
+User: "that's right" → {"count": ${yesterdayCount || 0}, "message": "Confirmed! ${yesterdayCount || 0} drinks for ${yesterdayFormattedForPrompt}. ✓"}
+User: "actually 4" → {"count": 4, "message": "Updated to 4 drinks for ${yesterdayFormattedForPrompt}. ✓"}
+User: "none" → {"count": 0, "message": "Nice! Zero drinks logged for ${yesterdayFormattedForPrompt}. 🎉"}
+User: "I don't remember" → {"count": null, "message": "No problem. Let me know when you remember!"}
 
-ONLY respond like this (CORRECT):
-{"count": 2, "message": "..."}
+WRONG (do not do this):
+\`\`\`json{"count": 2, "message": "..."}\`\`\`
+Here's my response: {"count": 2, "message": "..."}
 `;
             } catch (err) {
                 req.log.error({ err }, 'Failed to fetch yesterday log for morning checkin');
