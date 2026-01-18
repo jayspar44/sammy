@@ -14,7 +14,7 @@ import { ConnectionProvider, useConnection } from './contexts/ConnectionContext'
 import { setConnectionStatusCallback } from './api/client';
 import { getEnvironment } from './utils/appConfig';
 import { setupKeyboardListeners } from './utils/keyboard';
-import { setupNotificationHandlers } from './services/notificationService';
+import { setupNotificationHandlers, restoreNotifications } from './services/notificationService';
 
 function AppContent() {
   const { setApiConnectionStatus } = useConnection();
@@ -32,7 +32,7 @@ function AppContent() {
     setConnectionStatusCallback(setApiConnectionStatus);
   }, [setApiConnectionStatus]);
 
-  // Set up notification tap handler
+  // Set up notification handlers and restore any scheduled notifications
   useEffect(() => {
     setupNotificationHandlers((context) => {
       // When notification is tapped, navigate to companion with context
@@ -40,6 +40,9 @@ function AppContent() {
         navigate('/companion', { state: { context: 'morning_checkin' } });
       }
     });
+
+    // Restore notifications that may have been lost (app killed, device rebooted, etc.)
+    restoreNotifications();
   }, [navigate]);
 
   return (
