@@ -354,3 +354,48 @@ This project uses [Conventional Commits](https://www.conventionalcommits.org/) f
 **Examples:** `feat: add dark mode toggle`, `fix: resolve login redirect bug`, `chore: update deps`
 
 **Commit hooks enforce this format.** Invalid messages are rejected by commitlint. Subject must be lowercase.
+
+### Git Worktrees
+
+Worktrees enable parallel development on multiple branches without stashing or switching.
+
+**Directory Structure:**
+```
+~/Documents/projects/
+├── sammy/                    # Main repo (develop branch)
+└── sammy-worktrees/          # Worktree directory
+    └── <branch-name>/        # Each worktree named after branch
+```
+
+**Commands:**
+```bash
+# Create worktree for new feature branch
+git worktree add ../sammy-worktrees/my-feature -b claude/my-feature
+
+# Create worktree for existing branch
+git worktree add ../sammy-worktrees/existing-branch existing-branch
+
+# List all worktrees
+git worktree list
+
+# Remove worktree (after merging)
+git worktree remove ../sammy-worktrees/my-feature
+
+# Prune stale worktrees
+git worktree prune
+```
+
+**Workflow with Worktrees:**
+1. Create worktree: `git worktree add ../sammy-worktrees/<name> -b claude/<name>`
+2. Navigate: `cd ../sammy-worktrees/<name>`
+3. Install deps: `npm run install-all`
+4. Setup env: `npm run setup:env` (fetches secrets from GCP or prompts interactively)
+5. Develop, commit, push
+6. Create PR from worktree
+7. After merge: `git worktree remove ../sammy-worktrees/<name>`
+
+**Notes:**
+- Each worktree needs its own `npm run install-all`
+- Worktrees share the same `.git` object database (space efficient)
+- Cannot checkout the same branch in multiple worktrees
+- Claude Code sessions should `cd` into the worktree directory to work on that feature

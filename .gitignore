@@ -114,3 +114,6 @@ ios/
 
 # Windows artifacts
 nul
+
+# Git worktrees (sibling directory)
+# Worktrees are stored in ../sammy-worktrees/ by convention
