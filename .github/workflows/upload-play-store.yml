@@ -181,6 +181,10 @@ jobs:
               },
               "SystemBars": {
                 "insetsHandling": "disable"
+              },
+              "LocalNotifications": {
+                "smallIcon": "ic_stat_icon_config_sample",
+                "iconColor": "#488AFF"
               }
             }
           }
@@ -201,6 +205,16 @@ jobs:
           echo "Generating custom icons and splash screens..."
           npm run generate:android-assets
           echo "✓ Custom Android assets generated"
+
+      - name: Add Android permissions for notifications
+        working-directory: frontend/android/app/src/main
+        run: |
+          # Add exact alarm and boot permissions for reliable notifications
+          # Insert before the closing </manifest> tag
+          sed -i 's|</manifest>|    <!-- Notification reliability permissions -->\n    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />\n    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />\n</manifest>|' AndroidManifest.xml
+
+          echo "✓ Added notification permissions to AndroidManifest.xml"
+          grep -A2 "Notification reliability" AndroidManifest.xml || echo "Permissions added"
 
       - name: Sync Capacitor
         working-directory: frontend
