@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { StatusBar, Style } from '@capacitor/status-bar';
+import { App } from '@capacitor/app';
 
 const ThemeContext = createContext();
 
@@ -62,6 +63,37 @@ export const ThemeProvider = ({ children }) => {
             mediaQuery.addListener(handleChange);
             return () => mediaQuery.removeListener(handleChange);
         }
+    }, [theme]);
+
+    // Re-check system preference when app resumes from background (Android fix)
+    useEffect(() => {
+        if (theme !== 'system' || !Capacitor.isNativePlatform()) return;
+
+        const listener = App.addListener('appStateChange', ({ isActive }) => {
+            if (isActive) {
+                // Force re-evaluation when app becomes active
+                const root = document.documentElement;
+                const effectiveTheme = resolveTheme('system');
+
+                // Update CSS class
+                if (effectiveTheme === 'dark') {
+                    root.classList.add('dark');
+                } else {
+                    root.classList.remove('dark');
+                }
+
+                // Update StatusBar
+                if (effectiveTheme === 'dark') {
+                    StatusBar.setStyle({ style: Style.Dark });
+                    StatusBar.setBackgroundColor({ color: '#1e293b' });
+                } else {
+                    StatusBar.setStyle({ style: Style.Light });
+                    StatusBar.setBackgroundColor({ color: '#0ea5e9' });
+                }
+            }
+        });
+
+        return () => listener.remove();
     }, [theme]);
 
     // Update StatusBar based on theme (Android/iOS)
