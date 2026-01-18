@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { App } from '@capacitor/app';
@@ -14,29 +14,55 @@ export const ThemeProvider = ({ children }) => {
     });
 
     // Get system preference
-    const getSystemPreference = () => {
+    const getSystemPreference = useCallback(() => {
+        if (typeof window === 'undefined') return 'light'; // SSR fallback
         return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    };
+    }, []);
 
     // Resolve effective theme (system -> dark/light)
-    const resolveTheme = (themeValue) => {
+    const resolveTheme = useCallback((themeValue) => {
         if (themeValue === 'system') {
             return getSystemPreference();
         }
         return themeValue;
-    };
+    }, [getSystemPreference]);
 
-    // Apply theme to document root
-    useEffect(() => {
+    // Helper: Apply theme to DOM
+    const applyThemeToDOM = useCallback((effectiveTheme) => {
         const root = document.documentElement;
-        const effectiveTheme = resolveTheme(theme);
-
         if (effectiveTheme === 'dark') {
             root.classList.add('dark');
         } else {
             root.classList.remove('dark');
         }
-    }, [theme]);
+    }, []);
+
+    // Helper: Update StatusBar with error handling
+    const updateStatusBar = useCallback((effectiveTheme) => {
+        if (!Capacitor.isNativePlatform()) return;
+
+        try {
+            if (effectiveTheme === 'dark') {
+                // Dark mode: light/white icons on dark background
+                StatusBar.setStyle({ style: Style.Dark });
+                StatusBar.setBackgroundColor({ color: '#1e293b' }); // slate-800
+            } else {
+                // Light mode: dark/black icons on light blue background
+                StatusBar.setStyle({ style: Style.Light });
+                StatusBar.setBackgroundColor({ color: '#0ea5e9' }); // sky-500
+            }
+        } catch (err) {
+            // StatusBar may not be available on all devices/platforms
+            console.warn('Failed to update StatusBar:', err);
+        }
+    }, []);
+
+    // Apply theme to DOM and StatusBar
+    useEffect(() => {
+        const effectiveTheme = resolveTheme(theme);
+        applyThemeToDOM(effectiveTheme);
+        updateStatusBar(effectiveTheme);
+    }, [theme, resolveTheme, applyThemeToDOM, updateStatusBar]);
 
     // Listen for system preference changes when theme is 'system'
     useEffect(() => {
@@ -44,14 +70,9 @@ export const ThemeProvider = ({ children }) => {
 
         const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
         const handleChange = () => {
-            const root = document.documentElement;
             const effectiveTheme = resolveTheme('system');
-
-            if (effectiveTheme === 'dark') {
-                root.classList.add('dark');
-            } else {
-                root.classList.remove('dark');
-            }
+            applyThemeToDOM(effectiveTheme);
+            updateStatusBar(effectiveTheme);
         };
 
         // Modern browsers
@@ -63,7 +84,7 @@ export const ThemeProvider = ({ children }) => {
             mediaQuery.addListener(handleChange);
             return () => mediaQuery.removeListener(handleChange);
         }
-    }, [theme]);
+    }, [theme, resolveTheme, applyThemeToDOM, updateStatusBar]);
 
     // Re-check system preference when app resumes from background (Android fix)
     useEffect(() => {
@@ -71,70 +92,39 @@ export const ThemeProvider = ({ children }) => {
 
         const listener = App.addListener('appStateChange', ({ isActive }) => {
             if (isActive) {
-                // Force re-evaluation when app becomes active
-                const root = document.documentElement;
                 const effectiveTheme = resolveTheme('system');
-
-                // Update CSS class
-                if (effectiveTheme === 'dark') {
-                    root.classList.add('dark');
-                } else {
-                    root.classList.remove('dark');
-                }
-
-                // Update StatusBar
-                if (effectiveTheme === 'dark') {
-                    StatusBar.setStyle({ style: Style.Dark });
-                    StatusBar.setBackgroundColor({ color: '#1e293b' });
-                } else {
-                    StatusBar.setStyle({ style: Style.Light });
-                    StatusBar.setBackgroundColor({ color: '#0ea5e9' });
-                }
+                applyThemeToDOM(effectiveTheme);
+                updateStatusBar(effectiveTheme);
             }
         });
 
         return () => listener.remove();
-    }, [theme]);
-
-    // Update StatusBar based on theme (Android/iOS)
-    // Note: Style.Dark = light/white icons, Style.Light = dark/black icons
-    useEffect(() => {
-        if (Capacitor.isNativePlatform()) {
-            const effectiveTheme = resolveTheme(theme);
-            if (effectiveTheme === 'dark') {
-                // Dark mode: light icons on dark background
-                StatusBar.setStyle({ style: Style.Dark });
-                StatusBar.setBackgroundColor({ color: '#1e293b' }); // slate-800
-            } else {
-                // Light mode: dark icons on light blue background
-                StatusBar.setStyle({ style: Style.Light });
-                StatusBar.setBackgroundColor({ color: '#0ea5e9' }); // sky-500
-            }
-        }
-    }, [theme]);
+    }, [theme, resolveTheme, applyThemeToDOM, updateStatusBar]);
 
     // Persist theme to localStorage
     useEffect(() => {
         localStorage.setItem('sammy_pref_theme', theme);
     }, [theme]);
 
-    const toggleTheme = () => {
+    const toggleTheme = useCallback(() => {
         setTheme(prev => {
             if (prev === 'light') return 'dark';
             if (prev === 'dark') return 'system';
             return 'light'; // system -> light
         });
-    };
+    }, []);
 
-    const effectiveTheme = resolveTheme(theme);
-
-    const value = {
-        theme, // 'light', 'dark', or 'system'
-        effectiveTheme, // resolved to 'light' or 'dark'
-        setTheme,
-        toggleTheme,
-        isDark: effectiveTheme === 'dark'
-    };
+    // Memoize context value to prevent unnecessary re-renders
+    const value = useMemo(() => {
+        const effectiveTheme = resolveTheme(theme);
+        return {
+            theme, // 'light', 'dark', or 'system'
+            effectiveTheme, // resolved to 'light' or 'dark'
+            setTheme,
+            toggleTheme,
+            isDark: effectiveTheme === 'dark'
+        };
+    }, [theme, resolveTheme, toggleTheme]);
 
     return (
         <ThemeContext.Provider value={value}>
