@@ -4,6 +4,7 @@ import { Sparkles, Plus, Pencil } from 'lucide-react';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import SunProgress from '../components/ui/SunProgress';
+import ConfettiCanvas from '../components/common/ConfettiCanvas';
 import { cn } from '../utils/cn';
 import { LogDrinkModal } from '../components/common/LogDrinkModal';
 import { SetGoalModal } from '../components/common/SetGoalModal';
@@ -113,6 +114,7 @@ export default function Home() {
     const [showGoalModal, setShowGoalModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [hasLoggedToday, setHasLoggedToday] = useState(false);
+    const [showConfetti, setShowConfetti] = useState(false);
 
     const fetchStats = async () => {
         setStatsLoading(true);
@@ -148,6 +150,10 @@ export default function Home() {
         try {
             await api.logDrink(date, count);
             setShowLogModal(false);
+            // Celebrate staying dry with confetti!
+            if (count === 0) {
+                setShowConfetti(true);
+            }
             fetchStats(); // Refresh
         } catch (err) {
             logger.error('Failed to log drink', err);
@@ -249,6 +255,12 @@ export default function Home() {
                 onClose={() => setShowEditModal(false)}
                 onSave={fetchStats}
                 currentDate={manualDate || format(new Date(), 'yyyy-MM-dd')}
+            />
+
+            {/* Confetti celebration for staying dry */}
+            <ConfettiCanvas
+                trigger={showConfetti}
+                onComplete={() => setShowConfetti(false)}
             />
         </div>
     );
