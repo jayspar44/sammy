@@ -16,7 +16,7 @@ import { requestPermissions, scheduleDailyReminder, cancelReminder, scheduleTest
 
 export default function Settings() {
     const { logout } = useAuth();
-    const { isDark, toggleTheme } = useTheme();
+    const { theme, setTheme, isDark } = useTheme();
     const {
         firstName,
         registeredDate,
@@ -239,29 +239,61 @@ export default function Settings() {
             <section className="space-y-4">
                 <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider dark:text-slate-500">Appearance</h3>
                 <Card className="p-4 space-y-4">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className={cn(
-                                "p-2 rounded-full transition-colors",
-                                isDark ? "bg-indigo-100 text-indigo-600 dark:bg-indigo-900 dark:text-indigo-400" : "bg-slate-100 text-slate-500"
-                            )}>
-                                <Moon className="w-5 h-5" />
-                            </div>
-                            <div>
-                                <span className="font-bold text-slate-700 dark:text-slate-200 block">Dark Mode</span>
-                                <span className="text-xs text-slate-400 dark:text-slate-500">Reduce eye strain in low light</span>
-                            </div>
+                    <div className="flex items-center gap-3 mb-3">
+                        <div className={cn(
+                            "p-2 rounded-full transition-colors",
+                            isDark ? "bg-indigo-100 text-indigo-600 dark:bg-indigo-900 dark:text-indigo-400" : "bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400"
+                        )}>
+                            <Moon className="w-5 h-5" />
                         </div>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                            <input
-                                type="checkbox"
-                                className="sr-only peer"
-                                checked={isDark}
-                                onChange={() => toggleTheme()}
-                            />
-                            <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-900 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-500 dark:peer-checked:bg-indigo-600"></div>
-                        </label>
+                        <div>
+                            <span className="font-bold text-slate-700 dark:text-slate-200 block">Theme</span>
+                            <span className="text-xs text-slate-400 dark:text-slate-500">Choose your appearance preference</span>
+                        </div>
                     </div>
+
+                    {/* Segmented Control */}
+                    <div className="flex gap-2 p-1 bg-slate-100 rounded-xl dark:bg-slate-700">
+                        <button
+                            onClick={() => setTheme('light')}
+                            className={cn(
+                                "flex-1 py-2 px-3 rounded-lg text-sm font-semibold transition-all",
+                                theme === 'light'
+                                    ? "bg-white text-slate-700 shadow-sm dark:bg-slate-600 dark:text-slate-100"
+                                    : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                            )}
+                        >
+                            Light
+                        </button>
+                        <button
+                            onClick={() => setTheme('dark')}
+                            className={cn(
+                                "flex-1 py-2 px-3 rounded-lg text-sm font-semibold transition-all",
+                                theme === 'dark'
+                                    ? "bg-white text-slate-700 shadow-sm dark:bg-slate-600 dark:text-slate-100"
+                                    : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                            )}
+                        >
+                            Dark
+                        </button>
+                        <button
+                            onClick={() => setTheme('system')}
+                            className={cn(
+                                "flex-1 py-2 px-3 rounded-lg text-sm font-semibold transition-all",
+                                theme === 'system'
+                                    ? "bg-white text-slate-700 shadow-sm dark:bg-slate-600 dark:text-slate-100"
+                                    : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                            )}
+                        >
+                            System
+                        </button>
+                    </div>
+
+                    {theme === 'system' && (
+                        <div className="text-xs text-slate-500 text-center pt-1 dark:text-slate-400">
+                            Currently using: <span className="font-semibold">{isDark ? 'Dark' : 'Light'}</span> (system preference)
+                        </div>
+                    )}
                 </Card>
             </section>
 
