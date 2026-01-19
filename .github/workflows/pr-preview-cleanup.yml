@@ -13,6 +13,21 @@ on:
     types: [closed]
     branches:
       - develop
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to clean up (for manual stale cleanup)'
+        required: true
+        type: string
+      cleanup_type:
+        description: 'What to clean up'
+        required: true
+        type: choice
+        options:
+          - both
+          - cloud-run-only
+          - firebase-only
+        default: 'both'
 
 jobs:
   cleanup:
@@ -22,6 +37,11 @@ jobs:
     permissions:
       contents: read
       id-token: write
+
+    env:
+      # Use input PR number for manual trigger, otherwise use PR event number
+      PR_NUMBER: ${{ inputs.pr_number || github.event.pull_request.number }}
+      CLEANUP_TYPE: ${{ inputs.cleanup_type || 'both' }}
 
     steps:
       - name: Checkout code
@@ -39,27 +59,30 @@ jobs:
           project_id: sammy-658
 
       - name: Remove Cloud Run tag
+        if: env.CLEANUP_TYPE == 'both' || env.CLEANUP_TYPE == 'cloud-run-only'
         run: |
-          echo "Removing Cloud Run tag for PR #${{ github.event.pull_request.number }}..."
+          echo "Removing Cloud Run tag for PR #${{ env.PR_NUMBER }}..."
           # First check if the tag exists
           TAGS=$(gcloud run services describe sammy-backend-dev --region us-central1 --format='value(status.traffic.tag)' 2>/dev/null || echo "")
           echo "Current tags: $TAGS"
-          if echo "$TAGS" | grep -q "pr-${{ github.event.pull_request.number }}"; then
+          if echo "$TAGS" | grep -q "pr-${{ env.PR_NUMBER }}"; then
             echo "Tag found, removing..."
             gcloud run services update-traffic sammy-backend-dev \
               --region us-central1 \
-              --remove-tags pr-${{ github.event.pull_request.number }}
+              --remove-tags pr-${{ env.PR_NUMBER }}
             echo "✅ Cloud Run tag removed"
           else
-            echo "⚠️ Tag pr-${{ github.event.pull_request.number }} not found (may have been removed already)"
+            echo "⚠️ Tag pr-${{ env.PR_NUMBER }} not found (may have been removed already)"
           fi
 
       - name: Set up Node.js
+        if: env.CLEANUP_TYPE == 'both' || env.CLEANUP_TYPE == 'firebase-only'
         uses: actions/setup-node@v4
         with:
           node-version: '22'
 
       - name: Remove Firebase preview channel
+        if: env.CLEANUP_TYPE == 'both' || env.CLEANUP_TYPE == 'firebase-only'
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ steps.auth.outputs.credentials_file_path }}
         run: |
@@ -70,15 +93,19 @@ jobs:
           echo "Listing existing preview channels..."
           firebase hosting:channel:list --site sammy-658-dev --project sammy-658 || echo "Could not list channels"
 
-          echo "Deleting Firebase preview channel for PR #${{ github.event.pull_request.number }}..."
-          firebase hosting:channel:delete pr-${{ github.event.pull_request.number }} \
+          echo "Deleting Firebase preview channel for PR #${{ env.PR_NUMBER }}..."
+          firebase hosting:channel:delete pr-${{ env.PR_NUMBER }} \
             --site sammy-658-dev \
             --project sammy-658 \
             --force && echo "✅ Firebase preview channel deleted" || echo "❌ Failed to delete channel (may not exist or auth issue)"
 
       - name: Cleanup Summary
         run: |
-          echo "## PR #${{ github.event.pull_request.number }} Preview Cleanup Complete" >> $GITHUB_STEP_SUMMARY
+          echo "## PR #${{ env.PR_NUMBER }} Preview Cleanup Complete" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- Cloud Run tag \`pr-${{ github.event.pull_request.number }}\` removed" >> $GITHUB_STEP_SUMMARY
-          echo "- Firebase preview channel \`pr-${{ github.event.pull_request.number }}\` deleted" >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ env.CLEANUP_TYPE }}" == "both" || "${{ env.CLEANUP_TYPE }}" == "cloud-run-only" ]]; then
+            echo "- Cloud Run tag \`pr-${{ env.PR_NUMBER }}\` removed" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [[ "${{ env.CLEANUP_TYPE }}" == "both" || "${{ env.CLEANUP_TYPE }}" == "firebase-only" ]]; then
+            echo "- Firebase preview channel \`pr-${{ env.PR_NUMBER }}\` deleted" >> $GITHUB_STEP_SUMMARY
+          fi
