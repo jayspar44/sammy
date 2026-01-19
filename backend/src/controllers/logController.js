@@ -1,5 +1,5 @@
 const { db, isReady } = require('../services/firebase');
-const { calculateStats, calculateCumulativeStats } = require('../services/statsService');
+const { calculateStats, calculateCumulativeStats, calculateAllTimeStats } = require('../services/statsService');
 const admin = require('firebase-admin');
 
 const logDrink = async (req, res) => {
@@ -370,4 +370,33 @@ const getCumulativeStats = async (req, res) => {
     }
 };
 
-module.exports = { logDrink, getStats, updateLog, deleteLog, getStatsRange, getCumulativeStats };
+const getAllTimeStats = async (req, res) => {
+    const { uid } = req.user;
+    const { date } = req.query;
+
+    // Allow client to specify anchor date for timezone handling
+    const clientDate = date;
+    const todayStr = clientDate || new Date().toISOString().split('T')[0];
+    const anchorDate = new Date(todayStr);
+
+    // Mock mode if DB not connected
+    if (!isReady) {
+        return res.json({
+            moneySaved: 2500,
+            caloriesCut: 37500,
+            drinksSaved: 250,
+            totalDays: 180,
+            registeredDate: new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString()
+        });
+    }
+
+    try {
+        const stats = await calculateAllTimeStats(uid, anchorDate);
+        res.json(stats);
+    } catch (error) {
+        req.log.error({ err: error }, 'Error fetching all-time stats');
+        res.status(500).json({ error: 'Failed to fetch all-time stats' });
+    }
+};
+
+module.exports = { logDrink, getStats, updateLog, deleteLog, getStatsRange, getCumulativeStats, getAllTimeStats };

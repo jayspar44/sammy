@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { Zap, Calendar, TrendingDown, Wallet } from 'lucide-react';
 import Card from '../components/ui/Card';
 import CumulativeSavingsChart from '../components/insights/CumulativeSavingsChart';
+import MilestonesCard from '../components/insights/MilestonesCard';
 import { cn } from '../utils/cn';
 import { api } from '../api/services';
 import { useAuth } from '../contexts/AuthContext';
@@ -37,6 +38,7 @@ export default function Insights() {
     const [stats, setStats] = useState({
         moneySaved: 0,
         caloriesCut: 0,
+        drinksSaved: 0,
         dryStreak: 0,
         trends: []
     });
@@ -48,12 +50,19 @@ export default function Insights() {
             setStatsLoading(true);
             try {
                 const todayStr = manualDate || format(new Date(), 'yyyy-MM-dd');
-                const data = await api.getStats(todayStr);
+                // Fetch both regular stats (for dry streak and trends) and all-time stats (for totals)
+                const [regularData, allTimeData] = await Promise.all([
+                    api.getStats(todayStr),
+                    api.getAllTimeStats(todayStr)
+                ]);
                 setStats({
-                    moneySaved: data.insights?.moneySaved || 0,
-                    caloriesCut: data.insights?.caloriesCut || 0,
-                    dryStreak: data.insights?.dryStreak || 0,
-                    trends: data.trends || []
+                    // Use all-time data for cumulative totals
+                    moneySaved: allTimeData.moneySaved || 0,
+                    caloriesCut: allTimeData.caloriesCut || 0,
+                    drinksSaved: allTimeData.drinksSaved || 0,
+                    // Use regular stats for streak and trends
+                    dryStreak: regularData.insights?.dryStreak || 0,
+                    trends: regularData.trends || []
                 });
             } catch (err) {
                 logger.error('Failed to load insights', err);
@@ -109,15 +118,15 @@ export default function Insights() {
                     <div className="grid grid-cols-2 gap-4 mb-4">
                         <StatCard
                             icon={Wallet}
-                            label="Money Saved"
-                            value={`$${stats.moneySaved}`}
+                            label="Total Saved"
+                            value={`$${stats.moneySaved.toLocaleString()}`}
                             theme="emerald"
                             className="border"
                         />
                         <StatCard
                             icon={TrendingDown}
                             label="Calories Cut"
-                            value={`${stats.caloriesCut}`}
+                            value={stats.caloriesCut.toLocaleString()}
                             theme="amber"
                             className="border"
                         />
@@ -194,6 +203,11 @@ export default function Insights() {
             {/* Cumulative Drinks Saved Chart */}
             <div className="mt-6">
                 <CumulativeSavingsChart />
+            </div>
+
+            {/* Milestones */}
+            <div className="mt-6">
+                <MilestonesCard />
             </div>
         </div>
     );

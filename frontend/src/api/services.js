@@ -269,4 +269,58 @@ export const api = {
         });
         return response.data;
     },
+
+    getAllTimeStats: async (date) => {
+        let dateStr = date;
+        if (!dateStr) {
+            dateStr = new Date().toISOString().split('T')[0];
+        }
+
+        if (IS_SPOOF_DB()) {
+            logger.spoof('Get All-Time Stats');
+            return {
+                moneySaved: 2500,
+                caloriesCut: 37500,
+                drinksSaved: 250,
+                totalDays: 180,
+                registeredDate: new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString()
+            };
+        }
+
+        const response = await client.get('/stats/all-time', {
+            params: { date: dateStr }
+        });
+        return response.data;
+    },
+
+    getMilestones: async (date) => {
+        let dateStr = date;
+        if (!dateStr) {
+            dateStr = new Date().toISOString().split('T')[0];
+        }
+
+        if (IS_SPOOF_DB()) {
+            logger.spoof('Get Milestones');
+            return {
+                milestones: [
+                    { id: 'streak_7', type: 'dry_streak', threshold: 7, label: '1 Week Dry', icon: 'flame', currentValue: 10, progress: 100, isUnlocked: true, unlockedAt: new Date().toISOString() },
+                    { id: 'streak_14', type: 'dry_streak', threshold: 14, label: '2 Weeks Dry', icon: 'flame', currentValue: 10, progress: 71, isUnlocked: false, unlockedAt: null },
+                    { id: 'streak_30', type: 'dry_streak', threshold: 30, label: '1 Month Dry', icon: 'trophy', currentValue: 10, progress: 33, isUnlocked: false, unlockedAt: null },
+                    { id: 'drinks_10', type: 'drinks_saved', threshold: 10, label: '10 Drinks Saved', icon: 'star', currentValue: 50, progress: 100, isUnlocked: true, unlockedAt: new Date().toISOString() },
+                    { id: 'drinks_50', type: 'drinks_saved', threshold: 50, label: '50 Drinks Saved', icon: 'star', currentValue: 50, progress: 100, isUnlocked: true, unlockedAt: new Date().toISOString() },
+                    { id: 'drinks_100', type: 'drinks_saved', threshold: 100, label: '100 Drinks Saved', icon: 'medal', currentValue: 50, progress: 50, isUnlocked: false, unlockedAt: null },
+                    { id: 'money_100', type: 'money_saved', threshold: 100, label: '$100 Saved', icon: 'wallet', currentValue: 500, progress: 100, isUnlocked: true, unlockedAt: new Date().toISOString() },
+                    { id: 'money_500', type: 'money_saved', threshold: 500, label: '$500 Saved', icon: 'wallet', currentValue: 500, progress: 100, isUnlocked: true, unlockedAt: new Date().toISOString() },
+                    { id: 'money_1000', type: 'money_saved', threshold: 1000, label: '$1K Saved', icon: 'piggy-bank', currentValue: 500, progress: 50, isUnlocked: false, unlockedAt: null },
+                ],
+                newlyUnlocked: [],
+                stats: { currentStreak: 10, longestStreak: 10, drinksSaved: 50, moneySaved: 500, caloriesCut: 7500 }
+            };
+        }
+
+        const response = await client.get('/user/milestones', {
+            params: { date: dateStr }
+        });
+        return response.data;
+    },
 };

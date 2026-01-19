@@ -335,4 +335,97 @@ const calculateCumulativeStats = async (userId, mode, range, anchorDate) => {
     };
 };
 
-module.exports = { calculateStats, getContextSummary, calculateCumulativeStats };
+/**
+ * Calculates all-time statistics for money saved and calories cut.
+ * @param {string} userId - The user's ID.
+ * @param {Date} anchorDate - The date to anchor calculations from (usually "today").
+ * @returns {Promise<Object>} Object containing all-time totals.
+ */
+const calculateAllTimeStats = async (userId, anchorDate) => {
+    const userRef = db.collection('users').doc(userId);
+    const userDoc = await userRef.get();
+    const userData = userDoc.exists ? userDoc.data() : {};
+
+    // User settings
+    const globalLimit = userData.dailyGoal ?? 2;
+    const globalDrinkCost = userData.avgDrinkCost ?? 10;
+    const globalDrinkCals = userData.avgDrinkCals ?? 150;
+    const registeredDate = userData.registeredDate
+        ? new Date(userData.registeredDate)
+        : null;
+
+    // Determine start date - use registration date or fall back to 90 days
+    let startDate;
+    if (registeredDate) {
+        startDate = new Date(registeredDate);
+        startDate.setHours(0, 0, 0, 0);
+    } else {
+        // Fallback to 90 days if no registration date
+        startDate = new Date(anchorDate);
+        startDate.setDate(anchorDate.getDate() - 89);
+    }
+
+    const startDateStr = startDate.toISOString().split('T')[0];
+
+    // Fetch all logs from start date
+    const logsSnapshot = await userRef.collection('logs')
+        .where('date', '>=', startDateStr)
+        .get();
+
+    // Build logs map
+    const logsMap = {};
+    logsSnapshot.forEach(doc => {
+        const data = doc.data();
+        let count = 0;
+        let limit = globalLimit;
+
+        if (data.habits && data.habits.drinking) {
+            count = data.habits.drinking.count || 0;
+            if (data.habits.drinking.goal !== undefined) {
+                limit = data.habits.drinking.goal;
+            }
+        } else if (data.count !== undefined) {
+            count = data.count;
+        }
+
+        logsMap[data.date] = { count, limit };
+    });
+
+    // Calculate totals
+    let totalMoneySaved = 0;
+    let totalCaloriesCut = 0;
+    let totalDrinksSaved = 0;
+    let totalDays = 0;
+
+    // Iterate from start date to anchor date
+    const currentDate = new Date(startDate);
+    while (currentDate <= anchorDate) {
+        const dateStr = currentDate.toISOString().split('T')[0];
+        const log = logsMap[dateStr];
+
+        if (log !== undefined) {
+            const dayLimit = log.limit;
+            const count = log.count;
+
+            if (count < dayLimit) {
+                const savedUnits = dayLimit - count;
+                totalDrinksSaved += savedUnits;
+                totalMoneySaved += savedUnits * globalDrinkCost;
+                totalCaloriesCut += savedUnits * globalDrinkCals;
+            }
+        }
+
+        totalDays++;
+        currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    return {
+        moneySaved: Math.round(totalMoneySaved),
+        caloriesCut: Math.round(totalCaloriesCut),
+        drinksSaved: totalDrinksSaved,
+        totalDays,
+        registeredDate: registeredDate ? registeredDate.toISOString() : null
+    };
+};
+
+module.exports = { calculateStats, getContextSummary, calculateCumulativeStats, calculateAllTimeStats };
