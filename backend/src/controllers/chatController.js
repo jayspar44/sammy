@@ -1,8 +1,109 @@
 const { db } = require('../services/firebase');
-const { generateChatResponse } = require('../services/ai');
+const { generateChatResponse, sendFunctionResults } = require('../services/ai');
 const { calculateStats, getContextSummary } = require('../services/statsService');
+const { updateLog } = require('./logController');
 
 const admin = require('firebase-admin');
+
+// Function calling tools for AI-driven log updates
+const LOG_TOOLS = [
+    {
+        name: 'update_log',
+        description: 'Updates drink count for a specific date. Use when user wants to correct, change, or log drinks for any date.',
+        parameters: {
+            type: 'OBJECT',
+            properties: {
+                date: { type: 'STRING', description: 'Date in YYYY-MM-DD format' },
+                count: { type: 'NUMBER', description: 'New drink count (0 or positive integer)' }
+            },
+            required: ['date', 'count']
+        }
+    },
+    {
+        name: 'get_log',
+        description: 'Get current log value for a date. Use to check existing value before updating.',
+        parameters: {
+            type: 'OBJECT',
+            properties: {
+                date: { type: 'STRING', description: 'Date in YYYY-MM-DD format' }
+            },
+            required: ['date']
+        }
+    }
+];
+
+/**
+ * Execute update_log function - updates or creates a drink log for a date
+ * @param {string} uid - User ID
+ * @param {object} args - { date: 'YYYY-MM-DD', count: number }
+ * @param {object} logger - Pino logger instance
+ */
+async function executeUpdateLog(uid, { date, count }, logger) {
+    // Validate date format
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        return { success: false, error: 'Invalid date format. Use YYYY-MM-DD.' };
+    }
+
+    // Validate count is non-negative
+    if (typeof count !== 'number' || count < 0 || !Number.isInteger(count)) {
+        return { success: false, error: 'Count must be a non-negative integer.' };
+    }
+
+    // Check if trying to update a future date
+    const today = new Date().toISOString().split('T')[0];
+    if (date > today) {
+        return { success: false, error: 'Cannot update logs for future dates.' };
+    }
+
+    return new Promise((resolve) => {
+        const mockReq = {
+            user: { uid },
+            body: { date, newCount: count, source: 'ai_chat' },
+            log: logger
+        };
+        const mockRes = {
+            json: (data) => {
+                if (data.success) {
+                    resolve({ success: true, date, count });
+                } else {
+                    resolve({ success: false, error: data.error || 'Update failed' });
+                }
+            },
+            status: () => ({
+                json: (data) => resolve({ success: false, error: data.error || 'Update failed' })
+            })
+        };
+        updateLog(mockReq, mockRes).catch((err) => {
+            resolve({ success: false, error: err.message });
+        });
+    });
+}
+
+/**
+ * Execute get_log function - retrieves drink log for a date
+ * @param {string} uid - User ID
+ * @param {string} date - Date in YYYY-MM-DD format
+ */
+async function executeGetLog(uid, date) {
+    // Validate date format
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        return { exists: false, error: 'Invalid date format. Use YYYY-MM-DD.' };
+    }
+
+    const doc = await db.collection('users').doc(uid)
+        .collection('logs').doc(date).get();
+
+    if (!doc.exists) {
+        return { exists: false, date };
+    }
+
+    const data = doc.data();
+    return {
+        exists: true,
+        date,
+        count: data.habits?.drinking?.count ?? null
+    };
+}
 
 const handleMessage = async (req, res) => {
     const { uid } = req.user;
@@ -228,9 +329,21 @@ STATS & INSIGHTS:
 ${contextSummary}
         `.trim();
 
+        // Tool guidance only for regular chat (not morning_checkin which uses structured JSON)
+        const toolGuidance = context !== 'morning_checkin' ? `
+TOOL USAGE:
+- You can update drink logs when asked (e.g., "update yesterday to 3", "Friday was 2 drinks", "log 1 for last Tuesday")
+- Use get_log first if you want to confirm current value before updating
+- ONLY confirm updates AFTER receiving success response from update_log
+- If update fails, apologize and suggest using the calendar UI
+- Parse dates naturally: "yesterday", "Friday", "last Tuesday", "3 days ago"
+- Today is ${todayStr}
+- NEVER update future dates - they will fail validation
+` : '';
+
         const systemInstruction = `
 You are Sammy, a compassionate, intelligent AI habit companion helping users reduce alcohol consumption.
-${morningCheckinContext}
+${morningCheckinContext}${toolGuidance}
 IDENTITY & TONE:
 - Talk like a real person, not a cheerleader or motivational poster.
 - Be supportive but casual - more like a thoughtful friend than a life coach.
@@ -266,24 +379,69 @@ INSTRUCTIONS:
         `.trim();
 
         // 4. Call AI with structured chat API
+        // Only use tools for regular chat, NOT morning_checkin (which uses structured JSON)
+        const tools = context === 'morning_checkin' ? null : LOG_TOOLS;
+
         req.log.info({
             context,
             message,
             messageLength: message.length,
             hasMorningCheckinContext: morningCheckinContext.length > 0,
+            hasTools: tools !== null,
             systemInstructionPreview: systemInstruction.substring(systemInstruction.length - 500)
         }, 'Calling AI with system instruction');
 
-        let aiResponse = await generateChatResponse(systemInstruction, history, message);
+        let aiResponse = await generateChatResponse(systemInstruction, history, message, tools);
+
+        // 4.1. Handle function calling loop (for regular chat with tools)
+        const MAX_FUNCTION_ITERATIONS = 3;
+        let iteration = 0;
+
+        while (aiResponse.type === 'function_calls' && iteration < MAX_FUNCTION_ITERATIONS) {
+            iteration++;
+            const functionResults = [];
+
+            req.log.info({
+                iteration,
+                functionCalls: aiResponse.functionCalls.map(fn => ({ name: fn.name, args: fn.args }))
+            }, 'Processing function calls from AI');
+
+            for (const fn of aiResponse.functionCalls) {
+                try {
+                    let result;
+                    if (fn.name === 'update_log') {
+                        result = await executeUpdateLog(uid, fn.args, req.log);
+                        req.log.info({ functionName: fn.name, args: fn.args, result }, 'Function executed');
+                    } else if (fn.name === 'get_log') {
+                        result = await executeGetLog(uid, fn.args.date);
+                        req.log.info({ functionName: fn.name, args: fn.args, result }, 'Function executed');
+                    } else {
+                        result = { error: `Unknown function: ${fn.name}` };
+                        req.log.warn({ functionName: fn.name }, 'Unknown function requested');
+                    }
+                    functionResults.push({ id: fn.id, name: fn.name, response: result });
+                } catch (err) {
+                    req.log.error({ err, functionName: fn.name }, 'Function execution failed');
+                    functionResults.push({ id: fn.id, name: fn.name, response: { error: err.message } });
+                }
+            }
+
+            // Send results back to Gemini for final response
+            aiResponse = await sendFunctionResults(aiResponse.chat, functionResults);
+        }
+
+        // Extract text from final response
+        let aiResponseText = aiResponse.type === 'text' ? aiResponse.text :
+            'Sorry, I had trouble processing that request. You can try using the calendar to update your logs directly.';
 
         // 4.5. Handle morning_checkin auto-logging
         let _loggedCount = null;
         if (context === 'morning_checkin' && yesterdayDate) {
             try {
-                req.log.info({ aiResponseLength: aiResponse.length, aiResponsePreview: aiResponse.substring(0, 300) }, 'Morning checkin AI response (raw)');
+                req.log.info({ aiResponseLength: aiResponseText.length, aiResponsePreview: aiResponseText.substring(0, 300) }, 'Morning checkin AI response (raw)');
 
                 // Strip potential markdown code blocks (```json ... ``` or ``` ... ```)
-                let cleanedResponse = aiResponse.replace(/```(?:json)?\s*([\s\S]*?)\s*```/g, '$1').trim();
+                let cleanedResponse = aiResponseText.replace(/```(?:json)?\s*([\s\S]*?)\s*```/g, '$1').trim();
 
                 req.log.info({ cleanedResponse }, 'After stripping markdown');
 
@@ -297,77 +455,28 @@ INSTRUCTIONS:
                     req.log.info({ parsedCount, yesterdayCount }, 'Morning checkin: parsed AI response');
 
                     if (parsedCount !== null && !isNaN(parsedCount)) {
-                        // Log the drink count for yesterday
+                        // Log the drink count for yesterday using shared executor
                         const yesterdayStr = yesterdayDate.toISOString().split('T')[0];
+                        req.log.info({ yesterdayStr, parsedCount }, 'Updating log via shared executor');
 
-                        if (yesterdayCount !== null && yesterdayCount !== undefined) {
-                            // Update existing log
-                            req.log.info({ yesterdayStr, parsedCount, yesterdayCount }, 'Updating existing log');
-                            const { updateLog } = require('./logController');
-                            await new Promise((resolve, reject) => {
-                                const mockRes = {
-                                    json: (data) => {
-                                        if (data.success) {
-                                            req.log.info({ yesterdayStr, parsedCount }, 'Log update successful');
-                                            resolve(data);
-                                        } else {
-                                            req.log.error({ data }, 'Log update failed');
-                                            reject(new Error(data.error));
-                                        }
-                                    },
-                                    status: (_code) => ({
-                                        json: (data) => {
-                                            req.log.error({ data }, 'Log update status error');
-                                            reject(new Error(data.error));
-                                        }
-                                    })
-                                };
-                                const mockReq = {
-                                    user: { uid },
-                                    body: { date: yesterdayStr, newCount: parsedCount, source: 'morning_checkin' },
-                                    log: req.log
-                                };
-                                updateLog(mockReq, mockRes).catch(reject);
-                            });
+                        const result = await executeUpdateLog(uid, { date: yesterdayStr, count: parsedCount }, req.log);
+                        if (result.success) {
+                            _loggedCount = parsedCount;
+                            req.log.info({ uid, date: yesterdayStr, count: parsedCount, loggedCount: _loggedCount }, 'Morning checkin auto-logged successfully');
                         } else {
-                            // Create new log
-                            req.log.info({ yesterdayStr, parsedCount }, 'Creating new log');
-                            const yesterdayLogRef = db.collection('users').doc(uid).collection('logs').doc(yesterdayStr);
-                            const userRef = db.collection('users').doc(uid);
-                            const userDoc = await userRef.get();
-                            const userData = userDoc.exists ? userDoc.data() : {};
-
-                            await yesterdayLogRef.set({
-                                userId: uid,
-                                date: yesterdayStr,
-                                habits: {
-                                    drinking: {
-                                        count: parsedCount,
-                                        goal: userData.dailyGoal || 2,
-                                        cost: userData.avgDrinkCost || 10,
-                                        cals: userData.avgDrinkCals || 150,
-                                        updatedAt: new Date().toISOString(),
-                                        source: 'morning_checkin'
-                                    }
-                                },
-                                timestamp: admin.firestore.FieldValue.serverTimestamp()
-                            }, { merge: true });
-
-                            req.log.info({ yesterdayStr, parsedCount }, 'New log created successfully');
+                            req.log.error({ result }, 'Morning checkin log update failed');
                         }
 
-                        _loggedCount = parsedCount;
-                        aiResponse = userMessage; // Use the clean message without JSON
-                        req.log.info({ uid, date: yesterdayStr, count: parsedCount, loggedCount: _loggedCount }, 'Morning checkin auto-logged successfully');
+                        aiResponseText = userMessage; // Use the clean message without JSON
                     } else {
                         // Count is null, AI is asking for clarification
                         req.log.info({ parsedCount }, 'Morning checkin: AI asking for clarification (count is null or NaN)');
-                        aiResponse = userMessage;
+                        aiResponseText = userMessage;
                     }
                 } else {
                     req.log.warn({
                         cleanedResponse: cleanedResponse.substring(0, 300),
-                        originalResponse: aiResponse.substring(0, 300)
+                        originalResponse: aiResponseText.substring(0, 300)
                     }, 'Morning checkin: No JSON match found in AI response');
                 }
             } catch (err) {
@@ -375,7 +484,7 @@ INSTRUCTIONS:
                     err,
                     errorMessage: err.message,
                     errorStack: err.stack,
-                    aiResponse: aiResponse?.substring(0, 300)
+                    aiResponseText: aiResponseText?.substring(0, 300)
                 }, 'Failed to auto-log from morning checkin');
                 // Continue with original AI response even if logging fails
             }
@@ -385,7 +494,7 @@ INSTRUCTIONS:
             context,
             hadMorningCheckin: context === 'morning_checkin',
             loggedCount: _loggedCount,
-            finalResponsePreview: aiResponse.substring(0, 100)
+            finalResponsePreview: aiResponseText.substring(0, 100)
         }, 'About to save and return AI response');
 
         // 5. Save AI Response (Only if enabled)
@@ -394,7 +503,7 @@ INSTRUCTIONS:
             expireAt.setDate(expireAt.getDate() + 7);
 
             await messagesRef.add({
-                text: aiResponse,
+                text: aiResponseText,
                 sender: 'sammy',
                 timestamp: admin.firestore.FieldValue.serverTimestamp(),
                 createdAt: new Date().toISOString(),
@@ -403,7 +512,7 @@ INSTRUCTIONS:
         }
 
         // 6. Return (include loggedCount if morning checkin)
-        const response = { text: aiResponse, sender: 'sammy', timestamp: new Date() };
+        const response = { text: aiResponseText, sender: 'sammy', timestamp: new Date() };
         if (_loggedCount !== null) {
             response.loggedCount = _loggedCount;
         }

@@ -36,41 +36,14 @@ All arguments are optional. Missing parameters will be prompted interactively.
 
 ## Steps
 
-1. **Check for unreleased commits**
-
-   Before prompting for parameters, check if there are commits since the last release tag:
-
-   ```bash
-   LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-   if [ -n "$LAST_TAG" ]; then
-     UNRELEASED_COUNT=$(git log $LAST_TAG..HEAD --oneline | wc -l)
-   else
-     UNRELEASED_COUNT=0
-   fi
-   ```
-
-   If UNRELEASED_COUNT > 0, use AskUserQuestion:
-   ```json
-   {
-     "question": "You have {UNRELEASED_COUNT} commits since last release ({LAST_TAG}). Create a new release first?",
-     "header": "Unreleased",
-     "options": [
-       { "label": "Yes, run /release first (Recommended)", "description": "Bump version based on commits, then upload" },
-       { "label": "No, upload current version", "description": "Upload without version bump" }
-     ]
-   }
-   ```
-
-   If user selects "Yes": Run `/release` skill first (using Skill tool), then continue with upload.
-
-2. **Parse CLI arguments** for any pre-specified options:
+1. **Parse CLI arguments** for any pre-specified options:
    - Check for `--prod`, `--dev`, or `--preview` to set flavor
    - Check for `--pr=N` to set PR number (required for preview)
    - Check for `--internal`, `--alpha`, or `--beta` to set track
    - Check for `--draft` or `--completed` to set status
    - Check for `-m "notes"` to set release notes
 
-3. **Prompt for missing parameters** using AskUserQuestion:
+2. **Prompt for missing parameters** using AskUserQuestion:
    - If flavor not specified: Ask "Which app flavor?"
      - Production (Recommended) - For real releases to users (io.sammy.app)
      - Development - For testing with dev backend (io.sammy.app.dev)
@@ -87,7 +60,7 @@ All arguments are optional. Missing parameters will be prompted interactively.
      - Use default - "Bug fixes and improvements"
      - Custom - Enter custom release notes
 
-4. **Trigger the GitHub workflow**:
+3. **Trigger the GitHub workflow**:
    ```bash
    # For prod or dev:
    gh workflow run upload-play-store.yml \
@@ -105,21 +78,21 @@ All arguments are optional. Missing parameters will be prompted interactively.
      -f release_notes="<notes>"
    ```
 
-5. **Show initial confirmation**: Display all selected parameters and that the workflow was triggered
+4. **Show initial confirmation**: Display all selected parameters and that the workflow was triggered
 
-6. **Get the workflow run ID** (wait a few seconds for it to be created):
+5. **Get the workflow run ID** (wait a few seconds for it to be created):
    ```bash
    sleep 3
    RUN_ID=$(gh run list --workflow=upload-play-store.yml -L 1 --json databaseId -q '.[0].databaseId')
    ```
 
-7. **Monitor the workflow in background**: Use `run_in_background: true` to watch without blocking:
+6. **Monitor the workflow in background**: Use `run_in_background: true` to watch without blocking:
    ```bash
    gh run watch $RUN_ID
    ```
    Tell the user you're monitoring in the background and they can continue working.
 
-8. **Report final result**: When the workflow completes, check the result and notify the user:
+7. **Report final result**: When the workflow completes, check the result and notify the user:
    ```bash
    CONCLUSION=$(gh run view $RUN_ID --json conclusion -q '.conclusion')
    ```
