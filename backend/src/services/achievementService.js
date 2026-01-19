@@ -33,9 +33,6 @@ const MILESTONES = {
  */
 const calculateDryStreak = async (userId, anchorDate) => {
     const userRef = db.collection('users').doc(userId);
-    const userDoc = await userRef.get();
-    const userData = userDoc.exists ? userDoc.data() : {};
-    const globalLimit = userData.dailyGoal ?? 2;
 
     // Fetch recent logs (up to 365 days for streak calculation)
     const yearAgo = new Date(anchorDate);
