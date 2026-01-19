@@ -18,6 +18,7 @@
 
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { Capacitor } from '@capacitor/core';
+import { logger } from '../utils/logger';
 
 // Notification IDs
 const MORNING_REMINDER_ID = 1;
@@ -38,7 +39,7 @@ export const isNotificationSupported = () => {
  */
 export const requestPermissions = async () => {
   if (!isNotificationSupported()) {
-    console.warn('Notifications not supported on this platform');
+    logger.warn('Notifications not supported on this platform');
     return false;
   }
 
@@ -46,7 +47,7 @@ export const requestPermissions = async () => {
     const result = await LocalNotifications.requestPermissions();
     return result.display === 'granted';
   } catch (error) {
-    console.error('Error requesting notification permissions:', error);
+    logger.error('Error requesting notification permissions:', error);
     return false;
   }
 };
@@ -64,7 +65,7 @@ export const checkPermissions = async () => {
     const result = await LocalNotifications.checkPermissions();
     return result.display === 'granted';
   } catch (error) {
-    console.error('Error checking notification permissions:', error);
+    logger.error('Error checking notification permissions:', error);
     return false;
   }
 };
@@ -96,7 +97,7 @@ const saveNotificationSettings = (enabled, time) => {
   try {
     localStorage.setItem(NOTIFICATION_STORAGE_KEY, JSON.stringify({ enabled, time }));
   } catch (error) {
-    console.error('Error saving notification settings:', error);
+    logger.error('Error saving notification settings:', error);
   }
 };
 
@@ -108,7 +109,7 @@ const getSavedNotificationSettings = () => {
     const saved = localStorage.getItem(NOTIFICATION_STORAGE_KEY);
     return saved ? JSON.parse(saved) : null;
   } catch (error) {
-    console.error('Error reading notification settings:', error);
+    logger.error('Error reading notification settings:', error);
     return null;
   }
 };
@@ -121,7 +122,7 @@ const getSavedNotificationSettings = () => {
  */
 export const scheduleDailyReminder = async (time, saveSettings = true) => {
   if (!isNotificationSupported()) {
-    console.warn('Notifications not supported on this platform');
+    logger.warn('Notifications not supported on this platform');
     return false;
   }
 
@@ -132,7 +133,7 @@ export const scheduleDailyReminder = async (time, saveSettings = true) => {
     // Check if we have permission
     const hasPermission = await checkPermissions();
     if (!hasPermission) {
-      console.warn('No notification permission, cannot schedule reminder');
+      logger.warn('No notification permission, cannot schedule reminder');
       return false;
     }
 
@@ -167,10 +168,10 @@ export const scheduleDailyReminder = async (time, saveSettings = true) => {
       saveNotificationSettings(true, time);
     }
 
-    console.log(`Morning reminder scheduled for ${scheduleAt.toLocaleString()} (allowWhileIdle: true)`);
+    logger.debug(`Morning reminder scheduled for ${scheduleAt.toLocaleString()} (allowWhileIdle: true)`);
     return true;
   } catch (error) {
-    console.error('Error scheduling daily reminder:', error);
+    logger.error('Error scheduling daily reminder:', error);
     return false;
   }
 };
@@ -195,10 +196,10 @@ export const cancelReminder = async (clearSettings = true) => {
       saveNotificationSettings(false, null);
     }
 
-    console.log('Morning reminder cancelled');
+    logger.debug('Morning reminder cancelled');
     return true;
   } catch (error) {
-    console.error('Error cancelling reminder:', error);
+    logger.error('Error cancelling reminder:', error);
     return false;
   }
 };
@@ -210,7 +211,7 @@ export const cancelReminder = async (clearSettings = true) => {
  */
 export const scheduleTestNotification = async () => {
   if (!isNotificationSupported()) {
-    console.warn('Notifications not supported on this platform');
+    logger.warn('Notifications not supported on this platform');
     return false;
   }
 
@@ -233,10 +234,10 @@ export const scheduleTestNotification = async () => {
       ],
     });
 
-    console.log('Test notification scheduled for', testTime.toLocaleString());
+    logger.debug('Test notification scheduled for', testTime.toLocaleString());
     return true;
   } catch (error) {
-    console.error('Error scheduling test notification:', error);
+    logger.error('Error scheduling test notification:', error);
     return false;
   }
 };
@@ -254,13 +255,13 @@ export const setupNotificationHandlers = (onNotificationTap) => {
   try {
     // Listen for when notification is received/displayed (to reschedule for next day)
     LocalNotifications.addListener('localNotificationReceived', async (notification) => {
-      console.log('Notification received:', notification);
+      logger.debug('Notification received:', notification);
 
       // Check if this is our morning reminder
       if (notification.id === MORNING_REMINDER_ID) {
         const scheduledTime = notification.extra?.scheduledTime;
         if (scheduledTime) {
-          console.log('Rescheduling morning reminder for tomorrow at', scheduledTime);
+          logger.debug('Rescheduling morning reminder for tomorrow at', scheduledTime);
           // Small delay to ensure current notification is fully processed
           setTimeout(async () => {
             await scheduleDailyReminder(scheduledTime, false); // Don't re-save settings
@@ -271,14 +272,14 @@ export const setupNotificationHandlers = (onNotificationTap) => {
 
     // Listen for notification taps
     LocalNotifications.addListener('localNotificationActionPerformed', async (notification) => {
-      console.log('Notification tapped:', notification);
+      logger.debug('Notification tapped:', notification);
 
       const context = notification.notification.extra?.context;
       const scheduledTime = notification.notification.extra?.scheduledTime;
 
       // Reschedule for tomorrow (in case received event didn't fire)
       if (notification.notification.id === MORNING_REMINDER_ID && scheduledTime) {
-        console.log('Rescheduling morning reminder after tap for tomorrow at', scheduledTime);
+        logger.debug('Rescheduling morning reminder after tap for tomorrow at', scheduledTime);
         await scheduleDailyReminder(scheduledTime, false);
       }
 
@@ -287,9 +288,9 @@ export const setupNotificationHandlers = (onNotificationTap) => {
       }
     });
 
-    console.log('Notification handlers setup complete');
+    logger.debug('Notification handlers setup complete');
   } catch (error) {
-    console.error('Error setting up notification handlers:', error);
+    logger.error('Error setting up notification handlers:', error);
   }
 };
 
@@ -310,7 +311,7 @@ export const restoreNotifications = async () => {
     const settings = getSavedNotificationSettings();
 
     if (!settings || !settings.enabled || !settings.time) {
-      console.log('No notification settings to restore');
+      logger.debug('No notification settings to restore');
       return false;
     }
 
@@ -319,15 +320,15 @@ export const restoreNotifications = async () => {
     const hasMorningReminder = pending.some(n => n.id === MORNING_REMINDER_ID);
 
     if (hasMorningReminder) {
-      console.log('Morning reminder already scheduled, no restore needed');
+      logger.debug('Morning reminder already scheduled, no restore needed');
       return true;
     }
 
     // Reschedule the notification
-    console.log('Restoring morning reminder for', settings.time);
+    logger.debug('Restoring morning reminder for', settings.time);
     return await scheduleDailyReminder(settings.time, false);
   } catch (error) {
-    console.error('Error restoring notifications:', error);
+    logger.error('Error restoring notifications:', error);
     return false;
   }
 };
@@ -344,7 +345,7 @@ export const removeNotificationHandlers = async () => {
   try {
     await LocalNotifications.removeAllListeners();
   } catch (error) {
-    console.error('Error removing notification handlers:', error);
+    logger.error('Error removing notification handlers:', error);
   }
 };
 
@@ -361,7 +362,7 @@ export const getPendingNotifications = async () => {
     const result = await LocalNotifications.getPending();
     return result.notifications || [];
   } catch (error) {
-    console.error('Error getting pending notifications:', error);
+    logger.error('Error getting pending notifications:', error);
     return [];
   }
 };

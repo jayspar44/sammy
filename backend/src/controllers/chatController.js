@@ -44,9 +44,12 @@ async function executeUpdateLog(uid, { date, count }, logger) {
         return { success: false, error: 'Invalid date format. Use YYYY-MM-DD.' };
     }
 
-    // Validate count is non-negative
+    // Validate count is non-negative integer with reasonable upper bound
     if (typeof count !== 'number' || count < 0 || !Number.isInteger(count)) {
         return { success: false, error: 'Count must be a non-negative integer.' };
+    }
+    if (count > 100) {
+        return { success: false, error: 'Count exceeds maximum allowed value (100).' };
     }
 
     // Check if trying to update a future date
@@ -445,12 +448,23 @@ INSTRUCTIONS:
 
                 req.log.info({ cleanedResponse }, 'After stripping markdown');
 
-                // Try to parse JSON response from AI (more flexible regex)
-                const jsonMatch = cleanedResponse.match(/\{\s*"count"\s*:\s*(\d+|null)\s*,\s*"message"\s*:\s*"([^"]+)"\s*\}/);
+                // Try to parse JSON response from AI using JSON.parse for robustness
+                let parsedJson = null;
+                try {
+                    // Extract JSON object from response (handles any field order)
+                    const jsonStart = cleanedResponse.indexOf('{');
+                    const jsonEnd = cleanedResponse.lastIndexOf('}');
+                    if (jsonStart !== -1 && jsonEnd > jsonStart) {
+                        const jsonStr = cleanedResponse.substring(jsonStart, jsonEnd + 1);
+                        parsedJson = JSON.parse(jsonStr);
+                    }
+                } catch (jsonErr) {
+                    req.log.warn({ jsonErr: jsonErr.message, cleanedResponse: cleanedResponse.substring(0, 200) }, 'Failed to parse JSON from AI response');
+                }
 
-                if (jsonMatch) {
-                    const parsedCount = jsonMatch[1] === 'null' ? null : parseInt(jsonMatch[1]);
-                    const userMessage = jsonMatch[2];
+                if (parsedJson && typeof parsedJson === 'object' && 'count' in parsedJson && 'message' in parsedJson) {
+                    const parsedCount = parsedJson.count === null ? null : parseInt(parsedJson.count, 10);
+                    const userMessage = parsedJson.message;
 
                     req.log.info({ parsedCount, yesterdayCount }, 'Morning checkin: parsed AI response');
 
