@@ -6,18 +6,30 @@ import { createPortal } from 'react-dom';
  * Triggers a burst of confetti particles when `trigger` becomes true.
  * Renders via portal to ensure it's above all other content.
  */
+// Default colors defined outside component to avoid recreating on each render
+const DEFAULT_COLORS = ['#818cf8', '#fbbf24', '#ffffff', '#a78bfa', '#f472b6']; // indigo, yellow, white, violet, pink
+
 const ConfettiCanvas = ({
     trigger,
     duration = 2500,
     particleCount = 60,
-    colors = ['#818cf8', '#fbbf24', '#ffffff', '#a78bfa', '#f472b6'], // indigo, yellow, white, violet, pink
+    colors = DEFAULT_COLORS,
     onComplete,
 }) => {
     const canvasRef = useRef(null);
     const animationRef = useRef(null);
+    const hasTriggeredRef = useRef(false);
 
     useEffect(() => {
-        if (!trigger) return;
+        // Only trigger once per trigger=true, reset when trigger becomes false
+        if (!trigger) {
+            hasTriggeredRef.current = false;
+            return;
+        }
+
+        // Already triggered for this cycle, don't re-trigger
+        if (hasTriggeredRef.current) return;
+        hasTriggeredRef.current = true;
 
         const canvas = canvasRef.current;
         if (!canvas) return;
@@ -95,7 +107,9 @@ const ConfettiCanvas = ({
                 cancelAnimationFrame(animationRef.current);
             }
         };
-    }, [trigger, particleCount, colors, duration, onComplete]);
+    // Only depend on trigger - other props are read at trigger time
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [trigger]);
 
     // Handle window resize
     useEffect(() => {
