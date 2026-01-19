@@ -347,12 +347,15 @@ const calculateAllTimeStats = async (userId, anchorDate) => {
     const userData = userDoc.exists ? userDoc.data() : {};
 
     // User settings
-    const globalLimit = userData.dailyGoal ?? 2;
+    const typicalWeek = userData.typicalWeek || null;
     const globalDrinkCost = userData.avgDrinkCost ?? 10;
     const globalDrinkCals = userData.avgDrinkCals ?? 150;
     const registeredDate = userData.registeredDate
         ? new Date(userData.registeredDate)
         : null;
+
+    // Day of week mapping for typicalWeek
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
     // Determine start date - use registration date or fall back to 90 days
     let startDate;
@@ -377,21 +380,19 @@ const calculateAllTimeStats = async (userId, anchorDate) => {
     logsSnapshot.forEach(doc => {
         const data = doc.data();
         let count = 0;
-        let limit = globalLimit;
 
         if (data.habits && data.habits.drinking) {
             count = data.habits.drinking.count || 0;
-            if (data.habits.drinking.goal !== undefined) {
-                limit = data.habits.drinking.goal;
-            }
         } else if (data.count !== undefined) {
             count = data.count;
         }
 
-        logsMap[data.date] = { count, limit };
+        if (data.date) {
+            logsMap[data.date] = { count };
+        }
     });
 
-    // Calculate totals
+    // Calculate totals using baseline (typicalWeek) comparison
     let totalMoneySaved = 0;
     let totalCaloriesCut = 0;
     let totalDrinksSaved = 0;
@@ -403,12 +404,14 @@ const calculateAllTimeStats = async (userId, anchorDate) => {
         const dateStr = currentDate.toISOString().split('T')[0];
         const log = logsMap[dateStr];
 
-        if (log !== undefined) {
-            const dayLimit = log.limit;
-            const count = log.count;
+        if (log !== undefined && typicalWeek) {
+            const dayOfWeek = dayNames[currentDate.getDay()];
+            const baseline = typicalWeek[dayOfWeek] ?? 0;
+            const actualDrinks = log.count;
 
-            if (count < dayLimit) {
-                const savedUnits = dayLimit - count;
+            // Calculate savings vs baseline
+            const savedUnits = baseline - actualDrinks;
+            if (savedUnits > 0) {
                 totalDrinksSaved += savedUnits;
                 totalMoneySaved += savedUnits * globalDrinkCost;
                 totalCaloriesCut += savedUnits * globalDrinkCals;

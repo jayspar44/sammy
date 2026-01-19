@@ -23,7 +23,7 @@ const CumulativeSavingsChart = () => {
     const { isDark } = useTheme();
     const { manualDate, typicalWeek } = useUserPreferences();
 
-    const [mode, setMode] = useState('target'); // 'target' or 'benchmark'
+    const [mode, setMode] = useState('benchmark'); // 'benchmark' or 'target'
     const [range, setRange] = useState('90d'); // '90d' or 'all'
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -142,17 +142,6 @@ const CumulativeSavingsChart = () => {
                 {/* Mode Toggle */}
                 <div className="flex rounded-lg bg-slate-100 dark:bg-slate-700 p-1">
                     <button
-                        onClick={() => setMode('target')}
-                        className={cn(
-                            'px-3 py-1.5 text-xs font-medium rounded-md transition-colors',
-                            mode === 'target'
-                                ? 'bg-white dark:bg-slate-600 text-slate-800 dark:text-slate-50 shadow-sm'
-                                : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-                        )}
-                    >
-                        vs Target
-                    </button>
-                    <button
                         onClick={() => canUseBenchmark && setMode('benchmark')}
                         disabled={!canUseBenchmark}
                         className={cn(
@@ -168,6 +157,17 @@ const CumulativeSavingsChart = () => {
                         {!canUseBenchmark && (
                             <Info className="w-3 h-3 ml-1 inline-block" />
                         )}
+                    </button>
+                    <button
+                        onClick={() => setMode('target')}
+                        className={cn(
+                            'px-3 py-1.5 text-xs font-medium rounded-md transition-colors',
+                            mode === 'target'
+                                ? 'bg-white dark:bg-slate-600 text-slate-800 dark:text-slate-50 shadow-sm'
+                                : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                        )}
+                    >
+                        vs Target
                     </button>
                 </div>
 
