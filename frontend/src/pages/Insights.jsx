@@ -4,14 +4,21 @@ import { Zap, Calendar, TrendingDown, Wallet } from 'lucide-react';
 import Card from '../components/ui/Card';
 import CumulativeSavingsChart from '../components/insights/CumulativeSavingsChart';
 import MilestonesCard from '../components/insights/MilestonesCard';
+import FunFactPopover from '../components/insights/FunFactPopover';
+import ConfettiCanvas from '../components/common/ConfettiCanvas';
 import { cn } from '../utils/cn';
 import { api } from '../api/services';
 import { useAuth } from '../contexts/AuthContext';
 import { useUserPreferences } from '../contexts/UserPreferencesContext';
 import { logger } from '../utils/logger';
+import {
+    getMoneyEquivalencies,
+    getCaloriesEquivalencies,
+    getStreakMessage,
+} from '../utils/funEquivalencies';
 
 // eslint-disable-next-line no-unused-vars -- Icon is used in JSX below
-const StatCard = ({ icon: Icon, label, value, theme = 'emerald', className }) => {
+const StatCard = ({ icon: Icon, label, value, theme = 'emerald', className, onClick }) => {
     const themes = {
         emerald: 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800',
         amber: 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800',
@@ -20,7 +27,15 @@ const StatCard = ({ icon: Icon, label, value, theme = 'emerald', className }) =>
     };
 
     return (
-        <Card className={cn("flex flex-col items-start justify-between p-5 gap-3 transition-transform active:scale-95", themes[theme], className)}>
+        <Card
+            className={cn(
+                "flex flex-col items-start justify-between p-5 gap-3 transition-transform active:scale-95",
+                themes[theme],
+                className,
+                onClick && "cursor-pointer"
+            )}
+            onClick={onClick}
+        >
             <div className="p-2 bg-white/60 rounded-xl backdrop-blur-sm dark:bg-white/10">
                 <Icon className="w-6 h-6" />
             </div>
@@ -43,6 +58,30 @@ export default function Insights() {
         trends: []
     });
     const [statsLoading, setStatsLoading] = useState(true);
+
+    // Fun fact popover and confetti state
+    const [activePopover, setActivePopover] = useState(null); // null | 'money' | 'calories'
+    const [showConfetti, setShowConfetti] = useState(false);
+    const [streakMessage, setStreakMessage] = useState(null);
+
+    // Click handlers for interactive tiles
+    const handleMoneyClick = () => setActivePopover('money');
+    const handleCaloriesClick = () => setActivePopover('calories');
+    const handleStreakClick = () => {
+        const message = getStreakMessage(stats.dryStreak);
+        setStreakMessage(message);
+        if (message.showConfetti) {
+            setShowConfetti(true);
+        }
+    };
+
+    const handleConfettiComplete = () => {
+        setShowConfetti(false);
+    };
+
+    const handleStreakMessageDismiss = () => {
+        setStreakMessage(null);
+    };
 
     useEffect(() => {
         const loadStats = async () => {
@@ -122,6 +161,7 @@ export default function Insights() {
                             value={`$${stats.moneySaved.toLocaleString()}`}
                             theme="emerald"
                             className="border"
+                            onClick={handleMoneyClick}
                         />
                         <StatCard
                             icon={TrendingDown}
@@ -129,11 +169,15 @@ export default function Insights() {
                             value={stats.caloriesCut.toLocaleString()}
                             theme="amber"
                             className="border"
+                            onClick={handleCaloriesClick}
                         />
                     </div>
 
                     {/* Streak Card - Full Width */}
-                    <Card className="mb-8 bg-indigo-600 text-white border-none flex items-center justify-between p-6 shadow-lg shadow-indigo-200 dark:bg-indigo-700 dark:shadow-indigo-950/50">
+                    <Card
+                        className="mb-8 bg-indigo-600 text-white border-none flex items-center justify-between p-6 shadow-lg shadow-indigo-200 dark:bg-indigo-700 dark:shadow-indigo-950/50 cursor-pointer transition-transform active:scale-[0.98]"
+                        onClick={handleStreakClick}
+                    >
                         <div className="flex items-center gap-4">
                             <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm">
                                 <Zap className="w-6 h-6 text-yellow-300 fill-current" />
@@ -209,6 +253,40 @@ export default function Insights() {
             <div className="mt-6">
                 <MilestonesCard />
             </div>
+
+            {/* Fun Fact Popovers */}
+            <FunFactPopover
+                isOpen={activePopover === 'money'}
+                onClose={() => setActivePopover(null)}
+                title="Money Saved"
+                value={`$${stats.moneySaved.toLocaleString()}`}
+                equivalencies={getMoneyEquivalencies(stats.moneySaved)}
+                theme="emerald"
+            />
+            <FunFactPopover
+                isOpen={activePopover === 'calories'}
+                onClose={() => setActivePopover(null)}
+                title="Calories Cut"
+                value={stats.caloriesCut.toLocaleString()}
+                equivalencies={getCaloriesEquivalencies(stats.caloriesCut)}
+                theme="amber"
+            />
+
+            {/* Streak Message Popover */}
+            <FunFactPopover
+                isOpen={streakMessage !== null}
+                onClose={handleStreakMessageDismiss}
+                title="Dry Streak"
+                value={`${stats.dryStreak} Days`}
+                equivalencies={streakMessage ? [{ emoji: streakMessage.emoji, text: streakMessage.text }] : []}
+                theme="indigo"
+            />
+
+            {/* Confetti Animation */}
+            <ConfettiCanvas
+                trigger={showConfetti}
+                onComplete={handleConfettiComplete}
+            />
         </div>
     );
 }
