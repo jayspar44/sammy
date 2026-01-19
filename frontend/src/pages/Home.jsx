@@ -150,13 +150,31 @@ export default function Home() {
         try {
             await api.logDrink(date, count);
             setShowLogModal(false);
-            // Celebrate staying dry with confetti!
-            if (count === 0) {
-                setShowConfetti(true);
-            }
             fetchStats(); // Refresh
         } catch (err) {
             logger.error('Failed to log drink', err);
+        }
+    };
+
+    // Separate handler for "I stayed dry today" button with optimistic update + confetti
+    const handleStayedDry = async () => {
+        const date = manualDate || format(new Date(), 'yyyy-MM-dd');
+        // Optimistic update - immediately show the new state
+        setStats(prev => ({ ...prev, count: 0 }));
+        setHasLoggedToday(true);
+        setShowConfetti(true);
+
+        try {
+            await api.logDrink(date, 0);
+            // Silently refresh trends in background without loading state
+            const data = await api.getStats(date);
+            if (data.trends) {
+                setTrends(data.trends);
+            }
+        } catch (err) {
+            logger.error('Failed to log drink', err);
+            // Revert on error
+            fetchStats();
         }
     };
 
@@ -176,9 +194,18 @@ export default function Home() {
             {/* Hero */}
             <div className="mb-8 animate-slideUp">
                 {statsLoading ? (
-                    <div className="flex flex-col items-center animate-pulse">
-                        <div className="w-48 h-48 rounded-full bg-slate-100" />
-                        <div className="h-6 w-32 bg-slate-200 rounded mt-4" />
+                    <div className="animate-pulse">
+                        <div className="bg-slate-200 dark:bg-slate-700 rounded-3xl p-5 h-[120px]">
+                            <div className="flex flex-col gap-4">
+                                <div className="flex justify-between items-end">
+                                    <div>
+                                        <div className="h-4 w-32 bg-slate-300 dark:bg-slate-600 rounded mb-2" />
+                                        <div className="h-9 w-20 bg-slate-300 dark:bg-slate-600 rounded" />
+                                    </div>
+                                </div>
+                                <div className="h-3 w-full bg-slate-300 dark:bg-slate-600 rounded-full" />
+                            </div>
+                        </div>
                     </div>
                 ) : (
                     <div onClick={() => setShowGoalModal(true)} className="cursor-pointer active:scale-95 transition-transform">
@@ -198,7 +225,7 @@ export default function Home() {
                 <Button
                     variant="primary"
                     className="w-full shadow-md shadow-sky-200/50 py-4 text-lg mb-3"
-                    onClick={() => handleLogDrink(0)}
+                    onClick={handleStayedDry}
                 >
                     <Sparkles className="w-5 h-5 mr-2" />
                     I stayed dry today

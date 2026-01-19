@@ -1,8 +1,10 @@
 import { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 
 /**
  * Lightweight canvas-based confetti animation.
  * Triggers a burst of confetti particles when `trigger` becomes true.
+ * Renders via portal to ensure it's above all other content.
  */
 const ConfettiCanvas = ({
     trigger,
@@ -111,12 +113,13 @@ const ConfettiCanvas = ({
 
     if (!trigger) return null;
 
-    return (
+    return createPortal(
         <canvas
             ref={canvasRef}
             className="fixed inset-0 z-[9999] pointer-events-none"
             style={{ width: '100vw', height: '100vh' }}
-        />
+        />,
+        document.body
     );
 };
 
