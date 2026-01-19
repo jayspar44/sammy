@@ -19,10 +19,6 @@ name: Build Android
 on:
   workflow_dispatch:
     inputs:
-      api_url:
-        description: 'Backend API URL (e.g., https://sammy-backend-dev-xxx.run.app/api)'
-        required: true
-        default: 'https://sammy-backend-dev-u7dzitmnha-uc.a.run.app/api'
       flavor:
         description: 'Product flavor'
         required: true
@@ -30,7 +26,16 @@ on:
         type: choice
         options:
           - dev
+          - preview
           - prod
+      pr_number:
+        description: 'PR number (required for preview flavor)'
+        required: false
+        type: string
+      api_url:
+        description: 'Backend API URL (auto-set for preview, optional override for dev/prod)'
+        required: false
+        default: ''
       build_type:
         description: 'Build type'
         required: true
@@ -77,18 +82,38 @@ jobs:
         working-directory: frontend
         run: npm ci
 
+      - name: Validate preview inputs
+        if: inputs.flavor == 'preview'
+        run: |
+          if [ -z "${{ inputs.pr_number }}" ]; then
+            echo "::error::Preview flavor requires pr_number input"
+            exit 1
+          fi
+
       - name: Create environment file
         working-directory: frontend
         run: |
-          # Determine the build mode based on flavor
+          # Determine the build mode and API URL based on flavor
           if [ "${{ inputs.flavor }}" = "prod" ]; then
             BUILD_MODE="production"
+            API_URL="${{ inputs.api_url }}"
+            if [ -z "$API_URL" ]; then
+              API_URL="https://sammy-backend-prod-u7dzitmnha-uc.a.run.app/api"
+            fi
+          elif [ "${{ inputs.flavor }}" = "preview" ]; then
+            BUILD_MODE="preview"
+            # Auto-construct API URL from PR number
+            API_URL="https://pr-${{ inputs.pr_number }}---sammy-backend-dev-u7dzitmnha-uc.a.run.app/api"
           else
             BUILD_MODE="dev"
+            API_URL="${{ inputs.api_url }}"
+            if [ -z "$API_URL" ]; then
+              API_URL="https://sammy-backend-dev-u7dzitmnha-uc.a.run.app/api"
+            fi
           fi
 
-          echo "Creating .env.$BUILD_MODE with API URL: ${{ inputs.api_url }}"
-          echo "VITE_API_URL=${{ inputs.api_url }}" > .env.$BUILD_MODE
+          echo "Creating .env.$BUILD_MODE with API URL: $API_URL"
+          echo "VITE_API_URL=$API_URL" > .env.$BUILD_MODE
 
           # Also get Firebase config from secrets
           if [ -n "${{ secrets.FIREBASE_CLIENT_CONFIG }}" ]; then
@@ -102,6 +127,8 @@ jobs:
         run: |
           if [ "${{ inputs.flavor }}" = "prod" ]; then
             npm run build -- --mode production
+          elif [ "${{ inputs.flavor }}" = "preview" ]; then
+            npm run build -- --mode preview
           else
             npm run build -- --mode dev
           fi
@@ -113,6 +140,9 @@ jobs:
           if [ "${{ inputs.flavor }}" = "prod" ]; then
             APP_ID="io.sammy.app"
             APP_NAME="Sammy"
+          elif [ "${{ inputs.flavor }}" = "preview" ]; then
+            APP_ID="io.sammy.app.preview"
+            APP_NAME="Sammy PR#${{ inputs.pr_number }}"
           else
             APP_ID="io.sammy.app.dev"
             APP_NAME="Sammy (Dev)"
@@ -176,19 +206,20 @@ jobs:
           echo "Updated build.gradle with signing config"
 
       # Build based on output format and build type
+      # Note: We don't use Gradle product flavors since the android directory is generated fresh.
+      # App identity (appId, appName) is controlled via Capacitor config set above.
       - name: Build Android
         working-directory: frontend/android
         run: |
           chmod +x ./gradlew
-          FLAVOR="${{ inputs.flavor == 'prod' && 'Prod' || 'Dev' }}"
           BUILD_TYPE="${{ inputs.build_type == 'release' && 'Release' || 'Debug' }}"
 
           if [ "${{ inputs.output_format }}" = "aab" ]; then
-            echo "Building AAB: bundle${FLAVOR}${BUILD_TYPE}"
-            ./gradlew bundle${FLAVOR}${BUILD_TYPE}
+            echo "Building AAB: bundle${BUILD_TYPE}"
+            ./gradlew bundle${BUILD_TYPE}
           else
-            echo "Building APK: assemble${FLAVOR}${BUILD_TYPE}"
-            ./gradlew assemble${FLAVOR}${BUILD_TYPE}
+            echo "Building APK: assemble${BUILD_TYPE}"
+            ./gradlew assemble${BUILD_TYPE}
           fi
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
@@ -200,8 +231,8 @@ jobs:
         if: inputs.output_format == 'apk'
         uses: actions/upload-artifact@v4
         with:
-          name: sammy-${{ inputs.flavor }}-${{ inputs.build_type }}-${{ github.run_number }}
-          path: frontend/android/app/build/outputs/apk/${{ inputs.flavor }}/${{ inputs.build_type }}/app-${{ inputs.flavor }}-${{ inputs.build_type }}.apk
+          name: sammy-${{ inputs.flavor }}${{ inputs.flavor == 'preview' && format('-pr{0}', inputs.pr_number) || '' }}-${{ inputs.build_type }}-${{ github.run_number }}
+          path: frontend/android/app/build/outputs/apk/${{ inputs.build_type }}/app-${{ inputs.build_type }}.apk
           retention-days: ${{ inputs.build_type == 'release' && 30 || 14 }}
 
       # Upload AAB artifact
@@ -209,20 +240,42 @@ jobs:
         if: inputs.output_format == 'aab'
         uses: actions/upload-artifact@v4
         with:
-          name: sammy-${{ inputs.flavor }}-${{ inputs.build_type }}-aab-${{ github.run_number }}
-          path: frontend/android/app/build/outputs/bundle/${{ inputs.flavor }}${{ inputs.build_type == 'release' && 'Release' || 'Debug' }}/app-${{ inputs.flavor }}-${{ inputs.build_type }}.aab
+          name: sammy-${{ inputs.flavor }}${{ inputs.flavor == 'preview' && format('-pr{0}', inputs.pr_number) || '' }}-${{ inputs.build_type }}-aab-${{ github.run_number }}
+          path: frontend/android/app/build/outputs/bundle/${{ inputs.build_type }}/app-${{ inputs.build_type }}.aab
           retention-days: ${{ inputs.build_type == 'release' && 90 || 14 }}
 
       - name: Build Summary
         run: |
+          # Compute API URL for display
+          if [ "${{ inputs.flavor }}" = "prod" ]; then
+            API_URL="${{ inputs.api_url }}"
+            if [ -z "$API_URL" ]; then
+              API_URL="https://sammy-backend-prod-u7dzitmnha-uc.a.run.app/api"
+            fi
+            APP_ID="io.sammy.app"
+          elif [ "${{ inputs.flavor }}" = "preview" ]; then
+            API_URL="https://pr-${{ inputs.pr_number }}---sammy-backend-dev-u7dzitmnha-uc.a.run.app/api"
+            APP_ID="io.sammy.app.preview"
+          else
+            API_URL="${{ inputs.api_url }}"
+            if [ -z "$API_URL" ]; then
+              API_URL="https://sammy-backend-dev-u7dzitmnha-uc.a.run.app/api"
+            fi
+            APP_ID="io.sammy.app.dev"
+          fi
+
           echo "## Build Complete!" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Setting | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|---------|-------|" >> $GITHUB_STEP_SUMMARY
           echo "| **Flavor** | ${{ inputs.flavor }} |" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ inputs.flavor }}" = "preview" ]; then
+            echo "| **PR Number** | ${{ inputs.pr_number }} |" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "| **App ID** | $APP_ID |" >> $GITHUB_STEP_SUMMARY
           echo "| **Build Type** | ${{ inputs.build_type }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **Output Format** | ${{ inputs.output_format }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| **API URL** | ${{ inputs.api_url }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **API URL** | $API_URL |" >> $GITHUB_STEP_SUMMARY
           echo "| **Run Number** | ${{ github.run_number }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           if [ "${{ inputs.output_format }}" = "aab" ]; then

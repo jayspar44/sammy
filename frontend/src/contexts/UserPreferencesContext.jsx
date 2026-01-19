@@ -31,6 +31,9 @@ export const UserPreferencesProvider = ({ children }) => {
     const [avgDrinkCals, setAvgDrinkCals] = useState(150);
     const [chatHistoryEnabled, setChatHistoryEnabled] = useState(true);
     const [typicalWeek, setTypicalWeek] = useState(null);
+    const [notificationSettings, setNotificationSettings] = useState({
+        morningReminder: { enabled: false, time: '08:00' }
+    });
     const [profileLoading, setProfileLoading] = useState(false);
 
     // Persistence Effects
@@ -67,6 +70,12 @@ export const UserPreferencesProvider = ({ children }) => {
                         if (data.avgDrinkCals !== undefined) setAvgDrinkCals(data.avgDrinkCals);
                         if (data.chatHistoryEnabled !== undefined) setChatHistoryEnabled(data.chatHistoryEnabled);
                         if (data.typicalWeek !== undefined) setTypicalWeek(data.typicalWeek);
+                        if (data.notifications !== undefined) {
+                            setNotificationSettings(prev => ({
+                                ...prev,
+                                ...data.notifications
+                            }));
+                        }
                     }
                 } catch (error) {
                     logger.error('Failed to load user profile', error);
@@ -102,6 +111,12 @@ export const UserPreferencesProvider = ({ children }) => {
             if (updates.avgDrinkCals !== undefined) setAvgDrinkCals(updates.avgDrinkCals);
             if (updates.chatHistoryEnabled !== undefined) setChatHistoryEnabled(updates.chatHistoryEnabled);
             if (updates.typicalWeek !== undefined) setTypicalWeek(updates.typicalWeek);
+            if (updates.notifications !== undefined) {
+                setNotificationSettings(prev => ({
+                    ...prev,
+                    ...updates.notifications
+                }));
+            }
             return true;
         } catch (e) {
             logger.error('Failed to save config', e);
@@ -123,6 +138,7 @@ export const UserPreferencesProvider = ({ children }) => {
         avgDrinkCals,
         chatHistoryEnabled,
         typicalWeek,
+        notificationSettings,
         updateProfileConfig,
         profileLoading
     };

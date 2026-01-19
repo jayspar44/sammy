@@ -42,7 +42,7 @@ export default defineConfig({
     port: frontendPort,
     host: '0.0.0.0', // Explicitly bind to all interfaces
     strictPort: true,
-    allowedHosts: ['.ts.net'], // Allow Tailscale hostnames
+    allowedHosts: ['.ts.net'], // Allow Tailscale domains
     proxy: {
       '/api': {
         target: `http://localhost:${backendPort}`,

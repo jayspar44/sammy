@@ -17,7 +17,9 @@
     "apk": "node scripts/build-apk.js dev debug",
     "apk:dev": "node scripts/build-apk.js dev debug",
     "apk:local": "node scripts/build-apk.js local debug",
-    "apk:prod": "node scripts/build-apk.js prod release"
+    "apk:preview": "node scripts/build-apk.js preview debug",
+    "apk:prod": "node scripts/build-apk.js prod release",
+    "android:preview": "node scripts/android-build.js preview"
   },
   "dependencies": {
     "@capacitor-community/safe-area": "^8.0.1",
@@ -27,6 +29,7 @@
     "@capacitor/core": "^8.0.0",
     "@capacitor/ios": "^8.0.0",
     "@capacitor/keyboard": "^8.0.0",
+    "@capacitor/local-notifications": "^8.0.0",
     "@capacitor/status-bar": "^8.0.0",
     "axios": "^1.13.2",
     "clsx": "^2.1.1",

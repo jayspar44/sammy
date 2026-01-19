@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, useNavigate } from 'react-router-dom';
 import { Layout } from './components/layout/Layout';
 import Home from './pages/Home';
 import Companion from './pages/Companion';
@@ -14,9 +14,11 @@ import { ConnectionProvider, useConnection } from './contexts/ConnectionContext'
 import { setConnectionStatusCallback } from './api/client';
 import { getEnvironment } from './utils/appConfig';
 import { setupKeyboardListeners } from './utils/keyboard';
+import { setupNotificationHandlers, restoreNotifications } from './services/notificationService';
 
 function AppContent() {
   const { setApiConnectionStatus } = useConnection();
+  const navigate = useNavigate();
 
   // Set dynamic page title based on environment
   useEffect(() => {
@@ -29,6 +31,19 @@ function AppContent() {
   useEffect(() => {
     setConnectionStatusCallback(setApiConnectionStatus);
   }, [setApiConnectionStatus]);
+
+  // Set up notification handlers and restore any scheduled notifications
+  useEffect(() => {
+    setupNotificationHandlers((context) => {
+      // When notification is tapped, navigate to companion with context
+      if (context === 'morning_checkin') {
+        navigate('/companion', { state: { context: 'morning_checkin' } });
+      }
+    });
+
+    // Restore notifications that may have been lost (app killed, device rebooted, etc.)
+    restoreNotifications();
+  }, [navigate]);
 
   return (
     <Routes>

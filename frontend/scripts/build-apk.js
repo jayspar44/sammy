@@ -7,17 +7,19 @@
  * Builds an Android APK via Gradle and copies it to Google Drive.
  *
  * Usage:
- *   node scripts/build-apk.js [flavor] [buildType]
+ *   node scripts/build-apk.js [flavor] [buildType] [--pr=N]
  *
  * Arguments:
- *   flavor    - local, dev, prod (default: dev)
+ *   flavor    - local, dev, preview, prod (default: dev)
  *   buildType - debug, release (default: debug)
+ *   --pr=N    - Required for preview flavor (PR number)
  *
  * Examples:
- *   node scripts/build-apk.js              # Build devDebug
- *   node scripts/build-apk.js dev debug    # Build devDebug
- *   node scripts/build-apk.js local debug  # Build localDebug
- *   node scripts/build-apk.js prod release # Build prodRelease
+ *   node scripts/build-apk.js                    # Build devDebug
+ *   node scripts/build-apk.js dev debug          # Build devDebug
+ *   node scripts/build-apk.js local debug        # Build localDebug
+ *   node scripts/build-apk.js prod release       # Build prodRelease
+ *   node scripts/build-apk.js preview debug --pr=123  # Build previewDebug for PR #123
  */
 
 import { existsSync, copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
@@ -47,7 +49,7 @@ const colors = {
 };
 
 // Valid flavors and build types
-const VALID_FLAVORS = ['local', 'dev', 'prod'];
+const VALID_FLAVORS = ['local', 'dev', 'preview', 'prod'];
 const VALID_BUILD_TYPES = ['debug', 'release'];
 
 // Flavor configurations (matching android-build.js)
@@ -64,6 +66,12 @@ const flavorConfigs = {
     server: { androidScheme: 'https' },
     buildMode: 'dev'
   },
+  preview: {
+    appId: 'io.sammy.app.preview',
+    appName: 'Sammy Preview',  // Will be updated with PR number
+    server: { androidScheme: 'https' },
+    buildMode: 'preview'
+  },
   prod: {
     appId: 'io.sammy.app',
     appName: 'Sammy',
@@ -76,6 +84,15 @@ const flavorConfigs = {
 const flavor = process.argv[2] || 'dev';
 const buildType = process.argv[3] || 'debug';
 
+// Parse --pr=N argument for preview builds
+let prNumber = null;
+process.argv.forEach(arg => {
+  const match = arg.match(/^--pr=(\d+)$/);
+  if (match) {
+    prNumber = match[1];
+  }
+});
+
 // Validate arguments
 if (!VALID_FLAVORS.includes(flavor)) {
   console.error(`${colors.red}Invalid flavor: ${flavor}${colors.reset}`);
@@ -87,6 +104,23 @@ if (!VALID_BUILD_TYPES.includes(buildType)) {
   console.error(`${colors.red}Invalid build type: ${buildType}${colors.reset}`);
   console.error(`Valid build types: ${VALID_BUILD_TYPES.join(', ')}`);
   process.exit(1);
+}
+
+// Validate preview requires PR number
+if (flavor === 'preview' && !prNumber) {
+  console.error(`${colors.red}Preview flavor requires --pr=<number> argument${colors.reset}`);
+  console.error('');
+  console.error('Example:');
+  console.error(`  ${colors.cyan}npm run apk:preview -- --pr=123${colors.reset}`);
+  console.error('');
+  process.exit(1);
+}
+
+// Update preview config with PR-specific values
+if (flavor === 'preview' && prNumber) {
+  flavorConfigs.preview.appName = `Sammy PR#${prNumber}`;
+  flavorConfigs.preview.prNumber = prNumber;
+  flavorConfigs.preview.backendUrl = `https://pr-${prNumber}---sammy-backend-dev-u7dzitmnha-uc.a.run.app`;
 }
 
 // Get version from package.json
@@ -227,6 +261,15 @@ async function main() {
 
     // Step 2: Build frontend
     const buildMode = flavorConfigs[flavor].buildMode;
+
+    // For preview builds, create .env.preview with the PR-specific backend URL
+    if (flavor === 'preview' && flavorConfigs.preview.backendUrl) {
+      const envPreviewPath = join(frontendDir, '.env.preview');
+      const apiUrl = `${flavorConfigs.preview.backendUrl}/api`;
+      writeFileSync(envPreviewPath, `VITE_API_URL=${apiUrl}\n`);
+      logStep('success', `Created .env.preview with API URL: ${apiUrl}`);
+    }
+
     logStep('running', `Building frontend (mode: ${buildMode})...`);
     await runCommand('npm', ['run', 'build', '--', '--mode', buildMode]);
     logStep('success', 'Frontend build complete');

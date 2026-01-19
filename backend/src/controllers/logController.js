@@ -4,7 +4,7 @@ const admin = require('firebase-admin');
 
 const logDrink = async (req, res) => {
     const { uid } = req.user;
-    const { date, count, type: _type } = req.body; // Date is YYYY-MM-DD
+    const { date, count, type: _type, source } = req.body; // Date is YYYY-MM-DD
 
     if (!date || count === undefined) {
         return res.status(400).json({ error: 'Date and count are required' });
@@ -59,7 +59,8 @@ const logDrink = async (req, res) => {
                 goal: dailyGoal, // Snapshot of the goal at this time
                 cost: costPerDrink,
                 cals: calsPerDrink,
-                updatedAt: new Date().toISOString()
+                updatedAt: new Date().toISOString(),
+                source: source || 'manual' // Track where the log came from
             };
 
             t.set(logRef, {
@@ -126,7 +127,7 @@ const getStats = async (req, res) => {
 
 const updateLog = async (req, res) => {
     const { uid } = req.user;
-    const { date, newCount, newGoal, devMode } = req.body;
+    const { date, newCount, newGoal, devMode, source } = req.body;
 
     if (!date || (newCount === undefined && newGoal === undefined)) {
         return res.status(400).json({ error: 'Date and either newCount or newGoal are required' });
@@ -187,7 +188,8 @@ const updateLog = async (req, res) => {
                 goal: goalToSave,
                 cost: costPerDrink,
                 cals: calsPerDrink,
-                updatedAt: new Date().toISOString()
+                updatedAt: new Date().toISOString(),
+                source: source || currentDrinking.source || 'manual' // Preserve existing source if not provided
             };
 
             t.set(logRef, {
