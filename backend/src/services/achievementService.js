@@ -54,7 +54,9 @@ const calculateDryStreak = async (userId, anchorDate) => {
             count = data.count;
         }
 
-        logsMap[data.date] = count;
+        if (data.date) {
+            logsMap[data.date] = count;
+        }
     });
 
     // Calculate streak
@@ -103,7 +105,9 @@ const calculateLongestDryStreak = async (userId) => {
             count = data.count;
         }
 
-        logs.push({ date: data.date, count });
+        if (data.date) {
+            logs.push({ date: data.date, count });
+        }
     });
 
     // Sort by date
