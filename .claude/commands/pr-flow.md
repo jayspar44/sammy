@@ -95,31 +95,33 @@ fi
 echo "Target branch:  $TARGET_BRANCH"
 echo ""
 
-# 1b. Check for unreleased commits
-echo "📦 Checking release status..."
-LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-if [ -n "$LAST_TAG" ]; then
-  UNRELEASED_COUNT=$(git log $LAST_TAG..HEAD --oneline | wc -l)
-  if [ "$UNRELEASED_COUNT" -gt 0 ]; then
-    echo "⚠️  Found $UNRELEASED_COUNT commits since $LAST_TAG"
-    echo ""
-    # Use AskUserQuestion to prompt:
-    # {
-    #   "question": "You have {UNRELEASED_COUNT} commits since {LAST_TAG}. Run /release before creating PR?",
-    #   "header": "Version",
-    #   "options": [
-    #     { "label": "Yes, release first (Recommended)", "description": "Auto-bump version, then create PR" },
-    #     { "label": "No, continue with current version", "description": "PR will use existing version" }
-    #   ]
-    # }
-    # If user selects "Yes": Run /release skill, then continue with PR flow.
+# 1b. Check for unreleased commits (only for develop → main PRs)
+if [[ "$TARGET_BRANCH" == "main" ]]; then
+  echo "📦 Checking release status..."
+  LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+  if [ -n "$LAST_TAG" ]; then
+    UNRELEASED_COUNT=$(git log $LAST_TAG..HEAD --oneline | wc -l)
+    if [ "$UNRELEASED_COUNT" -gt 0 ]; then
+      echo "⚠️  Found $UNRELEASED_COUNT commits since $LAST_TAG"
+      echo ""
+      # Use AskUserQuestion to prompt:
+      # {
+      #   "question": "You have {UNRELEASED_COUNT} commits since {LAST_TAG}. Run /release before creating PR?",
+      #   "header": "Version",
+      #   "options": [
+      #     { "label": "Yes, release first (Recommended)", "description": "Auto-bump version, then create PR" },
+      #     { "label": "No, continue with current version", "description": "PR will use existing version" }
+      #   ]
+      # }
+      # If user selects "Yes": Run /release skill, then continue with PR flow.
+    else
+      echo "✅ No unreleased commits"
+    fi
   else
-    echo "✅ No unreleased commits"
+    echo "ℹ️  No release tags found (use /release --first for initial release)"
   fi
-else
-  echo "ℹ️  No release tags found (use /release --first for initial release)"
+  echo ""
 fi
-echo ""
 
 # 2. Check for changes
 HAS_CHANGES=false

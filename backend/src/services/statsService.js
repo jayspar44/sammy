@@ -64,17 +64,18 @@ const calculateStats = async (userId, anchorDate) => {
 
     // CALCULATE INSIGHTS
     let dryStreak = 0;
-    let checkDate = new Date(anchorDate);
 
-    // Check previous 90 days for streak
+    // Check previous 90 days for streak using loop counter (avoid date mutation)
     for (let i = 0; i < 90; i++) {
+        const checkDate = new Date(anchorDate);
+        checkDate.setDate(anchorDate.getDate() - i);
         const dStr = checkDate.toISOString().split('T')[0];
         const log = logsMap[dStr];
 
-        // If today has 0 drinks so far, it counts towards the streak. 
+        // If today has 0 drinks so far, it counts towards the streak.
         // If today has > 0, streak is broken (or 0).
-        // If no log exists for a day, we assume 0 drinks for streak purposes? 
-        // Actually, let's be strict: NO log means NO data, but for this MVP 
+        // If no log exists for a day, we assume 0 drinks for streak purposes?
+        // Actually, let's be strict: NO log means NO data, but for this MVP
         // usually users want "no entry" to mean "I didn't drink".
         // Let's assume missing log = 0 drinks for streak calculation to be generous.
         const count = log ? log.count : 0;
@@ -84,7 +85,6 @@ const calculateStats = async (userId, anchorDate) => {
         } else {
             break;
         }
-        checkDate.setDate(checkDate.getDate() - 1);
     }
 
     let moneySaved = 0;
@@ -206,4 +206,230 @@ Period Totals:
     `.trim();
 };
 
-module.exports = { calculateStats, getContextSummary };
+/**
+ * Calculates cumulative drinks saved over time.
+ * @param {string} userId - The user's ID.
+ * @param {string} mode - 'target' (vs daily goal) or 'benchmark' (vs typical week).
+ * @param {string} range - '90d' or 'all'.
+ * @param {Date} anchorDate - The date to anchor calculations from (usually "today").
+ * @returns {Promise<Object>} Object containing series data and summary.
+ */
+const calculateCumulativeStats = async (userId, mode, range, anchorDate) => {
+    const userRef = db.collection('users').doc(userId);
+    const userDoc = await userRef.get();
+    const userData = userDoc.exists ? userDoc.data() : {};
+
+    // User settings
+    const globalLimit = userData.dailyGoal ?? 2;
+    const typicalWeek = userData.typicalWeek || null;
+    const registeredDate = userData.registeredDate
+        ? new Date(userData.registeredDate)
+        : null;
+
+    // Determine start date based on range
+    let startDate;
+    if (range === 'all' && registeredDate) {
+        startDate = new Date(registeredDate);
+        startDate.setHours(0, 0, 0, 0);
+    } else {
+        // Default to 90 days
+        startDate = new Date(anchorDate);
+        startDate.setDate(anchorDate.getDate() - 89); // 90 days including today
+    }
+
+    // Never show data before user's registration date
+    if (registeredDate) {
+        const regDateNormalized = new Date(registeredDate);
+        regDateNormalized.setHours(0, 0, 0, 0);
+        if (startDate < regDateNormalized) {
+            startDate = regDateNormalized;
+        }
+    }
+
+    const startDateStr = startDate.toISOString().split('T')[0];
+
+    // Fetch all logs from start date
+    const logsSnapshot = await userRef.collection('logs')
+        .where('date', '>=', startDateStr)
+        .get();
+
+    // Build logs map
+    const logsMap = {};
+    logsSnapshot.forEach(doc => {
+        const data = doc.data();
+        let count = 0;
+        let limit = globalLimit;
+
+        if (data.habits && data.habits.drinking) {
+            count = data.habits.drinking.count || 0;
+            if (data.habits.drinking.goal !== undefined) {
+                limit = data.habits.drinking.goal;
+            }
+        } else if (data.count !== undefined) {
+            count = data.count;
+        }
+
+        logsMap[data.date] = { count, limit };
+    });
+
+    // Day of week mapping for typicalWeek
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
+    // Build cumulative series
+    const series = [];
+    let cumulativeSaved = 0;
+    let totalDays = 0;
+
+    // Iterate from start date to anchor date
+    const currentDate = new Date(startDate);
+    while (currentDate <= anchorDate) {
+        const dateStr = currentDate.toISOString().split('T')[0];
+        const log = logsMap[dateStr];
+
+        let dailySaved = 0;
+
+        if (log !== undefined) {
+            // We have data for this day
+            const actualDrinks = log.count;
+            let comparison;
+
+            if (mode === 'benchmark' && typicalWeek) {
+                const dayOfWeek = dayNames[currentDate.getDay()];
+                comparison = typicalWeek[dayOfWeek] ?? globalLimit;
+            } else {
+                // Target mode: use the day's logged goal or global limit
+                comparison = log.limit;
+            }
+
+            dailySaved = comparison - actualDrinks; // Can be negative
+        }
+        // If no log, dailySaved stays 0 (neutral for missing data)
+
+        cumulativeSaved += dailySaved;
+        totalDays++;
+
+        series.push({
+            date: dateStr,
+            cumulative: cumulativeSaved,
+            daily: dailySaved
+        });
+
+        currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    // Calculate summary stats
+    const totalSaved = cumulativeSaved;
+    const weeks = totalDays / 7;
+    // Only calculate avgPerWeek if we have at least 7 days of data to avoid misleading averages
+    const avgPerWeek = weeks > 0 && totalDays >= 7 ? Math.round((totalSaved / weeks) * 10) / 10 : 0;
+
+    return {
+        series,
+        summary: {
+            totalSaved,
+            totalDays,
+            avgPerWeek
+        },
+        mode,
+        range,
+        hasTypicalWeek: typicalWeek !== null
+    };
+};
+
+/**
+ * Calculates all-time statistics for money saved and calories cut.
+ * @param {string} userId - The user's ID.
+ * @param {Date} anchorDate - The date to anchor calculations from (usually "today").
+ * @returns {Promise<Object>} Object containing all-time totals.
+ */
+const calculateAllTimeStats = async (userId, anchorDate) => {
+    const userRef = db.collection('users').doc(userId);
+    const userDoc = await userRef.get();
+    const userData = userDoc.exists ? userDoc.data() : {};
+
+    // User settings
+    const typicalWeek = userData.typicalWeek || null;
+    const globalDrinkCost = userData.avgDrinkCost ?? 10;
+    const globalDrinkCals = userData.avgDrinkCals ?? 150;
+    const registeredDate = userData.registeredDate
+        ? new Date(userData.registeredDate)
+        : null;
+
+    // Day of week mapping for typicalWeek
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
+    // Determine start date - use registration date or fall back to 90 days
+    let startDate;
+    if (registeredDate) {
+        startDate = new Date(registeredDate);
+        startDate.setHours(0, 0, 0, 0);
+    } else {
+        // Fallback to 90 days if no registration date
+        startDate = new Date(anchorDate);
+        startDate.setDate(anchorDate.getDate() - 89);
+    }
+
+    const startDateStr = startDate.toISOString().split('T')[0];
+
+    // Fetch all logs from start date
+    const logsSnapshot = await userRef.collection('logs')
+        .where('date', '>=', startDateStr)
+        .get();
+
+    // Build logs map
+    const logsMap = {};
+    logsSnapshot.forEach(doc => {
+        const data = doc.data();
+        let count = 0;
+
+        if (data.habits && data.habits.drinking) {
+            count = data.habits.drinking.count || 0;
+        } else if (data.count !== undefined) {
+            count = data.count;
+        }
+
+        if (data.date) {
+            logsMap[data.date] = { count };
+        }
+    });
+
+    // Calculate totals using baseline (typicalWeek) comparison
+    let totalMoneySaved = 0;
+    let totalCaloriesCut = 0;
+    let totalDrinksSaved = 0;
+    let totalDays = 0;
+
+    // Iterate from start date to anchor date
+    const currentDate = new Date(startDate);
+    while (currentDate <= anchorDate) {
+        const dateStr = currentDate.toISOString().split('T')[0];
+        const log = logsMap[dateStr];
+
+        if (log !== undefined && typicalWeek) {
+            const dayOfWeek = dayNames[currentDate.getDay()];
+            const baseline = typicalWeek[dayOfWeek] ?? 0;
+            const actualDrinks = log.count;
+
+            // Calculate savings vs baseline
+            const savedUnits = baseline - actualDrinks;
+            if (savedUnits > 0) {
+                totalDrinksSaved += savedUnits;
+                totalMoneySaved += savedUnits * globalDrinkCost;
+                totalCaloriesCut += savedUnits * globalDrinkCals;
+            }
+        }
+
+        totalDays++;
+        currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    return {
+        moneySaved: Math.round(totalMoneySaved),
+        caloriesCut: Math.round(totalCaloriesCut),
+        drinksSaved: totalDrinksSaved,
+        totalDays,
+        registeredDate: registeredDate ? registeredDate.toISOString() : null
+    };
+};
+
+module.exports = { calculateStats, getContextSummary, calculateCumulativeStats, calculateAllTimeStats };
