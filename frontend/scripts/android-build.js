@@ -5,10 +5,11 @@
  * Android Build Script
  *
  * Usage:
- *   node scripts/android-build.js local            - Build local app (local backend)
- *   node scripts/android-build.js local-livereload - Live reload with local dev server
- *   node scripts/android-build.js dev              - Build dev app (GCP dev backend)
- *   node scripts/android-build.js prod             - Build prod app (GCP prod backend)
+ *   node scripts/android-build.js local              - Build local app (local backend)
+ *   node scripts/android-build.js local-livereload   - Live reload with local dev server
+ *   node scripts/android-build.js dev                - Build dev app (GCP dev backend)
+ *   node scripts/android-build.js preview --pr=123   - Build preview app (PR preview backend)
+ *   node scripts/android-build.js prod               - Build prod app (GCP prod backend)
  */
 
 import { readFileSync, writeFileSync } from 'fs';
@@ -38,6 +39,7 @@ const colors = {
   bgYellow: '\x1b[43m',
   bgGreen: '\x1b[42m',
   bgRed: '\x1b[41m',
+  bgMagenta: '\x1b[45m',
 };
 
 // Environment configurations
@@ -94,22 +96,62 @@ const configs = {
     bgColor: colors.bgGreen,
     emoji: '🟢',
     backend: 'GCP Prod Backend'
+  },
+  preview: {
+    appId: 'io.sammy.app.preview',
+    appName: 'Sammy Preview',  // Will be updated with PR number
+    webDir: 'dist',
+    server: {
+      androidScheme: 'https'
+    },
+    color: colors.magenta,
+    bgColor: colors.bgMagenta,
+    emoji: '🟣',
+    backend: 'PR Preview Backend',  // Will be updated with PR number
+    buildMode: 'preview'
   }
 };
 
 // Get environment from command line
 const env = process.argv[2];
 
+// Parse --pr=N argument for preview builds
+let prNumber = null;
+process.argv.forEach(arg => {
+  const match = arg.match(/^--pr=(\d+)$/);
+  if (match) {
+    prNumber = match[1];
+  }
+});
+
 if (!env || !configs[env]) {
-  console.error(`${colors.red}Usage: node scripts/android-build.js <local|local-livereload|dev|prod>${colors.reset}`);
-  console.error('  local            - Build app pointing to local backend');
-  console.error('  local-livereload - Live reload with local dev server (requires npm run dev:local)');
-  console.error('  dev              - Build dev app (GCP dev backend)');
-  console.error('  prod             - Build prod app (GCP prod backend)');
+  console.error(`${colors.red}Usage: node scripts/android-build.js <local|local-livereload|dev|preview|prod>${colors.reset}`);
+  console.error('  local              - Build app pointing to local backend');
+  console.error('  local-livereload   - Live reload with local dev server (requires npm run dev:local)');
+  console.error('  dev                - Build dev app (GCP dev backend)');
+  console.error('  preview --pr=N     - Build preview app for PR number N');
+  console.error('  prod               - Build prod app (GCP prod backend)');
+  process.exit(1);
+}
+
+// Validate preview requires PR number
+if (env === 'preview' && !prNumber) {
+  console.error(`${colors.red}Preview flavor requires --pr=<number> argument${colors.reset}`);
+  console.error('');
+  console.error('Example:');
+  console.error(`  ${colors.cyan}npm run android:preview -- --pr=123${colors.reset}`);
+  console.error('');
   process.exit(1);
 }
 
 const config = configs[env];
+
+// Update preview config with PR-specific values
+if (env === 'preview' && prNumber) {
+  config.appName = `Sammy PR#${prNumber}`;
+  config.backend = `https://pr-${prNumber}---sammy-backend-dev-u7dzitmnha-uc.a.run.app`;
+  config.prNumber = prNumber;
+}
 
 // Print a large banner
 function printBanner() {
@@ -330,6 +372,14 @@ async function main() {
 
       console.log(`${colors.bright}Build Steps${colors.reset}`);
       console.log('─'.repeat(40));
+
+      // For preview builds, create .env.preview with the PR-specific backend URL
+      if (env === 'preview' && config.prNumber) {
+        const envPreviewPath = join(frontendDir, '.env.preview');
+        const apiUrl = `${config.backend}/api`;
+        writeFileSync(envPreviewPath, `VITE_API_URL=${apiUrl}\n`);
+        logStep('success', `Created .env.preview with API URL: ${apiUrl}`);
+      }
 
       logStep('running', `Building frontend (mode: ${mode})...`);
       await runCommand('npm', ['run', 'build', '--', '--mode', mode]);

@@ -1,10 +1,10 @@
 const { db, isReady } = require('../services/firebase');
-const { calculateStats } = require('../services/statsService');
+const { calculateStats, calculateCumulativeStats, calculateAllTimeStats } = require('../services/statsService');
 const admin = require('firebase-admin');
 
 const logDrink = async (req, res) => {
     const { uid } = req.user;
-    const { date, count, type: _type } = req.body; // Date is YYYY-MM-DD
+    const { date, count, type: _type, source } = req.body; // Date is YYYY-MM-DD
 
     if (!date || count === undefined) {
         return res.status(400).json({ error: 'Date and count are required' });
@@ -15,9 +15,9 @@ const logDrink = async (req, res) => {
         return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
     }
 
-    // Validate count
-    if (typeof count !== 'number' || count < 0) {
-        return res.status(400).json({ error: 'Count must be a non-negative number' });
+    // Validate count (with reasonable upper bound to prevent abuse)
+    if (typeof count !== 'number' || count < 0 || count > 100) {
+        return res.status(400).json({ error: 'Count must be a number between 0 and 100' });
     }
 
     // Check DB readiness
@@ -59,7 +59,8 @@ const logDrink = async (req, res) => {
                 goal: dailyGoal, // Snapshot of the goal at this time
                 cost: costPerDrink,
                 cals: calsPerDrink,
-                updatedAt: new Date().toISOString()
+                updatedAt: new Date().toISOString(),
+                source: source || 'manual' // Track where the log came from
             };
 
             t.set(logRef, {
@@ -81,6 +82,12 @@ const getStats = async (req, res) => {
     const { uid } = req.user;
     // Allow client to specify 'today' to handle timezone differences
     const clientDate = req.query.date;
+
+    // Validate date parameter if provided
+    if (clientDate && (typeof clientDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(clientDate))) {
+        return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
+    }
+
     const todayStr = clientDate || new Date().toISOString().split('T')[0];
 
     // For date math, create a Date object at UTC midnight for this date string
@@ -126,7 +133,7 @@ const getStats = async (req, res) => {
 
 const updateLog = async (req, res) => {
     const { uid } = req.user;
-    const { date, newCount, newGoal, devMode } = req.body;
+    const { date, newCount, newGoal, devMode, source } = req.body;
 
     if (!date || (newCount === undefined && newGoal === undefined)) {
         return res.status(400).json({ error: 'Date and either newCount or newGoal are required' });
@@ -187,7 +194,8 @@ const updateLog = async (req, res) => {
                 goal: goalToSave,
                 cost: costPerDrink,
                 cals: calsPerDrink,
-                updatedAt: new Date().toISOString()
+                updatedAt: new Date().toISOString(),
+                source: source || currentDrinking.source || 'manual' // Preserve existing source if not provided
             };
 
             t.set(logRef, {
@@ -242,6 +250,25 @@ const getStatsRange = async (req, res) => {
 
     if (!startDate || !endDate) {
         return res.status(400).json({ error: 'Start date and end date are required' });
+    }
+
+    // Validate date parameters
+    if (typeof startDate !== 'string' || typeof endDate !== 'string') {
+        return res.status(400).json({ error: 'Date parameters must be strings' });
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
+        return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
+    }
+
+    // Validate date range to prevent abuse
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const daysDiff = (end - start) / (1000 * 60 * 60 * 24);
+    if (daysDiff < 0) {
+        return res.status(400).json({ error: 'Start date must be before end date' });
+    }
+    if (daysDiff > 365) {
+        return res.status(400).json({ error: 'Date range cannot exceed 365 days' });
     }
 
     // Check DB readiness
@@ -316,4 +343,85 @@ const getStatsRange = async (req, res) => {
     }
 };
 
-module.exports = { logDrink, getStats, updateLog, deleteLog, getStatsRange };
+const getCumulativeStats = async (req, res) => {
+    const { uid } = req.user;
+    const { mode = 'target', range = '90d', date } = req.query;
+
+    // Validate mode
+    if (!['target', 'benchmark'].includes(mode)) {
+        return res.status(400).json({ error: 'Mode must be "target" or "benchmark"' });
+    }
+
+    // Validate range
+    if (!['90d', 'all'].includes(range)) {
+        return res.status(400).json({ error: 'Range must be "90d" or "all"' });
+    }
+
+    // Allow client to specify anchor date for timezone handling
+    const clientDate = date;
+    const todayStr = clientDate || new Date().toISOString().split('T')[0];
+    const anchorDate = new Date(todayStr);
+
+    // Mock mode if DB not connected
+    if (!isReady) {
+        const mockSeries = [];
+        let cumulative = 0;
+        for (let i = 89; i >= 0; i--) {
+            const d = new Date(anchorDate);
+            d.setDate(anchorDate.getDate() - i);
+            const daily = Math.floor(Math.random() * 5) - 1; // -1 to 3
+            cumulative += daily;
+            mockSeries.push({
+                date: d.toISOString().split('T')[0],
+                cumulative,
+                daily
+            });
+        }
+        return res.json({
+            series: mockSeries,
+            summary: { totalSaved: cumulative, totalDays: 90, avgPerWeek: Math.round(cumulative / 13 * 10) / 10 },
+            mode,
+            range,
+            hasTypicalWeek: true
+        });
+    }
+
+    try {
+        const stats = await calculateCumulativeStats(uid, mode, range, anchorDate);
+        res.json(stats);
+    } catch (error) {
+        req.log.error({ err: error }, 'Error fetching cumulative stats');
+        res.status(500).json({ error: 'Failed to fetch cumulative stats' });
+    }
+};
+
+const getAllTimeStats = async (req, res) => {
+    const { uid } = req.user;
+    const { date } = req.query;
+
+    // Allow client to specify anchor date for timezone handling
+    const clientDate = date;
+    const todayStr = clientDate || new Date().toISOString().split('T')[0];
+    const anchorDate = new Date(todayStr);
+
+    // Mock mode if DB not connected
+    if (!isReady) {
+        return res.json({
+            moneySaved: 2500,
+            caloriesCut: 37500,
+            drinksSaved: 250,
+            totalDays: 180,
+            registeredDate: new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString()
+        });
+    }
+
+    try {
+        const stats = await calculateAllTimeStats(uid, anchorDate);
+        res.json(stats);
+    } catch (error) {
+        req.log.error({ err: error }, 'Error fetching all-time stats');
+        res.status(500).json({ error: 'Failed to fetch all-time stats' });
+    }
+};
+
+module.exports = { logDrink, getStats, updateLog, deleteLog, getStatsRange, getCumulativeStats, getAllTimeStats };

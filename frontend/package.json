@@ -1,7 +1,7 @@
 {
   "name": "frontend",
   "private": true,
-  "version": "0.12.2",
+  "version": "0.13.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -17,7 +17,9 @@
     "apk": "node scripts/build-apk.js dev debug",
     "apk:dev": "node scripts/build-apk.js dev debug",
     "apk:local": "node scripts/build-apk.js local debug",
-    "apk:prod": "node scripts/build-apk.js prod release"
+    "apk:preview": "node scripts/build-apk.js preview debug",
+    "apk:prod": "node scripts/build-apk.js prod release",
+    "android:preview": "node scripts/android-build.js preview"
   },
   "dependencies": {
     "@capacitor-community/safe-area": "^8.0.1",
@@ -27,6 +29,7 @@
     "@capacitor/core": "^8.0.0",
     "@capacitor/ios": "^8.0.0",
     "@capacitor/keyboard": "^8.0.0",
+    "@capacitor/local-notifications": "^8.0.0",
     "@capacitor/status-bar": "^8.0.0",
     "axios": "^1.13.2",
     "clsx": "^2.1.1",
@@ -37,6 +40,7 @@
     "react-dom": "^19.2.3",
     "react-markdown": "^10.1.0",
     "react-router-dom": "^7.11.0",
+    "recharts": "^3.6.0",
     "remark-gfm": "^4.0.1",
     "scheduler": "^0.27.0",
     "tailwind-merge": "^3.4.0"

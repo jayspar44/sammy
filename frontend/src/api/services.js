@@ -43,6 +43,37 @@ const generateMockTrends = (baseDateStr) => {
     return trends;
 };
 
+// Helper to generate mock cumulative stats
+const generateMockCumulativeStats = (baseDateStr, range) => {
+    const days = range === 'all' ? 180 : 90;
+    const series = [];
+    const baseDate = new Date(baseDateStr);
+    let cumulative = 0;
+
+    for (let i = days - 1; i >= 0; i--) {
+        const d = new Date(baseDate);
+        d.setDate(baseDate.getDate() - i);
+        const dateStr = d.toISOString().split('T')[0];
+        // Random daily savings between -2 and 3
+        const daily = Math.floor(Math.random() * 6) - 2;
+        cumulative += daily;
+        series.push({ date: dateStr, cumulative, daily });
+    }
+
+    const weeks = days / 7;
+    return {
+        series,
+        summary: {
+            totalSaved: cumulative,
+            totalDays: days,
+            avgPerWeek: Math.round((cumulative / weeks) * 10) / 10
+        },
+        mode: 'target',
+        range,
+        hasTypicalWeek: true
+    };
+};
+
 // Helper to generate mock range stats
 const generateMockRangeStats = (startDate, endDate) => {
     const mockData = {};
@@ -207,14 +238,89 @@ export const api = {
         return response.data;
     },
 
-    sendMessage: async (message, date) => {
+    sendMessage: async (message, date, context = null) => {
         if (IS_SPOOF_DB()) {
-            logger.spoof(`Chat Message: ${message}`);
-            return { reply: "I'm in Developer Mode! I can't really think right now, but you look great!" };
+            logger.spoof(`Chat Message: ${message}`, { context });
+            return { text: "I'm in Developer Mode! I can't really think right now, but you look great!" };
         }
 
         const dateStr = date || new Date().toISOString().split('T')[0];
-        const response = await client.post('/chat', { message, date: dateStr });
+        const payload = { message, date: dateStr };
+        if (context) {
+            payload.context = context;
+        }
+        const response = await client.post('/chat', payload);
+        return response.data;
+    },
+
+    getCumulativeStats: async (mode = 'target', range = '90d', date) => {
+        let dateStr = date;
+        if (!dateStr) {
+            dateStr = new Date().toISOString().split('T')[0];
+        }
+
+        if (IS_SPOOF_DB()) {
+            logger.spoof(`Get Cumulative Stats: mode=${mode}, range=${range}`);
+            return generateMockCumulativeStats(dateStr, range);
+        }
+
+        const response = await client.get('/stats/cumulative', {
+            params: { mode, range, date: dateStr }
+        });
+        return response.data;
+    },
+
+    getAllTimeStats: async (date) => {
+        let dateStr = date;
+        if (!dateStr) {
+            dateStr = new Date().toISOString().split('T')[0];
+        }
+
+        if (IS_SPOOF_DB()) {
+            logger.spoof('Get All-Time Stats');
+            return {
+                moneySaved: 2500,
+                caloriesCut: 37500,
+                drinksSaved: 250,
+                totalDays: 180,
+                registeredDate: new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString()
+            };
+        }
+
+        const response = await client.get('/stats/all-time', {
+            params: { date: dateStr }
+        });
+        return response.data;
+    },
+
+    getMilestones: async (date) => {
+        let dateStr = date;
+        if (!dateStr) {
+            dateStr = new Date().toISOString().split('T')[0];
+        }
+
+        if (IS_SPOOF_DB()) {
+            logger.spoof('Get Milestones');
+            return {
+                milestones: [
+                    { id: 'streak_7', type: 'dry_streak', threshold: 7, label: '1 Week Dry', icon: 'flame', currentValue: 10, progress: 100, isUnlocked: true, unlockedAt: new Date().toISOString() },
+                    { id: 'streak_14', type: 'dry_streak', threshold: 14, label: '2 Weeks Dry', icon: 'flame', currentValue: 10, progress: 71, isUnlocked: false, unlockedAt: null },
+                    { id: 'streak_30', type: 'dry_streak', threshold: 30, label: '1 Month Dry', icon: 'trophy', currentValue: 10, progress: 33, isUnlocked: false, unlockedAt: null },
+                    { id: 'drinks_10', type: 'drinks_saved', threshold: 10, label: '10 Drinks Saved', icon: 'star', currentValue: 50, progress: 100, isUnlocked: true, unlockedAt: new Date().toISOString() },
+                    { id: 'drinks_50', type: 'drinks_saved', threshold: 50, label: '50 Drinks Saved', icon: 'star', currentValue: 50, progress: 100, isUnlocked: true, unlockedAt: new Date().toISOString() },
+                    { id: 'drinks_100', type: 'drinks_saved', threshold: 100, label: '100 Drinks Saved', icon: 'medal', currentValue: 50, progress: 50, isUnlocked: false, unlockedAt: null },
+                    { id: 'money_100', type: 'money_saved', threshold: 100, label: '$100 Saved', icon: 'wallet', currentValue: 500, progress: 100, isUnlocked: true, unlockedAt: new Date().toISOString() },
+                    { id: 'money_500', type: 'money_saved', threshold: 500, label: '$500 Saved', icon: 'wallet', currentValue: 500, progress: 100, isUnlocked: true, unlockedAt: new Date().toISOString() },
+                    { id: 'money_1000', type: 'money_saved', threshold: 1000, label: '$1K Saved', icon: 'piggy-bank', currentValue: 500, progress: 50, isUnlocked: false, unlockedAt: null },
+                ],
+                newlyUnlocked: [],
+                stats: { currentStreak: 10, longestStreak: 10, drinksSaved: 50, moneySaved: 500, caloriesCut: 7500 }
+            };
+        }
+
+        const response = await client.get('/user/milestones', {
+            params: { date: dateStr }
+        });
         return response.data;
     },
 };

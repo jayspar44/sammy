@@ -1,7 +1,7 @@
 ---
 description: Upload app to Google Play Store via GitHub Actions
 allowed-tools: Bash(gh *), AskUserQuestion, Read
-argument-hint: [--prod|--dev] [--internal|--alpha|--beta] [--draft|--completed] [-m "notes"]
+argument-hint: [--prod|--dev|--preview --pr=N] [--internal|--alpha|--beta] [--draft|--completed] [-m "notes"]
 ---
 
 # Upload to Play Store
@@ -16,6 +16,7 @@ All arguments are optional. Missing parameters will be prompted interactively.
 |------|-------------|
 | `--prod` | Build production flavor (io.sammy.app) |
 | `--dev` | Build development flavor (io.sammy.app.dev) |
+| `--preview --pr=N` | Build preview flavor for PR N (io.sammy.app.preview) |
 | `--internal` | Upload to internal testing track |
 | `--alpha` | Upload to alpha track |
 | `--beta` | Upload to beta track |
@@ -27,50 +28,27 @@ All arguments are optional. Missing parameters will be prompted interactively.
 
 | Parameter | Options | Default | Description |
 |-----------|---------|---------|-------------|
-| Flavor | `prod`, `dev` | `prod` | App variant to build and upload |
+| Flavor | `prod`, `dev`, `preview` | `prod` | App variant to build and upload |
+| PR Number | Any number | Required for preview | PR number for preview backend URL |
 | Track | `internal`, `alpha`, `beta` | `internal` | Play Store release track |
 | Status | `draft`, `completed` | `draft` | Whether to roll out immediately |
 | Release Notes | Any text | "Bug fixes and improvements" | Notes shown in Play Store |
 
 ## Steps
 
-1. **Check for unreleased commits**
-
-   Before prompting for parameters, check if there are commits since the last release tag:
-
-   ```bash
-   LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-   if [ -n "$LAST_TAG" ]; then
-     UNRELEASED_COUNT=$(git log $LAST_TAG..HEAD --oneline | wc -l)
-   else
-     UNRELEASED_COUNT=0
-   fi
-   ```
-
-   If UNRELEASED_COUNT > 0, use AskUserQuestion:
-   ```json
-   {
-     "question": "You have {UNRELEASED_COUNT} commits since last release ({LAST_TAG}). Create a new release first?",
-     "header": "Unreleased",
-     "options": [
-       { "label": "Yes, run /release first (Recommended)", "description": "Bump version based on commits, then upload" },
-       { "label": "No, upload current version", "description": "Upload without version bump" }
-     ]
-   }
-   ```
-
-   If user selects "Yes": Run `/release` skill first (using Skill tool), then continue with upload.
-
-2. **Parse CLI arguments** for any pre-specified options:
-   - Check for `--prod` or `--dev` to set flavor
+1. **Parse CLI arguments** for any pre-specified options:
+   - Check for `--prod`, `--dev`, or `--preview` to set flavor
+   - Check for `--pr=N` to set PR number (required for preview)
    - Check for `--internal`, `--alpha`, or `--beta` to set track
    - Check for `--draft` or `--completed` to set status
    - Check for `-m "notes"` to set release notes
 
-3. **Prompt for missing parameters** using AskUserQuestion:
-   - If flavor not specified: Ask "Production or Development?"
-     - Production (Recommended) - For real releases to users
-     - Development - For testing with dev backend
+2. **Prompt for missing parameters** using AskUserQuestion:
+   - If flavor not specified: Ask "Which app flavor?"
+     - Production (Recommended) - For real releases to users (io.sammy.app)
+     - Development - For testing with dev backend (io.sammy.app.dev)
+     - Preview - For PR preview testing (io.sammy.app.preview)
+   - If flavor is preview and PR number not specified: Ask "Enter PR number" (text input)
    - If track not specified: Ask "Which Play Store track?"
      - Internal (Recommended) - Limited internal testing
      - Alpha - Wider alpha testing
@@ -82,30 +60,39 @@ All arguments are optional. Missing parameters will be prompted interactively.
      - Use default - "Bug fixes and improvements"
      - Custom - Enter custom release notes
 
-4. **Trigger the GitHub workflow**:
+3. **Trigger the GitHub workflow**:
    ```bash
+   # For prod or dev:
    gh workflow run upload-play-store.yml \
      -f flavor=<flavor> \
      -f track=<track> \
      -f status=<status> \
      -f release_notes="<notes>"
+
+   # For preview (includes pr_number):
+   gh workflow run upload-play-store.yml \
+     -f flavor=preview \
+     -f pr_number=<pr_number> \
+     -f track=<track> \
+     -f status=<status> \
+     -f release_notes="<notes>"
    ```
 
-5. **Show initial confirmation**: Display all selected parameters and that the workflow was triggered
+4. **Show initial confirmation**: Display all selected parameters and that the workflow was triggered
 
-6. **Get the workflow run ID** (wait a few seconds for it to be created):
+5. **Get the workflow run ID** (wait a few seconds for it to be created):
    ```bash
    sleep 3
    RUN_ID=$(gh run list --workflow=upload-play-store.yml -L 1 --json databaseId -q '.[0].databaseId')
    ```
 
-7. **Monitor the workflow in background**: Use `run_in_background: true` to watch without blocking:
+6. **Monitor the workflow in background**: Use `run_in_background: true` to watch without blocking:
    ```bash
    gh run watch $RUN_ID
    ```
    Tell the user you're monitoring in the background and they can continue working.
 
-8. **Report final result**: When the workflow completes, check the result and notify the user:
+7. **Report final result**: When the workflow completes, check the result and notify the user:
    ```bash
    CONCLUSION=$(gh run view $RUN_ID --json conclusion -q '.conclusion')
    ```
@@ -127,6 +114,11 @@ All arguments are optional. Missing parameters will be prompted interactively.
 ### Dev build to alpha with custom notes:
 ```
 /upload-play-store --dev --alpha -m "New feature testing"
+```
+
+### Preview build for PR #123 (first-time setup - requires manual Play Console app creation):
+```
+/upload-play-store --preview --pr=123 --internal --draft
 ```
 
 ### Production release to beta:
@@ -163,6 +155,13 @@ The following must be configured in GitHub Secrets:
 - **Version code** auto-increments based on GitHub run number
 - **Version name** comes from `frontend/package.json`
 - Check Play Console for release status after workflow completes
+
+### Preview Flavor Notes
+
+- **First-time setup**: You must manually create the app `io.sammy.app.preview` in Play Console before the first upload
+- **API URL**: Preview builds automatically point to `https://pr-{N}---sammy-backend-dev-u7dzitmnha-uc.a.run.app/api`
+- **App name**: Preview builds are named `Sammy PR#{N}` for easy identification
+- **Artifact download**: For first-time uploads, run the workflow with `--draft` and download the AAB from the workflow artifacts to upload manually
 
 ## Success/Failure Reporting
 

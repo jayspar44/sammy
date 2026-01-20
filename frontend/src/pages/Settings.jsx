@@ -5,17 +5,18 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useUserPreferences } from '../contexts/UserPreferencesContext';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
-import { User, Code, LogOut, Save, Info, Calendar, Moon } from 'lucide-react';
+import { User, Code, LogOut, Save, Info, Calendar, Moon, Bell } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { api } from '../api/services';
 import { logger } from '../utils/logger';
 import { App } from '@capacitor/app';
 import { fetchBackendInfo, getBackendInfo } from '../utils/appConfig';
 import { TypicalWeekModal } from '../components/common/TypicalWeekModal';
+import { requestPermissions, scheduleDailyReminder, cancelReminder, scheduleTestNotification, isNotificationSupported } from '../services/notificationService';
 
 export default function Settings() {
     const { logout } = useAuth();
-    const { isDark, toggleTheme } = useTheme();
+    const { theme, setTheme, isDark } = useTheme();
     const {
         firstName,
         registeredDate,
@@ -25,6 +26,7 @@ export default function Settings() {
         profileLoading,
         chatHistoryEnabled,
         typicalWeek,
+        notificationSettings,
         developerMode,
         setDeveloperMode,
         spoofDb,
@@ -86,6 +88,69 @@ export default function Settings() {
         } catch (error) {
             logger.error('Failed to save typical week', error);
             throw error;
+        }
+    };
+
+    const handleNotificationToggle = async (enabled) => {
+        try {
+            if (enabled) {
+                // Request permission first
+                const granted = await requestPermissions();
+                if (!granted) {
+                    logger.warn('Notification permission denied');
+                    return;
+                }
+
+                // Schedule with current time setting
+                const time = notificationSettings.morningReminder.time || '08:00';
+                await scheduleDailyReminder(time);
+            } else {
+                // Disable notifications
+                await cancelReminder();
+            }
+
+            // Save to backend
+            await updateProfileConfig({
+                notifications: {
+                    morningReminder: {
+                        enabled,
+                        time: notificationSettings.morningReminder.time || '08:00'
+                    }
+                }
+            });
+        } catch (error) {
+            logger.error('Failed to toggle notifications', error);
+        }
+    };
+
+    const handleNotificationTimeChange = async (time) => {
+        try {
+            // If enabled, reschedule with new time
+            if (notificationSettings.morningReminder.enabled) {
+                await scheduleDailyReminder(time);
+            }
+
+            // Save to backend
+            await updateProfileConfig({
+                notifications: {
+                    morningReminder: {
+                        enabled: notificationSettings.morningReminder.enabled,
+                        time
+                    }
+                }
+            });
+        } catch (error) {
+            logger.error('Failed to update notification time', error);
+        }
+    };
+
+    const handleTestNotification = async () => {
+        try {
+            await scheduleTestNotification();
+            logger.debug('Test notification scheduled');
+            // Optional: show toast "Test notification scheduled in 5 seconds!"
+        } catch (error) {
+            logger.error('Failed to schedule test notification', error);
         }
     };
 
@@ -174,29 +239,61 @@ export default function Settings() {
             <section className="space-y-4">
                 <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider dark:text-slate-500">Appearance</h3>
                 <Card className="p-4 space-y-4">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className={cn(
-                                "p-2 rounded-full transition-colors",
-                                isDark ? "bg-indigo-100 text-indigo-600 dark:bg-indigo-900 dark:text-indigo-400" : "bg-slate-100 text-slate-500"
-                            )}>
-                                <Moon className="w-5 h-5" />
-                            </div>
-                            <div>
-                                <span className="font-bold text-slate-700 dark:text-slate-200 block">Dark Mode</span>
-                                <span className="text-xs text-slate-400 dark:text-slate-500">Reduce eye strain in low light</span>
-                            </div>
+                    <div className="flex items-center gap-3 mb-3">
+                        <div className={cn(
+                            "p-2 rounded-full transition-colors",
+                            isDark ? "bg-indigo-100 text-indigo-600 dark:bg-indigo-900 dark:text-indigo-400" : "bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400"
+                        )}>
+                            <Moon className="w-5 h-5" />
                         </div>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                            <input
-                                type="checkbox"
-                                className="sr-only peer"
-                                checked={isDark}
-                                onChange={() => toggleTheme()}
-                            />
-                            <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-900 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-500 dark:peer-checked:bg-indigo-600"></div>
-                        </label>
+                        <div>
+                            <span className="font-bold text-slate-700 dark:text-slate-200 block">Theme</span>
+                            <span className="text-xs text-slate-400 dark:text-slate-500">Choose your appearance preference</span>
+                        </div>
                     </div>
+
+                    {/* Segmented Control */}
+                    <div className="flex gap-2 p-1 bg-slate-100 rounded-xl dark:bg-slate-700">
+                        <button
+                            onClick={() => setTheme('light')}
+                            className={cn(
+                                "flex-1 py-2 px-3 rounded-lg text-sm font-semibold transition-all",
+                                theme === 'light'
+                                    ? "bg-white text-slate-700 shadow-sm dark:bg-slate-600 dark:text-slate-100"
+                                    : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                            )}
+                        >
+                            Light
+                        </button>
+                        <button
+                            onClick={() => setTheme('dark')}
+                            className={cn(
+                                "flex-1 py-2 px-3 rounded-lg text-sm font-semibold transition-all",
+                                theme === 'dark'
+                                    ? "bg-white text-slate-700 shadow-sm dark:bg-slate-600 dark:text-slate-100"
+                                    : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                            )}
+                        >
+                            Dark
+                        </button>
+                        <button
+                            onClick={() => setTheme('system')}
+                            className={cn(
+                                "flex-1 py-2 px-3 rounded-lg text-sm font-semibold transition-all",
+                                theme === 'system'
+                                    ? "bg-white text-slate-700 shadow-sm dark:bg-slate-600 dark:text-slate-100"
+                                    : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                            )}
+                        >
+                            System
+                        </button>
+                    </div>
+
+                    {theme === 'system' && (
+                        <div className="text-xs text-slate-500 text-center pt-1 dark:text-slate-400">
+                            Currently using: <span className="font-semibold">{isDark ? 'Dark' : 'Light'}</span> (system preference)
+                        </div>
+                    )}
                 </Card>
             </section>
 
@@ -309,6 +406,52 @@ export default function Settings() {
                 </Card>
             </section>
 
+            {/* Notifications Section */}
+            {isNotificationSupported() && (
+                <section className="space-y-4">
+                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider dark:text-slate-500">Notifications</h3>
+                    <Card className="p-4 space-y-4">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className={cn(
+                                    "p-2 rounded-full transition-colors",
+                                    notificationSettings?.morningReminder?.enabled
+                                        ? "bg-sky-100 text-sky-600 dark:bg-sky-900 dark:text-sky-400"
+                                        : "bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400"
+                                )}>
+                                    <Bell className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <span className="font-bold text-slate-700 block text-sm dark:text-slate-200">Morning Check-in</span>
+                                    <span className="text-xs text-slate-400 dark:text-slate-500">Daily reminder to confirm yesterday&apos;s log</span>
+                                </div>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    className="sr-only peer"
+                                    checked={notificationSettings?.morningReminder?.enabled || false}
+                                    onChange={(e) => handleNotificationToggle(e.target.checked)}
+                                />
+                                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-sky-300 dark:peer-focus:ring-sky-900 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-sky-500 dark:peer-checked:bg-sky-600"></div>
+                            </label>
+                        </div>
+
+                        {notificationSettings?.morningReminder?.enabled && (
+                            <div className="animate-slideUp pt-2">
+                                <label className="block text-xs font-bold text-slate-500 mb-2 dark:text-slate-400">Reminder Time</label>
+                                <input
+                                    type="time"
+                                    value={notificationSettings.morningReminder.time || '08:00'}
+                                    onChange={(e) => handleNotificationTimeChange(e.target.value)}
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200"
+                                />
+                            </div>
+                        )}
+                    </Card>
+                </section>
+            )}
+
             {/* Developer Section */}
             <section className="space-y-4">
                 <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider dark:text-slate-500">Advanced</h3>
@@ -367,6 +510,20 @@ export default function Settings() {
                                     className="w-full bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-sm text-amber-900 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-200"
                                 />
                             </div>
+
+                            {/* Test Morning Notification */}
+                            {isNotificationSupported() && (
+                                <div>
+                                    <Button
+                                        variant="outline"
+                                        className="w-full border-amber-200 text-amber-700 bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-400 dark:hover:bg-amber-900/30"
+                                        onClick={handleTestNotification}
+                                    >
+                                        <Bell className="w-4 h-4 mr-2" />
+                                        Test Morning Notification (5 sec)
+                                    </Button>
+                                </div>
+                            )}
                         </div>
                     )}
                 </Card>

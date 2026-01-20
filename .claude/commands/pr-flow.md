@@ -95,31 +95,33 @@ fi
 echo "Target branch:  $TARGET_BRANCH"
 echo ""
 
-# 1b. Check for unreleased commits
-echo "📦 Checking release status..."
-LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-if [ -n "$LAST_TAG" ]; then
-  UNRELEASED_COUNT=$(git log $LAST_TAG..HEAD --oneline | wc -l)
-  if [ "$UNRELEASED_COUNT" -gt 0 ]; then
-    echo "⚠️  Found $UNRELEASED_COUNT commits since $LAST_TAG"
-    echo ""
-    # Use AskUserQuestion to prompt:
-    # {
-    #   "question": "You have {UNRELEASED_COUNT} commits since {LAST_TAG}. Run /release before creating PR?",
-    #   "header": "Version",
-    #   "options": [
-    #     { "label": "Yes, release first (Recommended)", "description": "Auto-bump version, then create PR" },
-    #     { "label": "No, continue with current version", "description": "PR will use existing version" }
-    #   ]
-    # }
-    # If user selects "Yes": Run /release skill, then continue with PR flow.
+# 1b. Check for unreleased commits (only for develop → main PRs)
+if [[ "$TARGET_BRANCH" == "main" ]]; then
+  echo "📦 Checking release status..."
+  LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+  if [ -n "$LAST_TAG" ]; then
+    UNRELEASED_COUNT=$(git log $LAST_TAG..HEAD --oneline | wc -l)
+    if [ "$UNRELEASED_COUNT" -gt 0 ]; then
+      echo "⚠️  Found $UNRELEASED_COUNT commits since $LAST_TAG"
+      echo ""
+      # Use AskUserQuestion to prompt:
+      # {
+      #   "question": "You have {UNRELEASED_COUNT} commits since {LAST_TAG}. Run /release before creating PR?",
+      #   "header": "Version",
+      #   "options": [
+      #     { "label": "Yes, release first (Recommended)", "description": "Auto-bump version, then create PR" },
+      #     { "label": "No, continue with current version", "description": "PR will use existing version" }
+      #   ]
+      # }
+      # If user selects "Yes": Run /release skill, then continue with PR flow.
+    else
+      echo "✅ No unreleased commits"
+    fi
   else
-    echo "✅ No unreleased commits"
+    echo "ℹ️  No release tags found (use /release --first for initial release)"
   fi
-else
-  echo "ℹ️  No release tags found (use /release --first for initial release)"
+  echo ""
 fi
-echo ""
 
 # 2. Check for changes
 HAS_CHANGES=false
@@ -263,7 +265,33 @@ You are the PR Workflow Orchestrator for the Sammy project.
 
 **YOUR TASKS:**
 
-### 1. CREATE PR
+### 1. CHECK FOR EXISTING PR
+
+First, check if a PR already exists for this branch:
+
+```bash
+# Check for existing PR from current branch to target
+EXISTING_PR=$(gh pr list --head "$CURRENT_BRANCH" --base "$TARGET_BRANCH" --json number,title,url --jq '.[0]')
+
+if [ -n "$EXISTING_PR" ]; then
+  PR_NUMBER=$(echo "$EXISTING_PR" | jq -r '.number')
+  PR_TITLE=$(echo "$EXISTING_PR" | jq -r '.title')
+  PR_URL=$(echo "$EXISTING_PR" | jq -r '.url')
+  echo "Found existing PR #$PR_NUMBER: $PR_TITLE"
+fi
+```
+
+**If PR exists:**
+1. Check if title follows conventional commit format (`<type>: <description>`)
+2. If not, generate a proper title and update the PR:
+   ```bash
+   gh pr edit $PR_NUMBER --title "feat: new title here"
+   ```
+3. Skip to step 2 (Review-Fix Loop)
+
+**If no PR exists:** Continue to create one.
+
+### 2. CREATE PR (if none exists)
 
 Get commits and generate PR content:
 
@@ -275,7 +303,11 @@ git log origin/$TARGET_BRANCH..HEAD --oneline
 ```
 
 Generate:
-- **Title**: Concise summary (e.g., "Add dark mode feature", "Fix authentication bug")
+- **Title**: MUST follow conventional commit format: `<type>: <description>`
+  - Types: `feat:` (new feature), `fix:` (bug fix), `chore:` (maintenance), `refactor:`, `docs:`, `perf:`, `test:`
+  - Examples: `feat: add dark mode feature`, `fix: resolve authentication bug`, `chore: update dependencies`
+  - Use `feat!:` or `fix!:` for breaking changes
+  - **IMPORTANT**: This format is required for automatic version bumping via `/release`
 - **Body**:
 ```markdown
 ## Summary
@@ -302,7 +334,7 @@ https://github.com/user/repo/pull/42
 
 Parse the number (42 in this example).
 
-### 2. SPAWN REVIEW-FIX LOOP (unless NO_FIX=true)
+### 3. SPAWN REVIEW-FIX LOOP (unless NO_FIX=true)
 
 If $NO_FIX is false, launch Review-Fix Loop Agent:
 
@@ -437,7 +469,7 @@ It will return:
 }
 ```
 
-### 3. REPORT RESULTS
+### 4. REPORT RESULTS
 
 Show user a summary:
 
@@ -462,7 +494,7 @@ Remaining Issues: {count}
 ════════════════════════════════════════
 ```
 
-### 4. OFFER TO CREATE ISSUES FOR REMAINING HIGH ITEMS
+### 5. OFFER TO CREATE ISSUES FOR REMAINING HIGH ITEMS
 
 If there are remaining 🟡 HIGH issues that weren't fixed, offer to create GitHub issues:
 
@@ -529,7 +561,7 @@ IF remaining_issues contains HIGH severity items:
     "Created {count} GitHub issues for follow-up"
 ```
 
-### 5. OFFER MERGE
+### 6. OFFER MERGE
 
 Offer merge if no BLOCKING issues remain (HIGH issues may exist as tracked issues):
 
@@ -571,7 +603,7 @@ PR #{pr_number} is ready for review.
 Merge when ready: /pr-merge {pr_number}
 ```
 
-### 6. ERROR HANDLING
+### 7. ERROR HANDLING
 
 - **PR creation fails**: Report error, exit
 - **Review-Fix Loop fails**: Report what was fixed, show PR URL

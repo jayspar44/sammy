@@ -1,4 +1,5 @@
 const { db } = require('../services/firebase');
+const { getMilestones: getMilestonesService } = require('../services/achievementService');
 
 const updateProfile = async (req, res) => {
     try {
@@ -131,7 +132,26 @@ const getProfile = async (req, res) => {
     }
 };
 
+const getMilestones = async (req, res) => {
+    try {
+        const { uid } = req.user;
+        const { date } = req.query;
+
+        // Allow client to specify anchor date for timezone handling
+        const clientDate = date;
+        const todayStr = clientDate || new Date().toISOString().split('T')[0];
+        const anchorDate = new Date(todayStr);
+
+        const milestones = await getMilestonesService(uid, anchorDate);
+        res.json(milestones);
+    } catch (error) {
+        req.log.error({ err: error }, 'Error fetching milestones');
+        res.status(500).json({ error: 'Failed to fetch milestones' });
+    }
+};
+
 module.exports = {
     updateProfile,
-    getProfile
+    getProfile,
+    getMilestones
 };

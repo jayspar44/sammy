@@ -18,9 +18,10 @@ client = apiKey ? new GoogleGenAI({ apiKey }) : null;
  * @param {string} systemInstruction - The system prompt/instructions
  * @param {Array} history - Array of message objects: [{sender: 'user'|'sammy', text: '...'}]
  * @param {string} message - The current user message
- * @returns {Promise<string>} The AI's response text
+ * @param {Array|null} tools - Optional function declarations for Gemini function calling
+ * @returns {Promise<{type: 'text', text: string}|{type: 'function_calls', functionCalls: Array, chat: object}>}
  */
-const generateChatResponse = async (systemInstruction, history, message) => {
+const generateChatResponse = async (systemInstruction, history, message, tools = null) => {
     if (!client) {
         throw new Error('Gemini API Key is missing or invalid. Check backend logs.');
     }
@@ -30,7 +31,13 @@ const generateChatResponse = async (systemInstruction, history, message) => {
         const chat = client.chats.create({
             model: 'gemini-2.5-flash',
             config: {
-                systemInstruction
+                systemInstruction,
+                tools: tools ? [{ functionDeclarations: tools }] : undefined,
+                toolConfig: tools ? {
+                    functionCallingConfig: {
+                        mode: 'AUTO'
+                    }
+                } : undefined
             },
             history: history.map(msg => ({
                 role: msg.sender === 'user' ? 'user' : 'model',
@@ -40,11 +47,47 @@ const generateChatResponse = async (systemInstruction, history, message) => {
 
         // Send the current message with correct API
         const response = await chat.sendMessage({ message });
-        return response.text;
+
+        // Return function calls if present, otherwise text
+        if (response.functionCalls && response.functionCalls.length > 0) {
+            return { type: 'function_calls', functionCalls: response.functionCalls, chat };
+        }
+        return { type: 'text', text: response.text };
     } catch (error) {
         logger.error({ err: error }, 'Error generating chat response');
         throw error;
     }
 };
 
-module.exports = { generateChatResponse };
+/**
+ * Continue a chat session with function results.
+ * @param {object} chat - The chat session object from generateChatResponse
+ * @param {Array} functionResults - Array of {id: string, name: string, response: object} objects
+ * @returns {Promise<{type: 'text', text: string}|{type: 'function_calls', functionCalls: Array, chat: object}>}
+ */
+const sendFunctionResults = async (chat, functionResults) => {
+    try {
+        // Format function results as FunctionResponse parts
+        const parts = functionResults.map(r => ({
+            functionResponse: {
+                id: r.id,
+                name: r.name,
+                response: r.response
+            }
+        }));
+
+        const response = await chat.sendMessage({
+            message: parts
+        });
+
+        if (response.functionCalls && response.functionCalls.length > 0) {
+            return { type: 'function_calls', functionCalls: response.functionCalls, chat };
+        }
+        return { type: 'text', text: response.text };
+    } catch (error) {
+        logger.error({ err: error }, 'Error sending function results');
+        throw error;
+    }
+};
+
+module.exports = { generateChatResponse, sendFunctionResults };

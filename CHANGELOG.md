@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.13.1](https://github.com/jayspar44/sammy/compare/v0.13.0...v0.13.1) (2026-01-20)
+
+## [0.13.0](https://github.com/jayspar44/sammy/compare/v0.12.2...v0.13.0) (2026-01-20)
+
+
+### Features
+
+* add manual trigger to PR preview cleanup workflow ([bf42149](https://github.com/jayspar44/sammy/commit/bf4214927f8a79647c6306f0692c4081730a54be))
+* add morning notification system for Android ([#24](https://github.com/jayspar44/sammy/issues/24)) ([7637c1d](https://github.com/jayspar44/sammy/commit/7637c1dd6086cc4f812d08f3324e70e87b6c3568))
+* add system theme option with auto-detection ([#25](https://github.com/jayspar44/sammy/issues/25)) ([ea21168](https://github.com/jayspar44/sammy/commit/ea21168f6f0e03bf39ec900f073f2fa31ac89194))
+
 ### [0.12.2](https://github.com/jayspar44/sammy/compare/v0.12.0...v0.12.2) (2026-01-16)
 
 
@@ -237,4 +248,3 @@ All notable changes to this project will be documented in this file. See [standa
 - Implemented Email/Password Authentication
 - Integrated Gemini 2.5 Flash for AI Companion
 - configured default ports to 4000/4001
-

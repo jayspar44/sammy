@@ -6,7 +6,7 @@ const rateLimit = require('express-rate-limit');
 const serverStartTime = new Date().toISOString();
 const pkg = require('../../package.json');
 const { verifyToken } = require('../controllers/authController');
-const { logDrink, getStats, updateLog, deleteLog, getStatsRange } = require('../controllers/logController');
+const { logDrink, getStats, updateLog, deleteLog, getStatsRange, getCumulativeStats, getAllTimeStats } = require('../controllers/logController');
 
 // Chat-specific rate limiter (10 requests per minute per IP)
 const chatLimiter = rateLimit({
@@ -34,11 +34,14 @@ router.put('/log', updateLog);
 router.delete('/log', deleteLog);
 router.get('/stats', getStats);
 router.get('/stats/range', getStatsRange);
+router.get('/stats/cumulative', getCumulativeStats);
+router.get('/stats/all-time', getAllTimeStats);
 
 // User Profile
-const { updateProfile, getProfile } = require('../controllers/userController');
+const { updateProfile, getProfile, getMilestones } = require('../controllers/userController');
 router.post('/user/profile', updateProfile);
 router.get('/user/profile', getProfile);
+router.get('/user/milestones', getMilestones);
 
 // Chat
 const { handleMessage, getChatHistory, deleteChatHistory } = require('../controllers/chatController');

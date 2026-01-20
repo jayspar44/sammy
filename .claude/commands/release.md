@@ -42,19 +42,54 @@ The `standard-version` tool analyzes commits since the last tag:
    fi
    ```
 
-3. **Run the appropriate release command**:
+3. **Check for merged PRs and validate commit format**:
+   ```bash
+   # Get merged PRs since last tag
+   if [ -n "$LAST_TAG" ]; then
+     TAG_DATE=$(git log -1 --format=%aI $LAST_TAG)
+     echo ""
+     echo "Merged PRs since $LAST_TAG:"
+     gh pr list --state merged --base develop --search "merged:>=$TAG_DATE" --json number,title --jq '.[] | "#\(.number): \(.title)"'
+   fi
+   ```
+
+   **Check each commit for conventional format** (`<type>: <description>`):
+   - Valid types: `feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `perf:`, `test:`
+   - If any commit doesn't follow format, **WARN the user**:
+     ```
+     ⚠️  Non-conventional commits detected:
+       - "Add new feature" (should be "feat: add new feature")
+       - "Bug fix" (should be "fix: bug fix")
+
+     These won't trigger automatic version bumps.
+     Consider using --minor or --patch to force the correct bump.
+     ```
+   - Use AskUserQuestion if non-conventional commits found:
+     ```json
+     {
+       "question": "Found commits without conventional format. How should version be bumped?",
+       "header": "Version",
+       "options": [
+         { "label": "Auto-detect (Recommended)", "description": "Let standard-version analyze commits (may result in patch bump)" },
+         { "label": "Force minor", "description": "Use --minor for new features" },
+         { "label": "Force patch", "description": "Use --patch for bug fixes" }
+       ]
+     }
+     ```
+
+4. **Run the appropriate release command**:
    - Normal release: `npm run release`
    - Force patch: `npm run release:patch`
    - Force minor: `npm run release:minor`
    - Force major: `npm run release:major`
    - First release: `npm run release:first`
 
-4. **Push changes and tags**:
+5. **Push changes and tags**:
    ```bash
    git push && git push --tags
    ```
 
-5. **Report new version to user**:
+6. **Report new version to user**:
    Show the old version, new version, and link to CHANGELOG.md
 
 ## Example Usage
