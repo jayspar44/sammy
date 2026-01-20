@@ -13,7 +13,7 @@ const apiRoutes = require('./routes/api');
 // Trust proxy configuration (environment-specific)
 // Production/Dev: Trust exactly 1 proxy hop (Cloud Run load balancer)
 // Local: No proxy, use direct IP addresses
-if (process.env.NODE_ENV === 'dev' || process.env.NODE_ENV === 'production') {
+if (process.env.NODE_ENV === 'dev' || process.env.NODE_ENV === 'prod' || process.env.NODE_ENV === 'production') {
     app.set('trust proxy', 1);
 }
 
@@ -21,9 +21,11 @@ if (process.env.NODE_ENV === 'dev' || process.env.NODE_ENV === 'production') {
 app.use(helmet());
 
 // Global Rate Limiting (DDoS protection)
+// Chat endpoint has separate stricter limit (10/min) for AI cost control
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // 100 requests per IP per window
+    max: 1000, // 1000 requests per IP per window
+    skip: (req) => req.method === 'OPTIONS', // Don't count CORS preflight
     standardHeaders: true,
     legacyHeaders: false,
     message: { error: 'Too many requests, please try again later.' }
