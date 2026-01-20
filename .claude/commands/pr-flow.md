@@ -302,6 +302,51 @@ git log origin/$TARGET_BRANCH..HEAD --oneline
 # Analyze commits to generate PR content
 ```
 
+#### For Release PRs (develop → main)
+
+**IMPORTANT:** Release PRs must include ALL changes since the last merge to main, not just recent commits.
+
+1. **Read CHANGELOG.md** to get the complete list of changes for this release:
+   ```bash
+   # Get the version being released
+   VERSION=$(node -p "require('./version.json').version")
+
+   # Read CHANGELOG.md and extract the section for this version
+   ```
+
+2. **Generate comprehensive PR description** from CHANGELOG.md:
+   - Title: `chore(release): v{VERSION}`
+   - Body: Include ALL features, fixes, and other changes from the CHANGELOG section
+
+Example release PR body:
+```markdown
+## Release v0.13.2
+
+### Features
+- Add morning notification system for Android
+- Add system theme option with auto-detection
+- Add markdown support to AI chat messages
+
+### Bug Fixes
+- Fix trust proxy condition for Cloud Run rate limiting
+- Fix authentication redirect issue
+
+### Performance
+- Increase global rate limit to 1000 requests/15min
+- Add explicit limits to Firestore queries
+
+### Other
+- Add conventional commits and release automation
+- Update documentation
+
+---
+*Full changelog: CHANGELOG.md*
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+```
+
+#### For Feature PRs (feature → develop)
+
 Generate:
 - **Title**: MUST follow conventional commit format: `<type>: <description>`
   - Types: `feat:` (new feature), `fix:` (bug fix), `chore:` (maintenance), `refactor:`, `docs:`, `perf:`, `test:`
@@ -322,7 +367,8 @@ Generate:
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 ```
 
-Create PR:
+#### Create the PR
+
 ```bash
 gh pr create --base $TARGET_BRANCH --title "YOUR_TITLE" --body "YOUR_BODY"
 ```
