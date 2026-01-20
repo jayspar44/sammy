@@ -64,17 +64,18 @@ const calculateStats = async (userId, anchorDate) => {
 
     // CALCULATE INSIGHTS
     let dryStreak = 0;
-    let checkDate = new Date(anchorDate);
 
-    // Check previous 90 days for streak
+    // Check previous 90 days for streak using loop counter (avoid date mutation)
     for (let i = 0; i < 90; i++) {
+        const checkDate = new Date(anchorDate);
+        checkDate.setDate(anchorDate.getDate() - i);
         const dStr = checkDate.toISOString().split('T')[0];
         const log = logsMap[dStr];
 
-        // If today has 0 drinks so far, it counts towards the streak. 
+        // If today has 0 drinks so far, it counts towards the streak.
         // If today has > 0, streak is broken (or 0).
-        // If no log exists for a day, we assume 0 drinks for streak purposes? 
-        // Actually, let's be strict: NO log means NO data, but for this MVP 
+        // If no log exists for a day, we assume 0 drinks for streak purposes?
+        // Actually, let's be strict: NO log means NO data, but for this MVP
         // usually users want "no entry" to mean "I didn't drink".
         // Let's assume missing log = 0 drinks for streak calculation to be generous.
         const count = log ? log.count : 0;
@@ -84,7 +85,6 @@ const calculateStats = async (userId, anchorDate) => {
         } else {
             break;
         }
-        checkDate.setDate(checkDate.getDate() - 1);
     }
 
     let moneySaved = 0;
@@ -320,7 +320,8 @@ const calculateCumulativeStats = async (userId, mode, range, anchorDate) => {
     // Calculate summary stats
     const totalSaved = cumulativeSaved;
     const weeks = totalDays / 7;
-    const avgPerWeek = weeks > 0 ? Math.round((totalSaved / weeks) * 10) / 10 : 0;
+    // Only calculate avgPerWeek if we have at least 7 days of data to avoid misleading averages
+    const avgPerWeek = weeks > 0 && totalDays >= 7 ? Math.round((totalSaved / weeks) * 10) / 10 : 0;
 
     return {
         series,

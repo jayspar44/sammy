@@ -35,6 +35,7 @@ const ConfettiCanvas = ({
         if (!canvas) return;
 
         const ctx = canvas.getContext('2d');
+        if (!ctx) return; // Canvas 2D context not available
 
         // Set canvas size
         canvas.width = window.innerWidth;

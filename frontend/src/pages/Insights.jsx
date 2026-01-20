@@ -17,7 +17,7 @@ import {
     getStreakMessage,
 } from '../utils/funEquivalencies';
 
-// eslint-disable-next-line no-unused-vars -- Icon is used in JSX below
+// eslint-disable-next-line no-unused-vars -- Icon is destructured from icon prop and used as JSX component
 const StatCard = ({ icon: Icon, label, value, theme = 'emerald', className, onClick }) => {
     const themes = {
         emerald: 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800',

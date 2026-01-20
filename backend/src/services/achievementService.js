@@ -32,6 +32,11 @@ const MILESTONES = {
  * @returns {Promise<number>} The current dry streak in days.
  */
 const calculateDryStreak = async (userId, anchorDate) => {
+    // Validate anchorDate
+    if (!anchorDate || !(anchorDate instanceof Date) || isNaN(anchorDate.getTime())) {
+        throw new Error('Invalid anchor date provided');
+    }
+
     const userRef = db.collection('users').doc(userId);
 
     // Fetch recent logs (up to 365 days for streak calculation)
@@ -59,11 +64,12 @@ const calculateDryStreak = async (userId, anchorDate) => {
         }
     });
 
-    // Calculate streak
+    // Calculate streak using loop counter (avoid date mutation)
     let dryStreak = 0;
-    const checkDate = new Date(anchorDate);
 
     for (let i = 0; i < 365; i++) {
+        const checkDate = new Date(anchorDate);
+        checkDate.setDate(anchorDate.getDate() - i);
         const dStr = checkDate.toISOString().split('T')[0];
         const count = logsMap[dStr] ?? 0; // No log = assume 0 drinks
 
@@ -72,7 +78,6 @@ const calculateDryStreak = async (userId, anchorDate) => {
         } else {
             break;
         }
-        checkDate.setDate(checkDate.getDate() - 1);
     }
 
     return dryStreak;
@@ -86,8 +91,14 @@ const calculateDryStreak = async (userId, anchorDate) => {
 const calculateLongestDryStreak = async (userId) => {
     const userRef = db.collection('users').doc(userId);
 
-    // Fetch all logs
-    const logsSnapshot = await userRef.collection('logs').get();
+    // Fetch logs from last 2 years (bounded query to prevent memory issues)
+    const twoYearsAgo = new Date();
+    twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
+    const twoYearsAgoStr = twoYearsAgo.toISOString().split('T')[0];
+
+    const logsSnapshot = await userRef.collection('logs')
+        .where('date', '>=', twoYearsAgoStr)
+        .get();
 
     if (logsSnapshot.empty) {
         return 0;
@@ -196,23 +207,36 @@ const getMilestones = async (userId, anchorDate) => {
         });
     }
 
-    // Update user profile with newly unlocked milestones
+    // Update user profile with newly unlocked milestones using transaction to prevent race conditions
     if (newlyUnlocked.length > 0) {
-        const updatedMilestones = [
-            ...(achievements.unlockedMilestones || []),
-            ...newlyUnlocked
-        ];
+        await db.runTransaction(async (transaction) => {
+            const freshUserDoc = await transaction.get(userRef);
+            const existingAchievements = freshUserDoc.exists
+                ? (freshUserDoc.data().achievements || { unlockedMilestones: [] })
+                : { unlockedMilestones: [] };
 
-        await userRef.set({
-            achievements: {
-                unlockedMilestones: updatedMilestones,
-                stats: {
-                    longestDryStreak: longestStreak,
-                    totalDrinksSaved: allTimeStats.drinksSaved,
-                    totalMoneySaved: allTimeStats.moneySaved
-                }
+            // Filter out any milestones that were already unlocked by a concurrent request
+            const existingIds = new Set((existingAchievements.unlockedMilestones || []).map(m => m.id));
+            const trulyNew = newlyUnlocked.filter(m => !existingIds.has(m.id));
+
+            if (trulyNew.length > 0) {
+                const updatedMilestones = [
+                    ...(existingAchievements.unlockedMilestones || []),
+                    ...trulyNew
+                ];
+
+                transaction.set(userRef, {
+                    achievements: {
+                        unlockedMilestones: updatedMilestones,
+                        stats: {
+                            longestDryStreak: longestStreak,
+                            totalDrinksSaved: allTimeStats.drinksSaved,
+                            totalMoneySaved: allTimeStats.moneySaved
+                        }
+                    }
+                }, { merge: true });
             }
-        }, { merge: true });
+        });
     }
 
     return {

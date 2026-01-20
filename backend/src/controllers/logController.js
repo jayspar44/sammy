@@ -15,9 +15,9 @@ const logDrink = async (req, res) => {
         return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
     }
 
-    // Validate count
-    if (typeof count !== 'number' || count < 0) {
-        return res.status(400).json({ error: 'Count must be a non-negative number' });
+    // Validate count (with reasonable upper bound to prevent abuse)
+    if (typeof count !== 'number' || count < 0 || count > 100) {
+        return res.status(400).json({ error: 'Count must be a number between 0 and 100' });
     }
 
     // Check DB readiness
@@ -82,6 +82,12 @@ const getStats = async (req, res) => {
     const { uid } = req.user;
     // Allow client to specify 'today' to handle timezone differences
     const clientDate = req.query.date;
+
+    // Validate date parameter if provided
+    if (clientDate && (typeof clientDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(clientDate))) {
+        return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
+    }
+
     const todayStr = clientDate || new Date().toISOString().split('T')[0];
 
     // For date math, create a Date object at UTC midnight for this date string
@@ -244,6 +250,25 @@ const getStatsRange = async (req, res) => {
 
     if (!startDate || !endDate) {
         return res.status(400).json({ error: 'Start date and end date are required' });
+    }
+
+    // Validate date parameters
+    if (typeof startDate !== 'string' || typeof endDate !== 'string') {
+        return res.status(400).json({ error: 'Date parameters must be strings' });
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
+        return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
+    }
+
+    // Validate date range to prevent abuse
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const daysDiff = (end - start) / (1000 * 60 * 60 * 24);
+    if (daysDiff < 0) {
+        return res.status(400).json({ error: 'Start date must be before end date' });
+    }
+    if (daysDiff > 365) {
+        return res.status(400).json({ error: 'Date range cannot exceed 365 days' });
     }
 
     // Check DB readiness
