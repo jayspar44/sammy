@@ -289,7 +289,7 @@ Custom commands in `.claude/commands/`:
 | `/security-scan` | `/security-scan [--staged \| --all]` - Scan for secrets |
 | `/lint-check` | `/lint-check [--fix]` - ESLint with optional auto-fix |
 | `/code-review` | `/code-review [pr-number\|branch]` - Multi-agent review (4 agents) |
-| `/pr-flow` | `/pr-flow [--no-fix] [--auto-merge]` - Autonomous PR workflow |
+| `/pr-flow` | `/pr-flow [--no-fix] [--auto-merge]` - Autonomous PR workflow (feature→develop or develop→main) |
 | `/pr-merge` | `/pr-merge <pr-number> [--no-sync] [--delete-branch]` - Squash merge |
 | `/release` | `/release [--patch\|--minor\|--major]` - Auto-bump version based on commits |
 | `/build-app` | `/build-app [local\|dev\|prod]` - Build APK to Google Drive |
@@ -301,8 +301,17 @@ Custom commands in `.claude/commands/`:
 ```bash
 /feature-start my-feature              # Create branch
 /commit-push -m "feat: Add feature"    # Safe commit (conventional format)
-/pr-flow                               # Create PR, auto-fix, merge
-/release                               # Auto-bump version based on commits
+/pr-flow                               # PR: feature branch → develop
+```
+
+### Release Workflow
+
+Releases happen on `develop` branch, then merge to `main` for production deployment:
+
+```bash
+# On develop branch after features are merged
+/release                               # Auto-bump version on develop
+/pr-flow                               # PR: develop → main (triggers prod deploy)
 ```
 
 ### Multi-Agent Code Review
