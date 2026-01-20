@@ -21,9 +21,11 @@ if (process.env.NODE_ENV === 'dev' || process.env.NODE_ENV === 'prod' || process
 app.use(helmet());
 
 // Global Rate Limiting (DDoS protection)
+// Chat endpoint has separate stricter limit (10/min) for AI cost control
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // 100 requests per IP per window
+    max: 1000, // 1000 requests per IP per window
+    skip: (req) => req.method === 'OPTIONS', // Don't count CORS preflight
     standardHeaders: true,
     legacyHeaders: false,
     message: { error: 'Too many requests, please try again later.' }
