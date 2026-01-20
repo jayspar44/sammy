@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.13.2](https://github.com/jayspar44/sammy/compare/v0.13.1...v0.13.2) (2026-01-20)
+
+
+### Bug Fixes
+
+* add 'prod' to trust proxy condition for Cloud Run ([56040f8](https://github.com/jayspar44/sammy/commit/56040f8b23a626dba165001473bd5678df771411))
+
+
+### Performance
+
+* add explicit limits to Firestore queries ([e0beb1c](https://github.com/jayspar44/sammy/commit/e0beb1c5282acdeb4fe646712fe539fc74863956))
+* increase global rate limit to 1000 and skip OPTIONS ([3f093eb](https://github.com/jayspar44/sammy/commit/3f093ebcaf441fcd34464036d3e2f8c44e1b5909))
+
 ### [0.13.1](https://github.com/jayspar44/sammy/compare/v0.13.0...v0.13.1) (2026-01-20)
 
 ## [0.13.0](https://github.com/jayspar44/sammy/compare/v0.12.2...v0.13.0) (2026-01-20)
