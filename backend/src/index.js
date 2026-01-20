@@ -13,7 +13,7 @@ const apiRoutes = require('./routes/api');
 // Trust proxy configuration (environment-specific)
 // Production/Dev: Trust exactly 1 proxy hop (Cloud Run load balancer)
 // Local: No proxy, use direct IP addresses
-if (process.env.NODE_ENV === 'dev' || process.env.NODE_ENV === 'production') {
+if (process.env.NODE_ENV === 'dev' || process.env.NODE_ENV === 'prod' || process.env.NODE_ENV === 'production') {
     app.set('trust proxy', 1);
 }
 
