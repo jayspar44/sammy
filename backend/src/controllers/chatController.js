@@ -309,6 +309,7 @@ Here's my response: {"count": 2, "message": "..."}
         const historySnapshot = await messagesRef
             .where('timestamp', '>', sevenDaysAgo)
             .orderBy('timestamp', 'asc')
+            .limit(100) // Cap at 100 messages for AI context to control costs
             .get();
 
         const history = [];
@@ -572,15 +573,29 @@ const deleteChatHistory = async (req, res) => {
     const { uid } = req.user;
     try {
         const messagesRef = db.collection('users').doc(uid).collection('messages');
-        const snapshot = await messagesRef.get();
 
-        const batch = db.batch();
-        snapshot.docs.forEach((doc) => {
-            batch.delete(doc.ref);
-        });
-        await batch.commit();
+        // Delete in batches of 500 (Firestore batch limit)
+        const BATCH_SIZE = 500;
+        let totalDeleted = 0;
 
-        res.json({ success: true, message: 'Chat history cleared' });
+        while (true) {
+            const snapshot = await messagesRef.limit(BATCH_SIZE).get();
+
+            if (snapshot.empty) break;
+
+            const batch = db.batch();
+            snapshot.docs.forEach((doc) => {
+                batch.delete(doc.ref);
+            });
+            await batch.commit();
+            totalDeleted += snapshot.size;
+
+            // Exit if we got fewer than batch size (no more docs)
+            if (snapshot.size < BATCH_SIZE) break;
+        }
+
+        req.log.info({ totalDeleted }, 'Chat history cleared');
+        res.json({ success: true, message: 'Chat history cleared', deleted: totalDeleted });
     } catch (error) {
         req.log.error({ err: error }, 'Error clearing chat history');
         res.status(500).json({ error: 'Failed to clear history' });

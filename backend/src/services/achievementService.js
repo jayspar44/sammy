@@ -46,6 +46,7 @@ const calculateDryStreak = async (userId, anchorDate) => {
 
     const logsSnapshot = await userRef.collection('logs')
         .where('date', '>=', yearAgoStr)
+        .limit(400) // Explicit limit (365 days + buffer)
         .get();
 
     const logsMap = {};
@@ -98,6 +99,7 @@ const calculateLongestDryStreak = async (userId) => {
 
     const logsSnapshot = await userRef.collection('logs')
         .where('date', '>=', twoYearsAgoStr)
+        .limit(800) // Explicit limit (730 days + buffer)
         .get();
 
     if (logsSnapshot.empty) {
