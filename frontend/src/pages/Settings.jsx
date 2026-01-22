@@ -27,6 +27,7 @@ export default function Settings() {
         chatHistoryEnabled,
         typicalWeek,
         notificationSettings,
+        setNotificationSettings,
         developerMode,
         setDeveloperMode,
         spoofDb,
@@ -93,6 +94,8 @@ export default function Settings() {
 
     const handleNotificationToggle = async (enabled) => {
         try {
+            const time = notificationSettings.morningReminder.time || '08:00';
+
             if (enabled) {
                 // Request permission first
                 const granted = await requestPermissions();
@@ -101,22 +104,16 @@ export default function Settings() {
                     return;
                 }
 
-                // Schedule with current time setting
-                const time = notificationSettings.morningReminder.time || '08:00';
+                // Schedule notification (this also saves to Capacitor Preferences)
                 await scheduleDailyReminder(time);
             } else {
-                // Disable notifications
+                // Cancel notification (this also clears Capacitor Preferences)
                 await cancelReminder();
             }
 
-            // Save to backend
-            await updateProfileConfig({
-                notifications: {
-                    morningReminder: {
-                        enabled,
-                        time: notificationSettings.morningReminder.time || '08:00'
-                    }
-                }
+            // Update UI state (Capacitor Preferences already updated by schedule/cancel)
+            setNotificationSettings({
+                morningReminder: { enabled, time }
             });
         } catch (error) {
             logger.error('Failed to toggle notifications', error);
@@ -125,18 +122,16 @@ export default function Settings() {
 
     const handleNotificationTimeChange = async (time) => {
         try {
-            // If enabled, reschedule with new time
+            // If enabled, reschedule with new time (this also saves to Capacitor Preferences)
             if (notificationSettings.morningReminder.enabled) {
                 await scheduleDailyReminder(time);
             }
 
-            // Save to backend
-            await updateProfileConfig({
-                notifications: {
-                    morningReminder: {
-                        enabled: notificationSettings.morningReminder.enabled,
-                        time
-                    }
+            // Update UI state (Capacitor Preferences already updated by schedule)
+            setNotificationSettings({
+                morningReminder: {
+                    enabled: notificationSettings.morningReminder.enabled,
+                    time
                 }
             });
         } catch (error) {
