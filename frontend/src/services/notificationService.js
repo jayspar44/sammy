@@ -127,8 +127,8 @@ export const scheduleDailyReminder = async (time, saveSettings = true) => {
   }
 
   try {
-    // First, cancel any existing reminder
-    await cancelReminder();
+    // First, cancel any existing reminder (don't clear settings - managed separately)
+    await cancelReminder(false);
 
     // Check if we have permission
     const hasPermission = await checkPermissions();
@@ -259,6 +259,13 @@ export const setupNotificationHandlers = (onNotificationTap) => {
 
       // Check if this is our morning reminder
       if (notification.id === MORNING_REMINDER_ID) {
+        // Only reschedule if notifications are still enabled
+        const settings = getSavedNotificationSettings();
+        if (!settings?.enabled) {
+          logger.debug('Notifications disabled, not rescheduling');
+          return;
+        }
+
         const scheduledTime = notification.extra?.scheduledTime;
         if (scheduledTime) {
           logger.debug('Rescheduling morning reminder for tomorrow at', scheduledTime);
@@ -278,9 +285,15 @@ export const setupNotificationHandlers = (onNotificationTap) => {
       const scheduledTime = notification.notification.extra?.scheduledTime;
 
       // Reschedule for tomorrow (in case received event didn't fire)
+      // Only reschedule if notifications are still enabled
       if (notification.notification.id === MORNING_REMINDER_ID && scheduledTime) {
-        logger.debug('Rescheduling morning reminder after tap for tomorrow at', scheduledTime);
-        await scheduleDailyReminder(scheduledTime, false);
+        const settings = getSavedNotificationSettings();
+        if (settings?.enabled) {
+          logger.debug('Rescheduling morning reminder after tap for tomorrow at', scheduledTime);
+          await scheduleDailyReminder(scheduledTime, false);
+        } else {
+          logger.debug('Notifications disabled, not rescheduling after tap');
+        }
       }
 
       if (context && onNotificationTap) {
