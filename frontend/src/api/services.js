@@ -249,7 +249,8 @@ export const api = {
         if (context) {
             payload.context = context;
         }
-        const response = await client.post('/chat', payload);
+        // Use longer timeout for chat - AI responses can take 15-30+ seconds with function calling
+        const response = await client.post('/chat', payload, { timeout: 60000 });
         return response.data;
     },
 
@@ -321,6 +322,106 @@ export const api = {
         const response = await client.get('/user/milestones', {
             params: { date: dateStr }
         });
+        return response.data;
+    },
+
+    // Weekly Plan
+    getWeeklyPlan: async (date) => {
+        if (IS_SPOOF_DB()) {
+            logger.spoof('Get Weekly Plan');
+            // Generate mock data for current week
+            const today = new Date();
+            const dayOfWeek = today.getDay();
+            const monday = new Date(today);
+            monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+
+            const days = [];
+            const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+            const template = { monday: 2, tuesday: 2, wednesday: 2, thursday: 2, friday: 3, saturday: 3, sunday: 1, isActive: true };
+
+            for (let i = 0; i < 7; i++) {
+                const d = new Date(monday);
+                d.setDate(monday.getDate() + i);
+                const dateStr = d.toISOString().split('T')[0];
+                const todayStr = today.toISOString().split('T')[0];
+                const isPast = dateStr < todayStr;
+                const isToday = dateStr === todayStr;
+
+                days.push({
+                    date: dateStr,
+                    day: dayNames[i],
+                    goal: template[dayNames[i]],
+                    count: isPast ? Math.floor(Math.random() * 4) : (isToday ? Math.floor(Math.random() * 3) : null),
+                    status: isPast ? (Math.random() > 0.3 ? 'under' : 'over') : (isToday ? 'today' : 'future')
+                });
+            }
+
+            return {
+                template,
+                currentWeek: {
+                    startDate: monday.toISOString().split('T')[0],
+                    endDate: new Date(monday.getTime() + 6 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                    days,
+                    totalGoal: 15,
+                    totalCount: days.reduce((sum, d) => sum + (d.count || 0), 0),
+                    daysLogged: days.filter(d => d.count !== null).length
+                },
+                hasPlan: true
+            };
+        }
+
+        const params = date ? { date } : {};
+        const response = await client.get('/user/weekly-plan', { params });
+        return response.data;
+    },
+
+    setWeeklyPlan: async (targets, weekStartDate, isRecurring = true) => {
+        if (IS_SPOOF_DB()) {
+            logger.spoof('Set Weekly Plan', { targets, weekStartDate, isRecurring });
+            const weekTotal = Object.values(targets).reduce((sum, v) => sum + v, 0);
+            return { success: true, weekTotal, daysProjected: 7 };
+        }
+
+        const response = await client.post('/user/weekly-plan', {
+            targets,
+            weekStartDate,
+            isRecurring
+        });
+        return response.data;
+    },
+
+    getWeeklySummary: async (includeAI = false, date) => {
+        if (IS_SPOOF_DB()) {
+            logger.spoof('Get Weekly Summary', { includeAI });
+            const days = [];
+            const today = new Date();
+
+            for (let i = 6; i >= 0; i--) {
+                const d = new Date(today);
+                d.setDate(today.getDate() - i);
+                const count = Math.floor(Math.random() * 5);
+                days.push({
+                    date: d.toISOString().split('T')[0],
+                    count,
+                    goal: 2,
+                    isDry: count === 0
+                });
+            }
+
+            return {
+                days,
+                totalDrinks: days.reduce((sum, d) => sum + d.count, 0),
+                totalTarget: 14,
+                dryDays: days.filter(d => d.isDry).length,
+                daysUnderTarget: days.filter(d => d.count <= d.goal).length,
+                moneySaved: 40,
+                aiSummary: includeAI ? 'You had a balanced week with a couple of dry days. Keep it up!' : undefined
+            };
+        }
+
+        const params = { includeAI: includeAI ? 'true' : 'false' };
+        if (date) params.date = date;
+        const response = await client.get('/stats/weekly-summary', { params });
         return response.data;
     },
 };

@@ -1,14 +1,18 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { Sparkles, Plus, Pencil } from 'lucide-react';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import SunProgress from '../components/ui/SunProgress';
+import ThisWeekCard from '../components/ui/ThisWeekCard';
 import ConfettiCanvas from '../components/common/ConfettiCanvas';
 import { cn } from '../utils/cn';
 import { LogDrinkModal } from '../components/common/LogDrinkModal';
 import { SetGoalModal } from '../components/common/SetGoalModal';
 import { EditHistoricCountModal } from '../components/common/EditHistoricCountModal';
+import { WeeklyPlanModal } from '../components/common/WeeklyPlanModal';
+import { Last7DaysSummaryModal } from '../components/common/Last7DaysSummaryModal';
 import { api } from '../api/services';
 import { useAuth } from '../contexts/AuthContext';
 import { useUserPreferences } from '../contexts/UserPreferencesContext';
@@ -105,6 +109,7 @@ const WeeklyTrend = ({ data = [], currentDateStr }) => {
 };
 
 export default function Home() {
+    const navigate = useNavigate();
     const { user } = useAuth();
     const { manualDate } = useUserPreferences();
     const [stats, setStats] = useState({ count: 0, limit: 2 });
@@ -113,8 +118,13 @@ export default function Home() {
     const [showLogModal, setShowLogModal] = useState(false);
     const [showGoalModal, setShowGoalModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
+    const [showWeeklyPlanModal, setShowWeeklyPlanModal] = useState(false);
+    const [showLast7DaysModal, setShowLast7DaysModal] = useState(false);
     const [hasLoggedToday, setHasLoggedToday] = useState(false);
     const [showConfetti, setShowConfetti] = useState(false);
+    const [weekPlan, setWeekPlan] = useState(null);
+    const [weekPlanLoading, setWeekPlanLoading] = useState(true);
+    const [weekOffset, setWeekOffset] = useState(0); // 0 = this week, 1 = next week
 
     const fetchStats = async () => {
         setStatsLoading(true);
@@ -139,11 +149,32 @@ export default function Home() {
         }
     };
 
+    const fetchWeeklyPlan = async () => {
+        setWeekPlanLoading(true);
+        try {
+            const baseDate = manualDate ? new Date(manualDate + 'T00:00:00') : new Date();
+            const targetDate = new Date(baseDate);
+            targetDate.setDate(targetDate.getDate() + (weekOffset * 7));
+            const dateStr = format(targetDate, 'yyyy-MM-dd');
+            const data = await api.getWeeklyPlan(dateStr);
+            setWeekPlan(data);
+        } catch (err) {
+            logger.error('Failed to fetch weekly plan', err);
+        } finally {
+            setWeekPlanLoading(false);
+        }
+    };
+
+    const handleWeekToggle = (direction) => {
+        setWeekOffset(direction === 'next' ? 1 : 0);
+    };
+
     useEffect(() => {
         if (user) {
             fetchStats();
+            fetchWeeklyPlan();
         }
-    }, [user, manualDate]);
+    }, [user, manualDate, weekOffset]);
 
     const handleLogDrink = async (count) => {
         const date = manualDate || format(new Date(), 'yyyy-MM-dd');
@@ -151,6 +182,7 @@ export default function Home() {
             await api.logDrink(date, count);
             setShowLogModal(false);
             fetchStats(); // Refresh
+            fetchWeeklyPlan(); // Refresh weekly plan
         } catch (err) {
             logger.error('Failed to log drink', err);
         }
@@ -166,11 +198,12 @@ export default function Home() {
 
         try {
             await api.logDrink(date, 0);
-            // Silently refresh trends in background without loading state
+            // Silently refresh trends and weekly plan in background without loading state
             const data = await api.getStats(date);
             if (data.trends) {
                 setTrends(data.trends);
             }
+            fetchWeeklyPlan();
         } catch (err) {
             logger.error('Failed to log drink', err);
             // Revert on error
@@ -187,6 +220,29 @@ export default function Home() {
         } catch (err) {
             logger.error('Failed to set goal', err);
         }
+    };
+
+    const handleSaveWeeklyPlan = async (targets, isRecurring) => {
+        try {
+            const todayStr = manualDate || format(new Date(), 'yyyy-MM-dd');
+            // Calculate Monday of current week for weekStartDate
+            const today = new Date(todayStr);
+            const dayOfWeek = today.getDay();
+            const monday = new Date(today);
+            monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+            const weekStartDate = format(monday, 'yyyy-MM-dd');
+
+            await api.setWeeklyPlan(targets, weekStartDate, isRecurring);
+            setShowWeeklyPlanModal(false);
+            fetchWeeklyPlan(); // Refresh
+            fetchStats(); // Refresh stats too in case goals changed
+        } catch (err) {
+            logger.error('Failed to save weekly plan', err);
+        }
+    };
+
+    const handlePlanWithSammy = () => {
+        navigate('/companion', { state: { context: 'weekly_planning' } });
     };
 
     return (
@@ -220,7 +276,7 @@ export default function Home() {
             </div>
 
             {/* Quick Actions */}
-            <Card className="mb-8 p-6 animate-slideUp" style={{ animationDelay: '200ms' }}>
+            <Card className="mb-8 p-6 animate-slideUp" style={{ animationDelay: '150ms' }}>
                 <h3 className="font-bold text-slate-800 dark:text-slate-50 mb-4">Quick Actions</h3>
                 <Button
                     variant="primary"
@@ -241,17 +297,55 @@ export default function Home() {
                 </Button>
             </Card>
 
+            {/* This Week Card */}
+            <div className="mb-8 animate-slideUp" style={{ animationDelay: '200ms' }}>
+                <ThisWeekCard
+                    weekData={weekPlan?.currentWeek}
+                    hasPlan={weekPlan?.hasPlan}
+                    onEditClick={() => setShowWeeklyPlanModal(true)}
+                    onPlanWithSammy={handlePlanWithSammy}
+                    loading={weekPlanLoading}
+                    weekLabel={weekOffset === 0 ? 'This Week' : 'Next Week'}
+                    onWeekToggle={handleWeekToggle}
+                    canGoPrev={weekOffset > 0}
+                    canGoNext={weekOffset < 1}
+                />
+            </div>
+
             {/* Weekly Trend */}
             <Card
-                className="p-6 animate-slideUp cursor-pointer active:scale-[0.98] transition-transform"
+                className="p-6 animate-slideUp"
                 style={{ animationDelay: '300ms' }}
-                onClick={() => setShowEditModal(true)}
             >
-                <div className="flex items-center justify-between mb-6">
+                <div
+                    className="flex items-center justify-between mb-4 cursor-pointer"
+                    onClick={() => setShowLast7DaysModal(true)}
+                >
                     <h3 className="font-bold text-slate-800 dark:text-slate-50">Last 7 days</h3>
+                    <span className="text-xs text-primary font-medium dark:text-sky-400">
+                        View Summary
+                    </span>
                 </div>
 
-                <WeeklyTrend data={trends} currentDateStr={manualDate || format(new Date(), 'yyyy-MM-dd')} />
+                {/* Quick stats row */}
+                {trends.length > 0 && (
+                    <div className="flex items-center gap-3 mb-4 text-xs">
+                        <span className="text-slate-600 dark:text-slate-400">
+                            {trends.slice(0, 7).reduce((sum, d) => sum + (d.count || 0), 0)} drinks
+                        </span>
+                        <span className="text-slate-300 dark:text-slate-600">|</span>
+                        <span className="text-green-600 dark:text-green-400">
+                            {trends.slice(0, 7).filter(d => d.count === 0).length} dry days
+                        </span>
+                    </div>
+                )}
+
+                <div
+                    className="cursor-pointer active:scale-[0.98] transition-transform"
+                    onClick={() => setShowEditModal(true)}
+                >
+                    <WeeklyTrend data={trends} currentDateStr={manualDate || format(new Date(), 'yyyy-MM-dd')} />
+                </div>
 
                 <Button
                     variant="ghost"
@@ -281,6 +375,23 @@ export default function Home() {
                 isOpen={showEditModal}
                 onClose={() => setShowEditModal(false)}
                 onSave={fetchStats}
+                currentDate={manualDate || format(new Date(), 'yyyy-MM-dd')}
+            />
+
+            <WeeklyPlanModal
+                isOpen={showWeeklyPlanModal}
+                onClose={() => setShowWeeklyPlanModal(false)}
+                onSave={handleSaveWeeklyPlan}
+                currentPlan={weekPlan?.template}
+                onChatWithSammy={() => {
+                    setShowWeeklyPlanModal(false);
+                    handlePlanWithSammy();
+                }}
+            />
+
+            <Last7DaysSummaryModal
+                isOpen={showLast7DaysModal}
+                onClose={() => setShowLast7DaysModal(false)}
                 currentDate={manualDate || format(new Date(), 'yyyy-MM-dd')}
             />
 

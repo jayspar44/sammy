@@ -2,6 +2,7 @@ const { db } = require('../services/firebase');
 const { generateChatResponse, sendFunctionResults } = require('../services/ai');
 const { calculateStats, getContextSummary } = require('../services/statsService');
 const { updateLog } = require('./logController');
+const { executeSetWeeklyTargets } = require('./weeklyPlanController');
 
 const admin = require('firebase-admin');
 
@@ -9,7 +10,7 @@ const admin = require('firebase-admin');
 const LOG_TOOLS = [
     {
         name: 'update_log',
-        description: 'Updates drink count for a specific date. Use when user wants to correct, change, or log drinks for any date.',
+        description: 'Records ACTUAL drinks consumed for a past date. Use when user tells you how many drinks they HAD (past tense) - e.g., "I had 2 yesterday", "Friday was 3 drinks", "log 1 for last Tuesday". NEVER use for planning future days.',
         parameters: {
             type: 'OBJECT',
             properties: {
@@ -28,6 +29,24 @@ const LOG_TOOLS = [
                 date: { type: 'STRING', description: 'Date in YYYY-MM-DD format' }
             },
             required: ['date']
+        }
+    },
+    {
+        name: 'set_weekly_targets',
+        description: 'Sets drinking GOALS/LIMITS for future days. Use when user wants to PLAN their week - e.g., "I want to limit myself to 2 per day", "plan my week", "set my targets". This is for what they WANT to drink, not what they already drank.',
+        parameters: {
+            type: 'OBJECT',
+            properties: {
+                monday: { type: 'NUMBER', description: 'Target drinks for Monday (0 or positive integer)' },
+                tuesday: { type: 'NUMBER', description: 'Target drinks for Tuesday (0 or positive integer)' },
+                wednesday: { type: 'NUMBER', description: 'Target drinks for Wednesday (0 or positive integer)' },
+                thursday: { type: 'NUMBER', description: 'Target drinks for Thursday (0 or positive integer)' },
+                friday: { type: 'NUMBER', description: 'Target drinks for Friday (0 or positive integer)' },
+                saturday: { type: 'NUMBER', description: 'Target drinks for Saturday (0 or positive integer)' },
+                sunday: { type: 'NUMBER', description: 'Target drinks for Sunday (0 or positive integer)' },
+                isRecurring: { type: 'BOOLEAN', description: 'If true, repeat this pattern weekly (default: true)' }
+            },
+            required: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
         }
     }
 ];
@@ -302,6 +321,17 @@ Here's my response: {"count": 2, "message": "..."}
             typicalWeekContext = `\nTypical Week Baseline: ${weekString} (Total: ${weekTotal}/week)`;
         }
 
+        // Gather weekly plan template if set
+        const weeklyPlanTemplate = userData.weeklyPlanTemplate || null;
+        let weeklyPlanContext = "";
+        if (weeklyPlanTemplate && weeklyPlanTemplate.isActive !== false) {
+            const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+            const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            const planString = days.map((day, idx) => `${dayLabels[idx]}: ${weeklyPlanTemplate[day] ?? '?'}`).join(', ');
+            const planTotal = days.reduce((sum, day) => sum + (weeklyPlanTemplate[day] || 0), 0);
+            weeklyPlanContext = `\nCurrent Weekly Plan: ${planString} (Total: ${planTotal}/week)`;
+        }
+
         // 2. Fetch Chat History (Last 7 Days)
         const sevenDaysAgo = new Date(anchorDate);
         sevenDaysAgo.setDate(anchorDate.getDate() - 7);
@@ -327,7 +357,7 @@ Here's my response: {"count": 2, "message": "..."}
         // 3. Construct System Instruction (history and current message are handled separately)
         const contextInfo = `
 CONTEXT:${userName ? `\nUser: ${userName}` : ''}
-Today: ${currentDayName}, ${todayStr}${typicalWeekContext}
+Today: ${currentDayName}, ${todayStr}${typicalWeekContext}${weeklyPlanContext}
 
 STATS & INSIGHTS:
 ${contextSummary}
@@ -343,19 +373,36 @@ TOOL USAGE:
 - Parse dates naturally: "yesterday", "Friday", "last Tuesday", "3 days ago"
 - Today is ${todayStr}
 - NEVER update future dates - they will fail validation
+
+WEEKLY PLANNING:
+- CRITICAL: set_weekly_targets is for FUTURE GOALS, not logging past drinks
+- When user says "plan my week", "set targets", "set goals", or talks about what they WANT to drink → use set_weekly_targets
+- When user says "I had X drinks", "yesterday was Y", or talks about what they DID drink → use update_log
+- NEVER call update_log when someone is planning/setting intentions
+
+Process for weekly planning:
+1. Acknowledge their current plan (if any) and how last week went
+2. Ask what they're thinking - don't assume
+3. Help them think through the week naturally:
+   - "What does your week look like? Any events or social things coming up?"
+   - "Any days you want to keep completely dry?"
+4. Parse their preferences naturally (2 per day, dry weekdays, lighter on Monday, etc.)
+5. Confirm before saving: "So that's Mon-Thu: 1, Fri-Sat: 3, Sun: 1 - total of 10 for the week. Sound good?"
+6. Call set_weekly_targets ONLY after they confirm
+- ${weeklyPlanTemplate ? 'User has an existing weekly plan - acknowledge it and ask if they want to adjust' : 'User has no weekly plan set yet - you can suggest creating one if they seem interested in planning'}
 ` : '';
 
         const systemInstruction = `
 You are Sammy, a compassionate, intelligent AI habit companion helping users reduce alcohol consumption.
 ${morningCheckinContext}${toolGuidance}
 IDENTITY & TONE:
-- Talk like a real person, not a cheerleader or motivational poster.
-- Be supportive but casual - more like a thoughtful friend than a life coach.
-- Non-judgmental and warm, but don't overdo the enthusiasm.
-- Use emojis sparingly (0-1 per message max), and only when they fit naturally.
-- Avoid excessive exclamation marks (use 1-2 max per message).
-- Don't force every conversation back to drinking stats - sometimes just chat.
-- NEVER patronizing. You are a partner, not a parent.
+- You're a supportive coach who's genuinely in the user's corner
+- Be warm, encouraging, and conversational - like a friend who also happens to be great at keeping people on track
+- Celebrate wins naturally ("Nice work!" not "That's absolutely fantastic!")
+- When things are tough, be understanding and solution-focused
+- Use emojis sparingly (0-1 per message max) when they feel natural
+- Keep it real - acknowledge challenges honestly while staying positive
+- NEVER be preachy, lecturing, or parental
 
 AVOID THESE PATTERNS (they sound robotic):
 - Don't start messages with "Hey [Name]" repeatedly - vary your openings or skip the greeting
@@ -363,6 +410,13 @@ AVOID THESE PATTERNS (they sound robotic):
 - Don't start responses with pleasantries like "Thanks for asking" or "I appreciate you asking" - get straight to the answer
 - Don't say "really well" or "really good" in every message - be more specific or matter-of-fact
 - Be encouraging when appropriate, but do it naturally - mix acknowledgment with facts rather than cheerleading in every message
+
+DO THESE THINGS:
+- Open with variety: sometimes a greeting, sometimes jump right in, sometimes reference what they shared
+- Mix acknowledgment with practical observations ("3 dry days this week - that pattern seems to work for you")
+- When giving stats, make them feel meaningful not just data
+- If they're struggling, normalize it ("Weekends are tricky for a lot of people")
+- End naturally - sometimes with encouragement, sometimes a question, sometimes just the info they asked for
 
 SAFETY GUARDRAILS (CRITICAL):
 - DO NOT provide medical advice.
@@ -418,6 +472,11 @@ INSTRUCTIONS:
                         req.log.info({ functionName: fn.name, args: fn.args, result }, 'Function executed');
                     } else if (fn.name === 'get_log') {
                         result = await executeGetLog(uid, fn.args.date);
+                        req.log.info({ functionName: fn.name, args: fn.args, result }, 'Function executed');
+                    } else if (fn.name === 'set_weekly_targets') {
+                        const { monday, tuesday, wednesday, thursday, friday, saturday, sunday, isRecurring } = fn.args;
+                        const targets = { monday, tuesday, wednesday, thursday, friday, saturday, sunday };
+                        result = await executeSetWeeklyTargets(uid, targets, isRecurring, req.log);
                         req.log.info({ functionName: fn.name, args: fn.args, result }, 'Function executed');
                     } else {
                         result = { error: `Unknown function: ${fn.name}` };
@@ -535,7 +594,11 @@ INSTRUCTIONS:
 
     } catch (error) {
         req.log.error({ err: error }, 'Error in chat handler');
-        res.status(500).json({ error: 'Failed to generate response' });
+        let userMessage = 'Failed to generate response';
+        if (error.message?.includes('timeout') || error.code === 'ETIMEDOUT' || error.code === 'ECONNABORTED') {
+            userMessage = 'The response took too long. Please try again.';
+        }
+        res.status(500).json({ error: userMessage });
     }
 };
 

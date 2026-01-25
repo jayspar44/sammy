@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation } from 'react-router-dom';
-import { Send, Bell } from 'lucide-react';
+import { Send, Bell, Calendar } from 'lucide-react';
 import Button from '../components/ui/Button';
 import ChatMessage from '../components/common/ChatMessage';
+import ChatSuggestions, { getSuggestionsForContext } from '../components/common/ChatSuggestions';
 import { api } from '../api/services';
 import { format, subDays } from 'date-fns';
 import { logger } from '../utils/logger';
@@ -59,7 +60,8 @@ export default function Companion() {
     const [isTyping, setIsTyping] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [messages, setMessages] = useState([]);
-    const [chatContext, setChatContext] = useState(null); // 'morning_checkin' or null
+    const [chatContext, setChatContext] = useState(null); // 'morning_checkin' | 'weekly_planning' | null
+    const [showSuggestions, setShowSuggestions] = useState(true);
 
     const loadHistory = useCallback(async () => {
         try {
@@ -136,16 +138,58 @@ export default function Companion() {
         }
     }, [loadHistory]);
 
+    const handleWeeklyPlanning = useCallback(async () => {
+        setIsLoading(true);
+        try {
+            // Load existing chat history first
+            const history = await loadHistory();
+
+            // Add status message about weekly planning
+            const statusMessage = {
+                id: 'weekly-planning-status',
+                type: 'status',
+                icon: 'calendar',
+                text: 'Weekly planning'
+            };
+
+            // Display history + status + intro message
+            setMessages([
+                ...history,
+                statusMessage,
+                {
+                    id: Date.now(),
+                    text: "Let's plan your week! You can tell me your drinking targets for each day, or say something like \"2 on weekdays, 3 on weekends\" and I'll set it up for you.",
+                    sender: 'sammy'
+                }
+            ]);
+        } catch (err) {
+            logger.error('Failed to initialize weekly planning', err);
+            setMessages([
+                {
+                    id: 'weekly-planning-fallback',
+                    text: "Let's plan your week! Tell me how many drinks you're aiming for each day.",
+                    sender: 'sammy'
+                }
+            ]);
+        } finally {
+            setIsLoading(false);
+        }
+    }, [loadHistory]);
+
     useEffect(() => {
         const initChat = async () => {
             setIsLoading(true);
-            // Check if we're coming from a notification tap
+            // Check if we're coming from a notification tap or navigation
             const routeContext = location.state?.context;
 
             if (routeContext === 'morning_checkin') {
                 // Handle morning check-in flow
                 setChatContext('morning_checkin');
                 await handleMorningCheckin();
+            } else if (routeContext === 'weekly_planning') {
+                // Handle weekly planning flow
+                setChatContext('weekly_planning');
+                await handleWeeklyPlanning();
             } else {
                 // Normal chat flow - load history
                 const history = await loadHistory();
@@ -159,7 +203,7 @@ export default function Companion() {
         };
 
         initChat();
-    }, [location.state?.context, handleMorningCheckin, loadHistory]);
+    }, [location.state?.context, handleMorningCheckin, handleWeeklyPlanning, loadHistory]);
 
     const scrollToBottom = () => {
         bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -169,17 +213,17 @@ export default function Companion() {
         scrollToBottom();
     }, [messages, isTyping]);
 
-    const handleSend = async () => {
-        if (!input.trim()) return;
+    const sendMessage = async (messageText) => {
+        if (!messageText.trim()) return;
 
-        const userMsg = { id: Date.now(), text: input, sender: 'user' };
+        const userMsg = { id: Date.now(), text: messageText, sender: 'user' };
         setMessages(prev => [...prev, userMsg]);
         setInput('');
         setIsTyping(true);
+        setShowSuggestions(false);
 
         try {
             const todayStr = format(new Date(), 'yyyy-MM-dd');
-            // Pass context to API if we're in morning_checkin mode
             const response = await api.sendMessage(userMsg.text, todayStr, chatContext);
 
             setIsTyping(false);
@@ -189,8 +233,8 @@ export default function Companion() {
                 sender: 'sammy'
             }]);
 
-            // If this was a morning checkin conversation, clear the context after first exchange
-            if (chatContext === 'morning_checkin') {
+            // Clear the context after first exchange for special modes
+            if (chatContext === 'morning_checkin' || chatContext === 'weekly_planning') {
                 setChatContext(null);
             }
         } catch (err) {
@@ -203,6 +247,9 @@ export default function Companion() {
             }]);
         }
     };
+
+    const handleSend = () => sendMessage(input);
+    const handleSuggestionSelect = (suggestion) => sendMessage(suggestion);
 
     // Loading indicator component
     const LoadingIndicator = () => (
@@ -226,7 +273,11 @@ export default function Companion() {
                     <>
                         {messages.map(msg => (
                             msg.type === 'status' ? (
-                                <StatusMessage key={msg.id} icon={Bell} text={msg.text} />
+                                <StatusMessage
+                                    key={msg.id}
+                                    icon={msg.icon === 'calendar' ? Calendar : Bell}
+                                    text={msg.text}
+                                />
                             ) : (
                                 <ChatMessage key={msg.id} {...msg} />
                             )
@@ -239,6 +290,14 @@ export default function Companion() {
                                     <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce dark:bg-slate-500" style={{ animationDelay: '300ms' }} />
                                 </div>
                             </div>
+                        )}
+                        {/* Quick suggestions */}
+                        {showSuggestions && !isTyping && messages.length > 0 && (
+                            <ChatSuggestions
+                                suggestions={getSuggestionsForContext(chatContext)}
+                                onSelect={handleSuggestionSelect}
+                                context={chatContext}
+                            />
                         )}
                     </>
                 )}

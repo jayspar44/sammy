@@ -4,7 +4,7 @@
   "description": "AI-based habit companion app",
   "main": "backend/src/index.js",
   "scripts": {
-    "install-all": "npm install && cd frontend && npm install && cd ../backend && npm install",
+    "install-all": "npm install --include=dev && cd frontend && npm install --include=dev && cd ../backend && npm install --include=dev",
     "build": "npm run install-all && cd frontend && npm run build",
     "lint": "npm run lint --prefix frontend && npm run lint --prefix backend",
     "start": "node backend/src/index.js",

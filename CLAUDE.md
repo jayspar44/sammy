@@ -408,3 +408,10 @@ git worktree prune
 - Worktrees share the same `.git` object database (space efficient)
 - Cannot checkout the same branch in multiple worktrees
 - Claude Code sessions should `cd` into the worktree directory to work on that feature
+
+**Troubleshooting:**
+- If `npm run lint` fails with "eslint: command not found", devDependencies weren't installed. Fix with:
+  ```bash
+  cd frontend && npm install --include=dev
+  cd ../backend && npm install --include=dev
+  ```

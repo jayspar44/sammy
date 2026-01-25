@@ -30,8 +30,8 @@ const SunProgress = ({ current, goal, hasLogged = false, date = null }) => {
                             )}
                         </div>
                         <div className="flex items-baseline gap-1">
-                            <span className="text-4xl font-bold tracking-tight">{hasLogged ? current : '-'}</span>
-                            <span className="text-primary-light font-medium">/ {goal}</span>
+                            <span className="text-5xl font-bold tracking-tight">{hasLogged ? current : '-'}</span>
+                            <span className="text-2xl text-primary-light font-medium">/ {goal}</span>
                         </div>
                     </div>
                     {/* Optional: Add an icon or secondary stat here */}

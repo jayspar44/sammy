@@ -23,9 +23,11 @@ import { logger } from '../utils/logger';
 
 // Notification IDs
 const MORNING_REMINDER_ID = 1;
+const PLANNING_REMINDER_ID = 2;
 
-// Storage key for notification settings
+// Storage keys for notification settings
 const NOTIFICATION_STORAGE_KEY = 'sammy_notification_settings';
+const PLANNING_NOTIFICATION_STORAGE_KEY = 'sammy_planning_notification_settings';
 
 /**
  * Check if notifications are supported on this platform
@@ -121,6 +123,34 @@ export const getSavedNotificationSettings = async () => {
 };
 
 /**
+ * Save planning notification settings to Capacitor Preferences
+ */
+const savePlanningNotificationSettings = async (enabled, dayOfWeek, time) => {
+  try {
+    await Preferences.set({
+      key: PLANNING_NOTIFICATION_STORAGE_KEY,
+      value: JSON.stringify({ enabled, dayOfWeek, time })
+    });
+  } catch (error) {
+    logger.error('Error saving planning notification settings:', error);
+  }
+};
+
+/**
+ * Get saved planning notification settings from Capacitor Preferences
+ * @returns {Promise<{enabled: boolean, dayOfWeek: number, time: string}|null>}
+ */
+export const getSavedPlanningNotificationSettings = async () => {
+  try {
+    const { value } = await Preferences.get({ key: PLANNING_NOTIFICATION_STORAGE_KEY });
+    return value ? JSON.parse(value) : null;
+  } catch (error) {
+    logger.error('Error reading planning notification settings:', error);
+    return null;
+  }
+};
+
+/**
  * Schedule a daily morning reminder notification
  * @param {string} time - Time in 24hr format (e.g., "08:00")
  * @param {boolean} saveSettings - Whether to save settings (default true)
@@ -211,6 +241,112 @@ export const cancelReminder = async (clearSettings = true) => {
 };
 
 /**
+ * Schedule a weekly planning reminder notification
+ * @param {number} dayOfWeek - Day of week (0=Sunday, 1=Monday, etc.)
+ * @param {string} time - Time in 24hr format (e.g., "18:00")
+ * @param {boolean} saveSettings - Whether to save settings (default true)
+ * @returns {Promise<boolean>} True if scheduled successfully
+ */
+export const schedulePlanningReminder = async (dayOfWeek, time, saveSettings = true) => {
+  if (!isNotificationSupported()) {
+    logger.warn('Notifications not supported on this platform');
+    return false;
+  }
+
+  try {
+    // First, cancel any existing planning reminder
+    await cancelPlanningReminder(false);
+
+    // Check if we have permission
+    const hasPermission = await checkPermissions();
+    if (!hasPermission) {
+      logger.warn('No notification permission, cannot schedule planning reminder');
+      return false;
+    }
+
+    // Calculate next occurrence of the specified day and time
+    const [hours, minutes] = time.split(':').map(Number);
+    const now = new Date();
+    const scheduleAt = new Date();
+
+    // Find the next occurrence of the target day of week
+    const currentDay = now.getDay();
+    let daysUntilTarget = dayOfWeek - currentDay;
+    if (daysUntilTarget <= 0) {
+      daysUntilTarget += 7; // Next week
+    }
+
+    scheduleAt.setDate(now.getDate() + daysUntilTarget);
+    scheduleAt.setHours(hours, minutes, 0, 0);
+
+    // If the time has already passed today and it's the target day, schedule for next week
+    if (daysUntilTarget === 0 && scheduleAt <= now) {
+      scheduleAt.setDate(scheduleAt.getDate() + 7);
+    }
+
+    // Schedule the notification
+    await LocalNotifications.schedule({
+      notifications: [
+        {
+          title: 'Ready to plan your week?',
+          body: 'Tap to set your drinking targets with Sammy',
+          id: PLANNING_REMINDER_ID,
+          schedule: {
+            at: scheduleAt,
+            allowWhileIdle: true,
+          },
+          extra: {
+            context: 'weekly_planning',
+            scheduledDayOfWeek: dayOfWeek,
+            scheduledTime: time,
+          },
+          smallIcon: 'ic_stat_icon_config_sample',
+          autoCancel: true,
+        },
+      ],
+    });
+
+    // Save settings for restoration after reboot/app restart
+    if (saveSettings) {
+      await savePlanningNotificationSettings(true, dayOfWeek, time);
+    }
+
+    logger.debug(`Planning reminder scheduled for ${scheduleAt.toLocaleString()} (day ${dayOfWeek}, allowWhileIdle: true)`);
+    return true;
+  } catch (error) {
+    logger.error('Error scheduling planning reminder:', error);
+    return false;
+  }
+};
+
+/**
+ * Cancel the weekly planning reminder notification
+ * @param {boolean} clearSettings - Whether to clear saved settings (default true)
+ * @returns {Promise<boolean>} True if cancelled successfully
+ */
+export const cancelPlanningReminder = async (clearSettings = true) => {
+  if (!isNotificationSupported()) {
+    return false;
+  }
+
+  try {
+    await LocalNotifications.cancel({
+      notifications: [{ id: PLANNING_REMINDER_ID }],
+    });
+
+    if (clearSettings) {
+      await savePlanningNotificationSettings(false, null, null);
+    }
+
+    logger.debug('Planning reminder cancelled');
+    return true;
+  } catch (error) {
+    logger.error('Error cancelling planning reminder:', error);
+    return false;
+  }
+};
+
+/**
  * Schedule a test notification (fires in 5 seconds)
  * Used for developer mode testing
  * @returns {Promise<boolean>} True if scheduled successfully
@@ -259,25 +395,40 @@ export const setupNotificationHandlers = (onNotificationTap) => {
   }
 
   try {
-    // Listen for when notification is received/displayed (to reschedule for next day)
+    // Listen for when notification is received/displayed (to reschedule)
     LocalNotifications.addListener('localNotificationReceived', async (notification) => {
       logger.debug('Notification received:', notification);
 
       // Check if this is our morning reminder
       if (notification.id === MORNING_REMINDER_ID) {
-        // Only reschedule if notifications are still enabled
         const settings = await getSavedNotificationSettings();
         if (!settings?.enabled) {
-          logger.debug('Notifications disabled, not rescheduling');
+          logger.debug('Morning notifications disabled, not rescheduling');
           return;
         }
 
         const scheduledTime = notification.extra?.scheduledTime;
         if (scheduledTime) {
           logger.debug('Rescheduling morning reminder for tomorrow at', scheduledTime);
-          // Small delay to ensure current notification is fully processed
           setTimeout(async () => {
-            await scheduleDailyReminder(scheduledTime, false); // Don't re-save settings
+            await scheduleDailyReminder(scheduledTime, false);
+          }, 1000);
+        }
+      }
+
+      // Check if this is our planning reminder
+      if (notification.id === PLANNING_REMINDER_ID) {
+        const settings = await getSavedPlanningNotificationSettings();
+        if (!settings?.enabled) {
+          logger.debug('Planning notifications disabled, not rescheduling');
+          return;
+        }
+
+        const { scheduledDayOfWeek, scheduledTime } = notification.extra || {};
+        if (scheduledDayOfWeek !== undefined && scheduledTime) {
+          logger.debug('Rescheduling planning reminder for next week');
+          setTimeout(async () => {
+            await schedulePlanningReminder(scheduledDayOfWeek, scheduledTime, false);
           }, 1000);
         }
       }
@@ -288,17 +439,25 @@ export const setupNotificationHandlers = (onNotificationTap) => {
       logger.debug('Notification tapped:', notification);
 
       const context = notification.notification.extra?.context;
-      const scheduledTime = notification.notification.extra?.scheduledTime;
+      const notificationId = notification.notification.id;
 
-      // Reschedule for tomorrow (in case received event didn't fire)
-      // Only reschedule if notifications are still enabled
-      if (notification.notification.id === MORNING_REMINDER_ID && scheduledTime) {
+      // Reschedule morning reminder
+      if (notificationId === MORNING_REMINDER_ID) {
         const settings = await getSavedNotificationSettings();
-        if (settings?.enabled) {
-          logger.debug('Rescheduling morning reminder after tap for tomorrow at', scheduledTime);
+        const scheduledTime = notification.notification.extra?.scheduledTime;
+        if (settings?.enabled && scheduledTime) {
+          logger.debug('Rescheduling morning reminder after tap');
           await scheduleDailyReminder(scheduledTime, false);
-        } else {
-          logger.debug('Notifications disabled, not rescheduling after tap');
+        }
+      }
+
+      // Reschedule planning reminder
+      if (notificationId === PLANNING_REMINDER_ID) {
+        const settings = await getSavedPlanningNotificationSettings();
+        const { scheduledDayOfWeek, scheduledTime } = notification.notification.extra || {};
+        if (settings?.enabled && scheduledDayOfWeek !== undefined && scheduledTime) {
+          logger.debug('Rescheduling planning reminder after tap');
+          await schedulePlanningReminder(scheduledDayOfWeek, scheduledTime, false);
         }
       }
 
@@ -326,26 +485,39 @@ export const restoreNotifications = async () => {
     return false;
   }
 
+  let morningRestored = false;
+  let planningRestored = false;
+
   try {
-    const settings = await getSavedNotificationSettings();
-
-    if (!settings || !settings.enabled || !settings.time) {
-      logger.debug('No notification settings to restore');
-      return false;
-    }
-
-    // Check if there's already a pending notification
     const pending = await getPendingNotifications();
-    const hasMorningReminder = pending.some(n => n.id === MORNING_REMINDER_ID);
 
-    if (hasMorningReminder) {
-      logger.debug('Morning reminder already scheduled, no restore needed');
-      return true;
+    // Restore morning reminder
+    const morningSettings = await getSavedNotificationSettings();
+    if (morningSettings?.enabled && morningSettings?.time) {
+      const hasMorningReminder = pending.some(n => n.id === MORNING_REMINDER_ID);
+      if (!hasMorningReminder) {
+        logger.debug('Restoring morning reminder for', morningSettings.time);
+        morningRestored = await scheduleDailyReminder(morningSettings.time, false);
+      } else {
+        logger.debug('Morning reminder already scheduled');
+        morningRestored = true;
+      }
     }
 
-    // Reschedule the notification
-    logger.debug('Restoring morning reminder for', settings.time);
-    return await scheduleDailyReminder(settings.time, false);
+    // Restore planning reminder
+    const planningSettings = await getSavedPlanningNotificationSettings();
+    if (planningSettings?.enabled && planningSettings?.dayOfWeek !== undefined && planningSettings?.time) {
+      const hasPlanningReminder = pending.some(n => n.id === PLANNING_REMINDER_ID);
+      if (!hasPlanningReminder) {
+        logger.debug('Restoring planning reminder for day', planningSettings.dayOfWeek, 'at', planningSettings.time);
+        planningRestored = await schedulePlanningReminder(planningSettings.dayOfWeek, planningSettings.time, false);
+      } else {
+        logger.debug('Planning reminder already scheduled');
+        planningRestored = true;
+      }
+    }
+
+    return morningRestored || planningRestored;
   } catch (error) {
     logger.error('Error restoring notifications:', error);
     return false;

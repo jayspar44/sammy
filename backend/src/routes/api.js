@@ -43,6 +43,12 @@ router.post('/user/profile', updateProfile);
 router.get('/user/profile', getProfile);
 router.get('/user/milestones', getMilestones);
 
+// Weekly Plan
+const { setWeeklyPlan, getWeeklyPlan, getWeeklySummary } = require('../controllers/weeklyPlanController');
+router.post('/user/weekly-plan', setWeeklyPlan);
+router.get('/user/weekly-plan', getWeeklyPlan);
+router.get('/stats/weekly-summary', getWeeklySummary);
+
 // Chat
 const { handleMessage, getChatHistory, deleteChatHistory } = require('../controllers/chatController');
 router.post('/chat', chatLimiter, handleMessage);

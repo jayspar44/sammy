@@ -143,7 +143,7 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
 
         if (editMode === 'target') {
             const currentGoal = modifiedGoals[date] ?? day.limit;
-            const newGoal = Math.max(1, currentGoal + delta); // Min goal 1? Or 0? Let's say 1 for logic.
+            const newGoal = Math.max(0, currentGoal + delta);
 
             setModifiedGoals(prev => ({
                 ...prev,
@@ -397,10 +397,10 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
                                                     )}
                                                     <button
                                                         onClick={() => handleCountChange(day.date, -1)}
-                                                        disabled={currentCount === 0}
+                                                        disabled={editMode === 'target' ? currentLimit === 0 : currentCount === 0}
                                                         className={clsx(
                                                             "w-10 h-10 rounded-lg flex items-center justify-center text-slate-600 dark:text-slate-300 transition-colors",
-                                                            currentCount === 0
+                                                            (editMode === 'target' ? currentLimit === 0 : currentCount === 0)
                                                                 ? "bg-slate-100 dark:bg-slate-700 cursor-not-allowed opacity-50"
                                                                 : "bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 active:scale-95"
                                                         )}
