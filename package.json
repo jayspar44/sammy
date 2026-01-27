@@ -1,6 +1,6 @@
 {
   "name": "sammy",
-  "version": "0.13.2",
+  "version": "0.14.0",
   "description": "AI-based habit companion app",
   "main": "backend/src/index.js",
   "scripts": {
@@ -44,6 +44,7 @@
   "devDependencies": {
     "@commitlint/cli": "^20.3.1",
     "@commitlint/config-conventional": "^20.3.1",
+    "commitlint": "^20.3.1",
     "eslint": "^9.0.0",
     "husky": "^9.1.7",
     "nodemon": "^3.1.4",
