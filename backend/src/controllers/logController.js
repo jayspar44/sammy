@@ -27,6 +27,21 @@ const logDrink = async (req, res) => {
 
     try {
         const userRef = db.collection('users').doc(uid);
+
+        // Check that date is not before user's registration date
+        const userDoc = await userRef.get();
+        const userData = userDoc.exists ? userDoc.data() : {};
+
+        if (userData.registeredDate) {
+            const registeredDate = new Date(userData.registeredDate);
+            registeredDate.setHours(0, 0, 0, 0);
+            const requestedDate = new Date(date + 'T00:00:00');
+
+            if (requestedDate < registeredDate) {
+                return res.status(400).json({ error: 'Cannot add entries before your registration date' });
+            }
+        }
+
         const logRef = userRef.collection('logs').doc(date);
 
         await db.runTransaction(async (t) => {
@@ -157,6 +172,23 @@ const updateLog = async (req, res) => {
 
     try {
         const userRef = db.collection('users').doc(uid);
+
+        // Check that date is not before user's registration date (unless devMode is enabled)
+        if (!devMode) {
+            const userDoc = await userRef.get();
+            const userData = userDoc.exists ? userDoc.data() : {};
+
+            if (userData.registeredDate) {
+                const registeredDate = new Date(userData.registeredDate);
+                registeredDate.setHours(0, 0, 0, 0);
+                const requestedDate = new Date(date + 'T00:00:00');
+
+                if (requestedDate < registeredDate) {
+                    return res.status(400).json({ error: 'Cannot add entries before your registration date' });
+                }
+            }
+        }
+
         const logRef = userRef.collection('logs').doc(date);
 
         await db.runTransaction(async (t) => {
