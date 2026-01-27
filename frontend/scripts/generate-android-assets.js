@@ -42,6 +42,15 @@ const SPLASH_SIZES = {
 // Android 12+ splash icon size
 const ANDROID_12_SPLASH_SIZE = 288;
 
+// Notification icon sizes (24dp base)
+const NOTIFICATION_DENSITIES = {
+  mdpi: 24,
+  hdpi: 36,
+  xhdpi: 48,
+  xxhdpi: 72,
+  xxxhdpi: 96,
+};
+
 /**
  * Get the source logo path from design directory
  */
@@ -283,6 +292,37 @@ async function generateAndroid12SplashIcons() {
 }
 
 /**
+ * Generate notification icons for all densities
+ */
+async function generateNotificationIcons() {
+  console.log('\n🔔 Generating notification icons...');
+
+  // Prefer PNG source (from Android Asset Studio) over SVG
+  const pngSource = path.join(DESIGN_DIR, 'notification_icon.png');
+  const svgSource = path.join(DESIGN_DIR, 'notification_icon.svg');
+  const sourceIcon = fs.existsSync(pngSource) ? pngSource : svgSource;
+
+  if (!fs.existsSync(sourceIcon)) {
+    console.log('  ⚠ notification_icon.png/svg not found, skipping notification icons');
+    return;
+  }
+
+  for (const [density, size] of Object.entries(NOTIFICATION_DENSITIES)) {
+    const drawableDir = path.join(ANDROID_RES, `drawable-${density}`);
+    ensureDir(drawableDir);
+
+    const outputPath = path.join(drawableDir, 'ic_stat_icon_config_sample.png');
+
+    await sharp(sourceIcon)
+      .resize(size, size)
+      .png()
+      .toFile(outputPath);
+
+    console.log(`  ✓ drawable-${density}/ic_stat_icon_config_sample.png (${size}x${size})`);
+  }
+}
+
+/**
  * Main execution
  */
 async function main() {
@@ -294,6 +334,7 @@ async function main() {
     await generateAppIcons();
     await generateLegacySplashScreens();
     await generateAndroid12SplashIcons();
+    await generateNotificationIcons();
 
     console.log('\n✅ All Android assets generated successfully!');
     console.log('\nNext steps:');
