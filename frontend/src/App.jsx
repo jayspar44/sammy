@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { Routes, Route, useNavigate } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { Layout } from './components/layout/Layout';
 import Home from './pages/Home';
 import Companion from './pages/Companion';
@@ -14,6 +14,7 @@ import { ConnectionProvider, useConnection } from './contexts/ConnectionContext'
 import { setConnectionStatusCallback } from './api/client';
 import { getEnvironment } from './utils/appConfig';
 import { setupKeyboardListeners } from './utils/keyboard';
+import { setupBackButtonHandler, removeBackButtonHandler } from './utils/backButton';
 import { setupNotificationHandlers, restoreNotifications, getSavedNotificationSettings } from './services/notificationService';
 import { useUserPreferences } from './contexts/UserPreferencesContext';
 
@@ -21,6 +22,19 @@ function AppContent() {
   const { setApiConnectionStatus } = useConnection();
   const { setNotificationSettings } = useUserPreferences();
   const navigate = useNavigate();
+  const location = useLocation();
+  const locationRef = useRef(location.pathname);
+
+  // Keep ref updated with current path
+  useEffect(() => {
+    locationRef.current = location.pathname;
+  }, [location.pathname]);
+
+  // Set up back button handler for Android
+  useEffect(() => {
+    setupBackButtonHandler(() => locationRef.current);
+    return () => removeBackButtonHandler();
+  }, []);
 
   // Set dynamic page title based on environment
   useEffect(() => {

@@ -179,6 +179,13 @@ jobs:
         working-directory: frontend
         run: npx cap sync android
 
+      - name: Generate custom Android assets
+        working-directory: frontend
+        run: |
+          echo "Generating custom icons and splash screens..."
+          npm run generate:android-assets
+          echo "✓ Custom Android assets generated"
+
       # Add signing config for release builds
       - name: Configure release signing
         if: inputs.build_type == 'release'

@@ -220,13 +220,6 @@ jobs:
           rm -rf android
           npx cap add android
 
-      - name: Generate custom Android assets
-        working-directory: frontend
-        run: |
-          echo "Generating custom icons and splash screens..."
-          npm run generate:android-assets
-          echo "✓ Custom Android assets generated"
-
       - name: Add Android permissions for notifications
         working-directory: frontend/android/app/src/main
         run: |
@@ -242,6 +235,13 @@ jobs:
         run: |
           npx cap sync android
           echo "✓ Capacitor sync complete"
+
+      - name: Generate custom Android assets
+        working-directory: frontend
+        run: |
+          echo "Generating custom icons and splash screens..."
+          npm run generate:android-assets
+          echo "✓ Custom Android assets generated"
 
       - name: Configure release signing and versioning
         working-directory: frontend/android
