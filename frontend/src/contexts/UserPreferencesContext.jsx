@@ -70,12 +70,8 @@ export const UserPreferencesProvider = ({ children }) => {
                         if (data.avgDrinkCals !== undefined) setAvgDrinkCals(data.avgDrinkCals);
                         if (data.chatHistoryEnabled !== undefined) setChatHistoryEnabled(data.chatHistoryEnabled);
                         if (data.typicalWeek !== undefined) setTypicalWeek(data.typicalWeek);
-                        if (data.notifications !== undefined) {
-                            setNotificationSettings(prev => ({
-                                ...prev,
-                                ...data.notifications
-                            }));
-                        }
+                        // Note: notifications are stored in Capacitor Preferences (device-local)
+                        // and synced via App.jsx on startup, not from backend
                     }
                 } catch (error) {
                     logger.error('Failed to load user profile', error);
@@ -111,12 +107,8 @@ export const UserPreferencesProvider = ({ children }) => {
             if (updates.avgDrinkCals !== undefined) setAvgDrinkCals(updates.avgDrinkCals);
             if (updates.chatHistoryEnabled !== undefined) setChatHistoryEnabled(updates.chatHistoryEnabled);
             if (updates.typicalWeek !== undefined) setTypicalWeek(updates.typicalWeek);
-            if (updates.notifications !== undefined) {
-                setNotificationSettings(prev => ({
-                    ...prev,
-                    ...updates.notifications
-                }));
-            }
+            // Note: notifications are handled locally via Capacitor Preferences,
+            // not saved to backend. Use setNotificationSettings directly for UI state.
             return true;
         } catch (e) {
             logger.error('Failed to save config', e);
@@ -139,6 +131,7 @@ export const UserPreferencesProvider = ({ children }) => {
         chatHistoryEnabled,
         typicalWeek,
         notificationSettings,
+        setNotificationSettings,
         updateProfileConfig,
         profileLoading
     };

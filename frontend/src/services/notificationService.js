@@ -6,7 +6,7 @@
  * - Uses allowWhileIdle for Doze mode compatibility
  * - Manually reschedules after each notification (more reliable than 'every')
  * - Restores notifications on app launch (handles app killed, device reboot)
- * - Settings are persisted to localStorage for restoration
+ * - Settings are persisted to Capacitor Preferences (native storage, survives cache clear)
  *
  * ANDROID PERMISSIONS (add to AndroidManifest.xml for maximum reliability):
  * - android.permission.SCHEDULE_EXACT_ALARM (Android 12+) - for precise timing
@@ -18,6 +18,7 @@
 
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { Capacitor } from '@capacitor/core';
+import { Preferences } from '@capacitor/preferences';
 import { logger } from '../utils/logger';
 
 // Notification IDs
@@ -91,23 +92,28 @@ const getNextScheduleTime = (time) => {
 };
 
 /**
- * Save notification settings to localStorage for restoration after reboot/app restart
+ * Save notification settings to Capacitor Preferences for restoration after reboot/app restart
+ * Uses native storage which survives cache clears (unlike localStorage in WebView)
  */
-const saveNotificationSettings = (enabled, time) => {
+const saveNotificationSettings = async (enabled, time) => {
   try {
-    localStorage.setItem(NOTIFICATION_STORAGE_KEY, JSON.stringify({ enabled, time }));
+    await Preferences.set({
+      key: NOTIFICATION_STORAGE_KEY,
+      value: JSON.stringify({ enabled, time })
+    });
   } catch (error) {
     logger.error('Error saving notification settings:', error);
   }
 };
 
 /**
- * Get saved notification settings
+ * Get saved notification settings from Capacitor Preferences
+ * @returns {Promise<{enabled: boolean, time: string}|null>}
  */
-const getSavedNotificationSettings = () => {
+export const getSavedNotificationSettings = async () => {
   try {
-    const saved = localStorage.getItem(NOTIFICATION_STORAGE_KEY);
-    return saved ? JSON.parse(saved) : null;
+    const { value } = await Preferences.get({ key: NOTIFICATION_STORAGE_KEY });
+    return value ? JSON.parse(value) : null;
   } catch (error) {
     logger.error('Error reading notification settings:', error);
     return null;
@@ -127,8 +133,8 @@ export const scheduleDailyReminder = async (time, saveSettings = true) => {
   }
 
   try {
-    // First, cancel any existing reminder
-    await cancelReminder();
+    // First, cancel any existing reminder (don't clear settings - managed separately)
+    await cancelReminder(false);
 
     // Check if we have permission
     const hasPermission = await checkPermissions();
@@ -165,7 +171,7 @@ export const scheduleDailyReminder = async (time, saveSettings = true) => {
 
     // Save settings for restoration after reboot/app restart
     if (saveSettings) {
-      saveNotificationSettings(true, time);
+      await saveNotificationSettings(true, time);
     }
 
     logger.debug(`Morning reminder scheduled for ${scheduleAt.toLocaleString()} (allowWhileIdle: true)`);
@@ -193,7 +199,7 @@ export const cancelReminder = async (clearSettings = true) => {
 
     // Clear saved settings so notification doesn't restore on app restart
     if (clearSettings) {
-      saveNotificationSettings(false, null);
+      await saveNotificationSettings(false, null);
     }
 
     logger.debug('Morning reminder cancelled');
@@ -259,6 +265,13 @@ export const setupNotificationHandlers = (onNotificationTap) => {
 
       // Check if this is our morning reminder
       if (notification.id === MORNING_REMINDER_ID) {
+        // Only reschedule if notifications are still enabled
+        const settings = await getSavedNotificationSettings();
+        if (!settings?.enabled) {
+          logger.debug('Notifications disabled, not rescheduling');
+          return;
+        }
+
         const scheduledTime = notification.extra?.scheduledTime;
         if (scheduledTime) {
           logger.debug('Rescheduling morning reminder for tomorrow at', scheduledTime);
@@ -278,9 +291,15 @@ export const setupNotificationHandlers = (onNotificationTap) => {
       const scheduledTime = notification.notification.extra?.scheduledTime;
 
       // Reschedule for tomorrow (in case received event didn't fire)
+      // Only reschedule if notifications are still enabled
       if (notification.notification.id === MORNING_REMINDER_ID && scheduledTime) {
-        logger.debug('Rescheduling morning reminder after tap for tomorrow at', scheduledTime);
-        await scheduleDailyReminder(scheduledTime, false);
+        const settings = await getSavedNotificationSettings();
+        if (settings?.enabled) {
+          logger.debug('Rescheduling morning reminder after tap for tomorrow at', scheduledTime);
+          await scheduleDailyReminder(scheduledTime, false);
+        } else {
+          logger.debug('Notifications disabled, not rescheduling after tap');
+        }
       }
 
       if (context && onNotificationTap) {
@@ -308,7 +327,7 @@ export const restoreNotifications = async () => {
   }
 
   try {
-    const settings = getSavedNotificationSettings();
+    const settings = await getSavedNotificationSettings();
 
     if (!settings || !settings.enabled || !settings.time) {
       logger.debug('No notification settings to restore');

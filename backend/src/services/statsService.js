@@ -65,22 +65,34 @@ const calculateStats = async (userId, anchorDate) => {
     // CALCULATE INSIGHTS
     let dryStreak = 0;
 
+    // Get registration date boundary from userData (already fetched at line 12)
+    let registeredDate = null;
+    if (userData.registeredDate) {
+        registeredDate = new Date(userData.registeredDate);
+        registeredDate.setHours(0, 0, 0, 0);
+    }
+
     // Check previous 90 days for streak using loop counter (avoid date mutation)
+    // A dry streak requires explicit 0-drink log entries - missing logs break the streak
     for (let i = 0; i < 90; i++) {
         const checkDate = new Date(anchorDate);
         checkDate.setDate(anchorDate.getDate() - i);
+        checkDate.setHours(0, 0, 0, 0);
         const dStr = checkDate.toISOString().split('T')[0];
+
+        // Stop at registration date boundary
+        if (registeredDate && checkDate < registeredDate) {
+            break;
+        }
+
         const log = logsMap[dStr];
 
-        // If today has 0 drinks so far, it counts towards the streak.
-        // If today has > 0, streak is broken (or 0).
-        // If no log exists for a day, we assume 0 drinks for streak purposes?
-        // Actually, let's be strict: NO log means NO data, but for this MVP
-        // usually users want "no entry" to mean "I didn't drink".
-        // Let's assume missing log = 0 drinks for streak calculation to be generous.
-        const count = log ? log.count : 0;
+        // Break if no log exists (require explicit 0-drink entry)
+        if (!log) {
+            break;
+        }
 
-        if (count === 0) {
+        if (log.count === 0) {
             dryStreak++;
         } else {
             break;

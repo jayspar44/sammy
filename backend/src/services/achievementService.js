@@ -27,17 +27,32 @@ const MILESTONES = {
 
 /**
  * Calculates the current dry streak from logs.
+ * A dry streak requires explicit 0-drink log entries - missing logs break the streak.
  * @param {string} userId - The user's ID.
  * @param {Date} anchorDate - The date to calculate from.
+ * @param {Object|null} userData - Optional user data to avoid duplicate Firestore reads.
  * @returns {Promise<number>} The current dry streak in days.
  */
-const calculateDryStreak = async (userId, anchorDate) => {
+const calculateDryStreak = async (userId, anchorDate, userData = null) => {
     // Validate anchorDate
     if (!anchorDate || !(anchorDate instanceof Date) || isNaN(anchorDate.getTime())) {
         throw new Error('Invalid anchor date provided');
     }
 
     const userRef = db.collection('users').doc(userId);
+
+    // Fetch user data if not provided
+    if (!userData) {
+        const userDoc = await userRef.get();
+        userData = userDoc.exists ? userDoc.data() : {};
+    }
+
+    // Get registration date boundary
+    let registeredDate = null;
+    if (userData.registeredDate) {
+        registeredDate = new Date(userData.registeredDate);
+        registeredDate.setHours(0, 0, 0, 0);
+    }
 
     // Fetch recent logs (up to 365 days for streak calculation)
     const yearAgo = new Date(anchorDate);
@@ -71,13 +86,24 @@ const calculateDryStreak = async (userId, anchorDate) => {
     for (let i = 0; i < 365; i++) {
         const checkDate = new Date(anchorDate);
         checkDate.setDate(anchorDate.getDate() - i);
+        checkDate.setHours(0, 0, 0, 0);
         const dStr = checkDate.toISOString().split('T')[0];
-        const count = logsMap[dStr] ?? 0; // No log = assume 0 drinks
 
+        // Stop at registration date boundary
+        if (registeredDate && checkDate < registeredDate) {
+            break;
+        }
+
+        // Break if no log exists (require explicit 0-drink entry)
+        if (!(dStr in logsMap)) {
+            break;
+        }
+
+        const count = logsMap[dStr];
         if (count === 0) {
             dryStreak++;
         } else {
-            break;
+            break; // Had drinks
         }
     }
 
@@ -86,11 +112,28 @@ const calculateDryStreak = async (userId, anchorDate) => {
 
 /**
  * Calculates the longest dry streak ever achieved.
+ * A dry streak requires consecutive days with explicit 0-drink log entries.
+ * Gaps in logging break the streak.
  * @param {string} userId - The user's ID.
+ * @param {Object|null} userData - Optional user data to avoid duplicate Firestore reads.
  * @returns {Promise<number>} The longest dry streak in days.
  */
-const calculateLongestDryStreak = async (userId) => {
+const calculateLongestDryStreak = async (userId, userData = null) => {
     const userRef = db.collection('users').doc(userId);
+
+    // Fetch user data if not provided
+    if (!userData) {
+        const userDoc = await userRef.get();
+        userData = userDoc.exists ? userDoc.data() : {};
+    }
+
+    // Get registration date boundary
+    let registeredDateStr = null;
+    if (userData.registeredDate) {
+        const registeredDate = new Date(userData.registeredDate);
+        registeredDate.setHours(0, 0, 0, 0);
+        registeredDateStr = registeredDate.toISOString().split('T')[0];
+    }
 
     // Fetch logs from last 2 years (bounded query to prevent memory issues)
     const twoYearsAgo = new Date();
@@ -106,7 +149,7 @@ const calculateLongestDryStreak = async (userId) => {
         return 0;
     }
 
-    // Build sorted array of dates with their counts
+    // Build sorted array of dates with their counts, filtering by registration date
     const logs = [];
     logsSnapshot.forEach(doc => {
         const data = doc.data();
@@ -119,6 +162,10 @@ const calculateLongestDryStreak = async (userId) => {
         }
 
         if (data.date) {
+            // Skip logs before registration date
+            if (registeredDateStr && data.date < registeredDateStr) {
+                return;
+            }
             logs.push({ date: data.date, count });
         }
     });
@@ -126,17 +173,34 @@ const calculateLongestDryStreak = async (userId) => {
     // Sort by date
     logs.sort((a, b) => a.date.localeCompare(b.date));
 
-    // Find longest streak of consecutive 0-drink days
+    // Find longest streak of consecutive 0-drink days with gap detection
     let longestStreak = 0;
     let currentStreak = 0;
+    let previousDateStr = null;
 
     for (const log of logs) {
+        // Check if consecutive with previous date
+        let isConsecutive = false;
+        if (previousDateStr) {
+            const prevDate = new Date(previousDateStr);
+            prevDate.setDate(prevDate.getDate() + 1);
+            const expectedDateStr = prevDate.toISOString().split('T')[0];
+            isConsecutive = (log.date === expectedDateStr);
+        }
+
         if (log.count === 0) {
-            currentStreak++;
+            if (previousDateStr === null || isConsecutive) {
+                currentStreak++;
+            } else {
+                // Gap in dates - start new streak
+                currentStreak = 1;
+            }
             longestStreak = Math.max(longestStreak, currentStreak);
         } else {
             currentStreak = 0;
         }
+
+        previousDateStr = log.date;
     }
 
     return longestStreak;
@@ -149,17 +213,19 @@ const calculateLongestDryStreak = async (userId) => {
  * @returns {Promise<Object>} Object with milestones and current stats.
  */
 const getMilestones = async (userId, anchorDate) => {
-    // Get current stats
-    const [allTimeStats, currentStreak, longestStreak] = await Promise.all([
-        calculateAllTimeStats(userId, anchorDate),
-        calculateDryStreak(userId, anchorDate),
-        calculateLongestDryStreak(userId)
-    ]);
-
-    // Get user's unlocked milestones from profile
+    // Fetch user data FIRST to pass to streak functions (avoids duplicate Firestore reads)
     const userRef = db.collection('users').doc(userId);
     const userDoc = await userRef.get();
     const userData = userDoc.exists ? userDoc.data() : {};
+
+    // Get current stats (pass userData to streak functions)
+    const [allTimeStats, currentStreak, longestStreak] = await Promise.all([
+        calculateAllTimeStats(userId, anchorDate),
+        calculateDryStreak(userId, anchorDate, userData),
+        calculateLongestDryStreak(userId, userData)
+    ]);
+
+    // Get user's unlocked milestones from profile
     const achievements = userData.achievements || { unlockedMilestones: [] };
     const unlockedMap = new Map(
         (achievements.unlockedMilestones || []).map(m => [m.id, m.unlockedAt])

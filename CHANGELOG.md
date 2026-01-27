@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.14.0](https://github.com/jayspar44/sammy/compare/v0.13.2...v0.14.0) (2026-01-27)
+
+
+### Features
+
+* add Android back button support ([0ae46ef](https://github.com/jayspar44/sammy/commit/0ae46ef1ad3261c2110c1225cd5f049a16beb841))
+* add registration date validation and improve streak calculation ([b850f09](https://github.com/jayspar44/sammy/commit/b850f09dedcd87eab126f9c008143f9f64a9d7fe))
+
+
+### Bug Fixes
+
+* persist notification settings using Capacitor Preferences ([370ea05](https://github.com/jayspar44/sammy/commit/370ea05b510174d02db1d65369ae51bc5182f9cf))
+* prevent notification rescheduling when reminders are disabled ([2fbc1f8](https://github.com/jayspar44/sammy/commit/2fbc1f8de22b27d7ae1c2aa7cab4ff97a6509335))
+* use Android Asset Studio PNG for notification icon ([9d323b5](https://github.com/jayspar44/sammy/commit/9d323b50ee4ce57ac181278ab16f1fcb60c838b7))
+
 ### [0.13.2](https://github.com/jayspar44/sammy/compare/v0.13.1...v0.13.2) (2026-01-20)
 
 
