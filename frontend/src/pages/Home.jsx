@@ -57,7 +57,7 @@ const WeeklyTrend = ({ data = [], currentDateStr }) => {
                 </div>
 
                 {/* Chart Area */}
-                <div className="flex-1 flex justify-between items-end gap-3 h-full">
+                <div className="flex-1 flex justify-between gap-3 h-full">
                     {chartData.map((d, i) => {
                         let barColor = "bg-slate-200"; // Default (null/no data placeholder?)
                         let height = "0%";
@@ -76,22 +76,26 @@ const WeeklyTrend = ({ data = [], currentDateStr }) => {
                         }
 
                         return (
-                            <div key={i} className="flex-1 h-full flex flex-col justify-end items-center gap-2 group cursor-pointer relative">
-                                {d.val !== null && (
-                                    <span className="text-[10px] font-bold text-primary animate-fadeIn -mb-1 dark:text-sky-400">{d.val}</span>
-                                )}
-                                {/* Bar */}
-                                <div
-                                    className={cn(
-                                        "w-full rounded-t-sm transition-all duration-500 relative",
-                                        barColor
+                            <div key={i} className="flex-1 flex flex-col items-center">
+                                {/* Bar section - flex-1 gives it height for percentage calculations */}
+                                <div className="flex-1 w-full flex flex-col justify-end items-center">
+                                    {/* Value label - directly above bar */}
+                                    {d.val !== null && (
+                                        <span className="text-[10px] font-bold text-primary mb-0.5 dark:text-sky-400">{d.val}</span>
                                     )}
-                                    style={{ height }}
-                                />
+                                    {/* Bar - percentage height now works because parent has flex-1 height */}
+                                    <div
+                                        className={cn(
+                                            "w-full rounded-t-sm transition-all duration-500",
+                                            barColor
+                                        )}
+                                        style={{ height }}
+                                    />
+                                </div>
 
-                                {/* Label */}
+                                {/* Day label - at bottom */}
                                 <span className={cn(
-                                    "text-xs font-bold",
+                                    "text-xs font-bold mt-1",
                                     d.isToday ? "text-primary dark:text-sky-400" : "text-slate-400 dark:text-slate-500"
                                 )}>
                                     {d.label}
@@ -153,6 +157,7 @@ export default function Home() {
             fetchStats(); // Refresh
         } catch (err) {
             logger.error('Failed to log drink', err);
+            // Keep modal open on error so user can retry
         }
     };
 

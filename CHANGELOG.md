@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.14.1](https://github.com/jayspar44/sammy/compare/v0.14.0...v0.14.1) (2026-01-31)
+
+
+### Features
+
+* add swipe navigation and fix 4 bugs ([e09e162](https://github.com/jayspar44/sammy/commit/e09e1622c14166b9d5012d921d17295738c6b0ec))
+
+
+### Bug Fixes
+
+* chart bars not rendering for values > 0 ([70a4c59](https://github.com/jayspar44/sammy/commit/70a4c5982541ae5271b4925dd94d61825ad46d99))
+* chart labels, back button modal handling, and swipe visual feedback ([9fe61b9](https://github.com/jayspar44/sammy/commit/9fe61b947574245c2f9cc55a746ec278df2d0455))
+
 ## [0.14.0](https://github.com/jayspar44/sammy/compare/v0.13.2...v0.14.0) (2026-01-27)
 
 

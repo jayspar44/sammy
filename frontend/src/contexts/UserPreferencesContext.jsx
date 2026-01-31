@@ -24,6 +24,11 @@ export const UserPreferencesProvider = ({ children }) => {
     // Manual Date (for testing "future/past" logic)
     const [manualDate, setManualDate] = useState(null);
 
+    // Swipe Navigation (default ON on native platforms)
+    const [swipeNavigationEnabled, setSwipeNavigationEnabled] = useState(() => {
+        return localStorage.getItem('sammy_pref_swipeNav') !== 'false'; // Default ON
+    });
+
     // -- Backend User Profile --
     const [firstName, setFirstName] = useState('');
     const [registeredDate, setRegisteredDate] = useState(null);
@@ -48,10 +53,14 @@ export const UserPreferencesProvider = ({ children }) => {
             localStorage.setItem('sammy_pref_spoofDb', spoofDb);
         } else {
             // Optional: reset spoofing when dev mode disabled?
-            // localStorage.removeItem('sammy_pref_spoofDb'); 
+            // localStorage.removeItem('sammy_pref_spoofDb');
             // For now, let's leave it so it remembers state when toggled back on.
         }
     }, [spoofDb, developerMode]);
+
+    useEffect(() => {
+        localStorage.setItem('sammy_pref_swipeNav', swipeNavigationEnabled);
+    }, [swipeNavigationEnabled]);
 
     // Fetch Profile on Load / Auth Change
     useEffect(() => {
@@ -123,6 +132,8 @@ export const UserPreferencesProvider = ({ children }) => {
         setSpoofDb,
         manualDate,
         setManualDate,
+        swipeNavigationEnabled,
+        setSwipeNavigationEnabled,
         firstName,
         registeredDate,
         saveFirstName,
