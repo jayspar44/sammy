@@ -235,6 +235,35 @@ Cleanup: Auto via `.github/workflows/pr-preview-cleanup.yml` when PR closes.
 | `main` | Yes | Blocked | Blocked |
 | `develop` | No | Allowed | Blocked |
 
+### Git Workflow & Merge Strategy
+
+**Branch model:** `main` = production, `develop` = development
+
+**Merge strategies:**
+
+| PR Type | Strategy | Why |
+|---------|----------|-----|
+| Feature → develop | **Squash** | Clean develop history |
+| develop → main | **Regular merge** | Preserves history connection |
+| Hotfix → main | **Squash** + sync develop | Emergency path |
+
+**Why regular merge for releases?**
+Squash merge breaks Git's parent relationship. After squash, the original commits on develop have no connection to main, causing "100+ commits" to appear in the next PR. Regular merge preserves this connection.
+
+**Workflow:**
+```bash
+# Feature development
+git checkout -b feature/thing develop
+# ... work ...
+/commit-push -m "feat: add thing"
+/pr-flow                    # Squash merges to develop
+
+# Release to production
+git checkout develop
+/release                    # Bump version
+/pr-flow                    # Regular merges to main
+```
+
 ### Manual Deployment
 
 ```bash
