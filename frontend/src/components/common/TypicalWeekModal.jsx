@@ -258,7 +258,10 @@ export const TypicalWeekModal = ({ isOpen, onClose, onSave, initialData }) => {
                 </div>
 
                 {/* Footer */}
-                <div className="border-t border-slate-100 dark:border-slate-700 px-6 py-4 space-y-3">
+                <div
+                    className="border-t border-slate-100 dark:border-slate-700 px-6 py-4 space-y-3"
+                    style={{ paddingBottom: 'calc(1rem + var(--safe-area-bottom, 0px))' }}
+                >
                     {/* Weekly Total */}
                     <div className="flex items-center justify-between text-sm">
                         <span className="font-semibold text-slate-700 dark:text-slate-200">Weekly Total:</span>

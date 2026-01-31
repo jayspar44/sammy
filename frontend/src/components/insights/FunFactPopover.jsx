@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { clsx } from 'clsx';
+import { useModalBackHandler } from '../../hooks/useModalBackHandler';
 
 /**
  * Popover to display fun equivalencies for stats.
  * Shows as bottom sheet on mobile, centered modal on desktop.
  */
 const FunFactPopover = ({ isOpen, onClose, title, value, equivalencies, theme = 'emerald' }) => {
+    const handleClose = useModalBackHandler(isOpen, onClose, `funFact-${title}`);
     const [isVisible, setIsVisible] = useState(false);
 
     useEffect(() => {
@@ -50,15 +52,16 @@ const FunFactPopover = ({ isOpen, onClose, title, value, equivalencies, theme = 
                     'absolute inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm transition-opacity duration-300',
                     isOpen ? 'opacity-100' : 'opacity-0'
                 )}
-                onClick={onClose}
+                onClick={handleClose}
             />
 
             {/* Popover Content */}
             <div
                 className={clsx(
-                    'w-full max-w-sm bg-white dark:bg-slate-800 rounded-t-3xl sm:rounded-3xl p-6 pb-10 sm:pb-6 relative transition-all duration-300 ease-out transform',
+                    'w-full max-w-sm bg-white dark:bg-slate-800 rounded-t-3xl sm:rounded-3xl p-6 sm:pb-6 relative transition-all duration-300 ease-out transform',
                     isOpen ? 'translate-y-0 opacity-100' : 'translate-y-full sm:translate-y-4 sm:scale-95 opacity-0'
                 )}
+                style={{ paddingBottom: 'calc(2.5rem + var(--safe-area-bottom, 0px))' }}
             >
                 {/* Drag handle on mobile */}
                 <div className="absolute top-3 left-1/2 -translate-x-1/2 w-10 h-1 bg-slate-200 dark:bg-slate-600 rounded-full sm:hidden" />

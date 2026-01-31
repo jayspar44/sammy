@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
+import { useLocation } from 'react-router-dom';
 import { Zap, Calendar, TrendingDown, Wallet } from 'lucide-react';
 import Card from '../components/ui/Card';
 import CumulativeSavingsChart from '../components/insights/CumulativeSavingsChart';
@@ -50,6 +51,16 @@ const StatCard = ({ icon: Icon, label, value, theme = 'emerald', className, onCl
 export default function Insights() {
     const { user } = useAuth();
     const { manualDate } = useUserPreferences();
+    const location = useLocation();
+
+    // Scroll to top when navigating to this page (handles swipe navigation)
+    useEffect(() => {
+        // Find the scroll container (Layout's content area)
+        const scrollContainer = document.querySelector('.overflow-y-auto.custom-scrollbar');
+        if (scrollContainer) {
+            scrollContainer.scrollTo({ top: 0, behavior: 'instant' });
+        }
+    }, [location.key]);
     const [stats, setStats] = useState({
         moneySaved: 0,
         caloriesCut: 0,
