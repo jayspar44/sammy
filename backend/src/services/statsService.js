@@ -38,6 +38,7 @@ const calculateStats = async (userId, anchorDate) => {
 
     const logsSnapshot = await userRef.collection('logs')
         .where('date', '>=', ninetyDaysAgoStr)
+        .limit(100)  // Cap at 100 docs (90 days + buffer)
         .get();
 
     const logsMap = {};
@@ -278,9 +279,10 @@ const calculateCumulativeStats = async (userId, mode, range, anchorDate) => {
 
     const startDateStr = formatLocalDate(startDate);
 
-    // Fetch all logs from start date
+    // Fetch logs from start date (max 2 years = 730 days)
     const logsSnapshot = await userRef.collection('logs')
         .where('date', '>=', startDateStr)
+        .limit(730)  // Cap at 2 years of data
         .get();
 
     // Build logs map
@@ -401,9 +403,10 @@ const calculateAllTimeStats = async (userId, anchorDate) => {
 
     const startDateStr = formatLocalDate(startDate);
 
-    // Fetch all logs from start date
+    // Fetch logs from start date (max 2 years = 730 days)
     const logsSnapshot = await userRef.collection('logs')
         .where('date', '>=', startDateStr)
+        .limit(730)  // Cap at 2 years of data
         .get();
 
     // Build logs map
