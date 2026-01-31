@@ -35,9 +35,10 @@ export const SetGoalModal = ({ isOpen, onClose, onConfirm, currentGoal = 2 }) =>
             {/* Modal Content */}
             <div
                 className={clsx(
-                    "w-full max-w-md bg-white dark:bg-slate-800 rounded-t-[2.5rem] sm:rounded-[2.5rem] p-6 pb-12 pt-8 relative transition-transform duration-300 ease-out transform",
+                    "w-full max-w-md bg-white dark:bg-slate-800 rounded-t-[2.5rem] sm:rounded-[2.5rem] p-6 sm:pb-12 pt-8 relative transition-transform duration-300 ease-out transform",
                     isOpen ? "translate-y-0" : "translate-y-full sm:translate-y-10 sm:scale-95 sm:opacity-0"
                 )}
+                style={{ paddingBottom: 'calc(3rem + var(--safe-area-bottom, 0px))' }}
             >
                 <div className="absolute top-4 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-slate-200 dark:bg-slate-600 rounded-full sm:hidden" />
 

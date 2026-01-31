@@ -246,9 +246,10 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
             {/* Modal Content */}
             <div
                 className={clsx(
-                    "w-full max-w-md max-h-[90dvh] bg-white dark:bg-slate-800 rounded-t-[2.5rem] sm:rounded-[2.5rem] px-5 pb-6 pt-6 relative flex flex-col transition-transform duration-300 ease-out transform",
+                    "w-full max-w-md max-h-[90dvh] bg-white dark:bg-slate-800 rounded-t-[2.5rem] sm:rounded-[2.5rem] px-5 sm:pb-6 pt-6 relative flex flex-col transition-transform duration-300 ease-out transform",
                     isOpen ? "translate-y-0" : "translate-y-full sm:translate-y-10 sm:scale-95 sm:opacity-0"
                 )}
+                style={{ paddingBottom: 'calc(1.5rem + var(--safe-area-bottom, 0px))' }}
             >
                 <div className="absolute top-4 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-slate-200 dark:bg-slate-600 rounded-full sm:hidden" />
 

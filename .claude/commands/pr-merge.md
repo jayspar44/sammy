@@ -1,15 +1,25 @@
 ---
-description: Squash merge PR with auto-sync and cleanup
+description: Smart PR merge with branch-aware strategy
 allowed-tools: Bash, AskUserQuestion
 argument-hint: <pr-number> [--no-sync] [--delete-branch]
 ---
 
-# PR Merge - Smart Squash & Sync
+# PR Merge - Smart Branch-Aware Merge
 
-Squash merge a PR with intelligent branch management:
-- Merging to `main` → Auto-sync `develop` with `main`
+Merges PRs using the appropriate strategy based on source/target branches:
+- **Feature → develop**: Squash merge (clean history)
+- **develop → main**: Regular merge (preserves history connection, no sync needed)
+- **Feature → main**: Squash merge + sync develop
 - Merging from feature branch → Offer to delete feature branch
 - **Protected**: NEVER deletes `main` or `develop` branches
+
+## Merge Strategy
+
+| Source | Target | Strategy | Why |
+|--------|--------|----------|-----|
+| feature/* | develop | Squash | Clean develop history |
+| develop | main | **Regular merge** | Preserves Git history connection - prevents "100 commits" issue on next PR |
+| feature/* | main | Squash + sync | Hotfix path, need to sync develop after |
 
 ## Arguments
 
@@ -49,30 +59,54 @@ Extract:
 - PR must be OPEN
 - PR must be MERGEABLE (no conflicts)
 
-### 2. Confirm Merge
+### 2. Determine Merge Strategy
+
+```bash
+# Determine merge strategy based on source and target branches
+if [[ "$HEAD_BRANCH" == "develop" ]] && [[ "$BASE_BRANCH" == "main" ]]; then
+  # Release PR: develop → main = REGULAR MERGE
+  MERGE_STRATEGY="merge"
+  STRATEGY_REASON="release (preserves history connection)"
+else
+  # All other PRs = SQUASH MERGE
+  MERGE_STRATEGY="squash"
+  STRATEGY_REASON="feature/hotfix (clean history)"
+fi
+```
+
+### 3. Confirm Merge
 
 ```
-About to squash merge:
+About to merge:
   PR #10: "Add new feature"
-  From: feature/new-feature
-  To:   main
+  From: feature/new-feature → main
+  Strategy: squash (feature/hotfix - clean history)
 
 Continue? (Y/n)
 ```
 
-### 3. Squash Merge
+### 4. Execute Merge
 
 ```bash
-gh pr merge $1 --squash --auto
+if [[ "$MERGE_STRATEGY" == "merge" ]]; then
+  # Regular merge for develop → main (releases)
+  gh pr merge $1 --merge
+else
+  # Squash merge for feature branches
+  gh pr merge $1 --squash
+fi
 ```
 
-### 4. Post-Merge Actions
+### 5. Post-Merge Actions
 
 **Decision logic:**
 
 ```
-IF base branch is "main" AND --no-sync NOT provided:
-  → Sync develop with main
+IF source is feature branch AND base is "main" AND --no-sync NOT provided:
+  → Sync develop with main (hotfix was merged directly to main)
+
+IF source is "develop" AND base is "main":
+  → No sync needed (regular merge preserves history connection)
 
 IF source branch is NOT "main" AND NOT "develop":
   → It's a feature branch
@@ -81,15 +115,17 @@ IF source branch is NOT "main" AND NOT "develop":
 SAFETY CHECK: NEVER delete "main" or "develop"
 ```
 
-### 5. Sync Develop (if merged to main)
+### 6. Sync Develop (only for hotfixes merged directly to main)
 
 ```bash
-if [[ "$BASE_BRANCH" == "main" ]] && [[ "$NO_SYNC" != "true" ]]; then
-  echo "📦 Syncing develop with main..."
+# Only sync if a feature branch was merged directly to main (hotfix path)
+# NOT needed for develop → main (regular merge keeps them in sync)
+if [[ "$BASE_BRANCH" == "main" ]] && [[ "$HEAD_BRANCH" != "develop" ]] && [[ "$NO_SYNC" != "true" ]]; then
+  echo "📦 Syncing develop with main (hotfix was merged to main)..."
 
   git fetch origin
   git checkout develop
-  git pull origin main
+  git pull origin main --no-rebase
   git push origin develop
 
   echo "✅ develop synced with main"
@@ -177,15 +213,16 @@ By default, asks before deleting any branch. Use `--delete-branch` to auto-delet
 
 ## Examples
 
-### Example 1: Merge develop → main
+### Example 1: Merge develop → main (Release)
 ```bash
 /pr-merge 10
 
 # Result:
 # ✅ Merged PR #10: "Release v1.2.0"
 #    From: develop → main
-# ✅ Synced develop with main
+#    Strategy: regular merge (preserves history)
 #
+# (No sync needed - regular merge keeps branches connected)
 # (No delete prompt - develop is protected)
 ```
 
@@ -284,11 +321,21 @@ if [[ "$MERGEABLE" != "MERGEABLE" ]]; then
   exit 1
 fi
 
+# Determine merge strategy
+if [[ "$HEAD_BRANCH" == "develop" ]] && [[ "$BASE_BRANCH" == "main" ]]; then
+  MERGE_STRATEGY="merge"
+  STRATEGY_DESC="regular merge (release - preserves history)"
+else
+  MERGE_STRATEGY="squash"
+  STRATEGY_DESC="squash (clean history)"
+fi
+
 # Confirm
 echo ""
-echo "About to squash merge:"
+echo "About to merge:"
 echo "  PR #$PR_NUMBER: \"$TITLE\""
 echo "  From: $HEAD_BRANCH → $BASE_BRANCH"
+echo "  Strategy: $STRATEGY_DESC"
 echo ""
 read -p "Continue? (Y/n) " CONFIRM
 
@@ -297,10 +344,14 @@ if [[ "$CONFIRM" =~ ^[Nn]$ ]]; then
   exit 0
 fi
 
-# Merge
+# Merge with appropriate strategy
 echo ""
 echo "🔀 Merging..."
-gh pr merge "$PR_NUMBER" --squash --auto
+if [[ "$MERGE_STRATEGY" == "merge" ]]; then
+  gh pr merge "$PR_NUMBER" --merge
+else
+  gh pr merge "$PR_NUMBER" --squash
+fi
 
 if [[ $? -ne 0 ]]; then
   echo "❌ Merge failed"
@@ -311,21 +362,22 @@ echo "✅ Merged PR #$PR_NUMBER"
 
 ACTIONS=()
 
-# Sync develop if merged to main
-if [[ "$BASE_BRANCH" == "main" ]] && [[ "$NO_SYNC" != "true" ]]; then
+# Sync develop only if feature branch merged directly to main (hotfix path)
+# NOT needed for develop → main (regular merge keeps them in sync)
+if [[ "$BASE_BRANCH" == "main" ]] && [[ "$HEAD_BRANCH" != "develop" ]] && [[ "$NO_SYNC" != "true" ]]; then
   echo ""
-  echo "📦 Syncing develop with main..."
+  echo "📦 Syncing develop with main (hotfix was merged to main)..."
 
   git fetch origin
   git checkout develop
-  git pull origin main
+  git pull origin main --no-rebase
   git push origin develop
 
   if [[ $? -eq 0 ]]; then
     echo "✅ develop synced"
     ACTIONS+=("Synced develop with main")
   else
-    echo "⚠️  Sync failed - run manually: git checkout develop && git pull origin main"
+    echo "⚠️  Sync failed - run manually: git checkout develop && git pull origin main --no-rebase"
   fi
 fi
 
@@ -395,8 +447,9 @@ echo "════════════════════════�
 
 ## Notes
 
-- **Always squash**: Uses `--squash` for clean history
+- **Branch-aware strategy**: Squash for features, regular merge for releases
+- **Why regular merge for releases**: Squash merge breaks Git's history connection, causing "100+ commits" in next PR. Regular merge preserves the parent relationship.
 - **Protected branches**: `main` and `develop` NEVER deleted
 - **Safe defaults**: Asks before deleting (unless `--delete-branch`)
-- **Auto mode**: Uses `--auto` to merge when checks pass
+- **Sync only for hotfixes**: develop→main doesn't need sync (regular merge keeps them connected)
 - **Idempotent**: Safe to re-run if something fails

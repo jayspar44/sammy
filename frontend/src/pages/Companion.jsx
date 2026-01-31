@@ -161,13 +161,29 @@ export default function Companion() {
         initChat();
     }, [location.state?.context, handleMorningCheckin, loadHistory]);
 
-    const scrollToBottom = () => {
-        bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const initialScrollDone = useRef(false);
+
+    const scrollToBottom = (instant = false) => {
+        bottomRef.current?.scrollIntoView({ behavior: instant ? 'instant' : 'smooth' });
     };
 
+    // Scroll to bottom when messages change
     useEffect(() => {
-        scrollToBottom();
+        if (messages.length > 0) {
+            // Use instant scroll on initial load, smooth scroll for new messages
+            if (!initialScrollDone.current) {
+                scrollToBottom(true);
+                initialScrollDone.current = true;
+            } else {
+                scrollToBottom(false);
+            }
+        }
     }, [messages, isTyping]);
+
+    // Reset initial scroll flag when navigating to this page
+    useEffect(() => {
+        initialScrollDone.current = false;
+    }, [location.key]);
 
     const handleSend = async () => {
         if (!input.trim()) return;

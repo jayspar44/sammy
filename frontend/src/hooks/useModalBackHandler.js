@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { Capacitor } from '@capacitor/core';
 
 /**
@@ -13,13 +13,20 @@ import { Capacitor } from '@capacitor/core';
 export const useModalBackHandler = (isOpen, onClose, modalId) => {
     const hasAddedState = useRef(false);
 
-    useEffect(() => {
+    // Use useLayoutEffect for pushing state - runs synchronously BEFORE browser paint
+    // This ensures the history state is ready before user can press back button
+    useLayoutEffect(() => {
         if (!Capacitor.isNativePlatform()) return;
 
         if (isOpen && !hasAddedState.current) {
             window.history.pushState({ modal: modalId }, '');
             hasAddedState.current = true;
         }
+    }, [isOpen, modalId]);
+
+    // Use regular useEffect for cleanup and event listener
+    useEffect(() => {
+        if (!Capacitor.isNativePlatform()) return;
 
         // Reset ref when modal closes (handles programmatic close)
         if (!isOpen && hasAddedState.current) {

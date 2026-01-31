@@ -49,6 +49,7 @@ export const Layout = () => {
 
             {/* Content area - absolutely positioned with padding for TopBar and Navbar */}
             <div
+                data-scroll-container
                 className="absolute inset-0 overflow-y-auto z-10 custom-scrollbar"
                 style={{
                     paddingTop: 'calc(var(--safe-area-top, 0px) + 4.5rem)', // Safe area + TopBar height

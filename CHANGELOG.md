@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.14.4](https://github.com/jayspar44/sammy/compare/v0.14.3...v0.14.4) (2026-01-31)
+
+
+### Bug Fixes
+
+* address code review issues ([c0bf04d](https://github.com/jayspar44/sammy/commit/c0bf04de3168cbc2b6dbb986d1ceca3fbf161811))
+
+### [0.14.3](https://github.com/jayspar44/sammy/compare/v0.14.2...v0.14.3) (2026-01-31)
+
+
+### Bug Fixes
+
+* use useLayoutEffect for modal history state to prevent race condition ([5ad7a13](https://github.com/jayspar44/sammy/commit/5ad7a13adddd471eb02ab556ef4391dc52d07d3f))
+
+### [0.14.2](https://github.com/jayspar44/sammy/compare/v0.10.9...v0.14.2) (2026-01-31)
+
+
+### Bug Fixes
+
+* resolve UI issues with scroll, keyboard, modal navigation and safe areas ([35ba60c](https://github.com/jayspar44/sammy/commit/35ba60c65ee6386922a9c021ae14c09214c3ee1f))
+
 ### [0.14.1](https://github.com/jayspar44/sammy/compare/v0.14.0...v0.14.1) (2026-01-31)
 
 

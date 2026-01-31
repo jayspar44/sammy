@@ -45,8 +45,8 @@ Complete end-to-end PR lifecycle with autonomous code review and issue fixing.
    - Repeats until clean (max 3 iterations)
 
 4. **Merge** (if clean)
-   - Offers to squash merge
-   - Syncs branches after merge (if to main)
+   - Uses smart merge strategy: squash for features, regular merge for releases
+   - Syncs branches after merge (only for hotfixes merged directly to main)
 
 ## Workflow
 
