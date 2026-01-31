@@ -61,6 +61,9 @@ export const useSwipeNavigation = (enabled) => {
 
             if (deltaY > maxVerticalDistance) return; // Vertical scroll, ignore
 
+            // Don't navigate if a modal is open (has history state with modal)
+            if (window.history.state?.modal) return;
+
             const currentIndex = PAGE_ORDER.indexOf(location.pathname);
             if (currentIndex === -1) return;
 

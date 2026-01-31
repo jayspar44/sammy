@@ -21,8 +21,14 @@ export const useModalBackHandler = (isOpen, onClose, modalId) => {
             hasAddedState.current = true;
         }
 
+        // Reset ref when modal closes (handles programmatic close)
+        if (!isOpen && hasAddedState.current) {
+            hasAddedState.current = false;
+        }
+
         const handlePopState = () => {
             if (isOpen) {
+                hasAddedState.current = false;  // Reset before calling onClose
                 onClose();
             }
         };
@@ -30,21 +36,21 @@ export const useModalBackHandler = (isOpen, onClose, modalId) => {
         window.addEventListener('popstate', handlePopState);
         return () => {
             window.removeEventListener('popstate', handlePopState);
-            if (!isOpen) {
-                hasAddedState.current = false;
-            }
         };
     }, [isOpen, onClose, modalId]);
 
     // Return wrapped close handler that goes back in history
     const handleClose = useCallback(() => {
-        if (Capacitor.isNativePlatform() && hasAddedState.current) {
-            window.history.back();
+        // Check actual history state, not just ref, to handle edge cases
+        const hasModalState = window.history.state?.modal === modalId;
+        if (Capacitor.isNativePlatform() && hasAddedState.current && hasModalState) {
             hasAddedState.current = false;
+            window.history.back();
         } else {
+            hasAddedState.current = false;
             onClose();
         }
-    }, [onClose]);
+    }, [onClose, modalId]);
 
     return handleClose;
 };

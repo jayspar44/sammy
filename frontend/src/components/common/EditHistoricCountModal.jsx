@@ -193,22 +193,30 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
     const handleSaveAll = async () => {
         setLoading(true);
         try {
-            // Delete logs first
-            const deleteUpdates = Object.keys(deletedDates).map(date =>
-                api.deleteLog(date)
-            );
+            // Helper to process requests in batches to avoid overwhelming the API
+            const processBatch = async (items, fn, batchSize = 10) => {
+                for (let i = 0; i < items.length; i += batchSize) {
+                    const batch = items.slice(i, i + batchSize);
+                    await Promise.all(batch.map(fn));
+                }
+            };
 
-            // Save modified counts
-            const countUpdates = Object.entries(modifiedCounts).map(([date, count]) =>
+            // Delete logs first (in batches)
+            const deleteDates = Object.keys(deletedDates);
+            await processBatch(deleteDates, date => api.deleteLog(date));
+
+            // Save modified counts (in batches)
+            const countEntries = Object.entries(modifiedCounts);
+            await processBatch(countEntries, ([date, count]) =>
                 api.updateHistoricCount(date, { newCount: count, devMode: developerMode })
             );
 
-            // Save modified goals
-            const goalUpdates = Object.entries(modifiedGoals).map(([date, goal]) =>
+            // Save modified goals (in batches)
+            const goalEntries = Object.entries(modifiedGoals);
+            await processBatch(goalEntries, ([date, goal]) =>
                 api.updateHistoricCount(date, { newGoal: goal, devMode: developerMode })
             );
 
-            await Promise.all([...deleteUpdates, ...countUpdates, ...goalUpdates]);
             onSave?.();
             onClose();
         } catch (err) {

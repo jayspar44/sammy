@@ -157,6 +157,7 @@ export default function Home() {
             fetchStats(); // Refresh
         } catch (err) {
             logger.error('Failed to log drink', err);
+            // Keep modal open on error so user can retry
         }
     };
 
