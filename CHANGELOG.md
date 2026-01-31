@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.14.4](https://github.com/jayspar44/sammy/compare/v0.14.3...v0.14.4) (2026-01-31)
+
+
+### Bug Fixes
+
+* address code review issues ([c0bf04d](https://github.com/jayspar44/sammy/commit/c0bf04de3168cbc2b6dbb986d1ceca3fbf161811))
+
 ### [0.14.3](https://github.com/jayspar44/sammy/compare/v0.14.2...v0.14.3) (2026-01-31)
 
 
