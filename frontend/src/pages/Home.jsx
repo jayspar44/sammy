@@ -76,14 +76,14 @@ const WeeklyTrend = ({ data = [], currentDateStr }) => {
                         }
 
                         return (
-                            <div key={i} className="flex-1 flex flex-col items-center justify-end gap-0">
-                                {/* Bar with label on top */}
-                                <div className="w-full flex flex-col items-center">
+                            <div key={i} className="flex-1 flex flex-col items-center">
+                                {/* Bar section - flex-1 gives it height for percentage calculations */}
+                                <div className="flex-1 w-full flex flex-col justify-end items-center">
                                     {/* Value label - directly above bar */}
                                     {d.val !== null && (
-                                        <span className="text-[10px] font-bold text-primary mb-1 dark:text-sky-400">{d.val}</span>
+                                        <span className="text-[10px] font-bold text-primary mb-0.5 dark:text-sky-400">{d.val}</span>
                                     )}
-                                    {/* Bar */}
+                                    {/* Bar - percentage height now works because parent has flex-1 height */}
                                     <div
                                         className={cn(
                                             "w-full rounded-t-sm transition-all duration-500",
