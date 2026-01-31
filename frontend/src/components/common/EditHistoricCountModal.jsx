@@ -7,8 +7,10 @@ import { format, subDays, addDays, startOfWeek, isSameWeek } from 'date-fns';
 import { api } from '../../api/services';
 import { useUserPreferences } from '../../contexts/UserPreferencesContext';
 import { logger } from '../../utils/logger';
+import { useModalBackHandler } from '../../hooks/useModalBackHandler';
 
 export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate }) => {
+    const handleClose = useModalBackHandler(isOpen, onClose, 'editHistory');
     const { registeredDate, developerMode } = useUserPreferences();
     const [weekStartDate, setWeekStartDate] = useState(null);
     const [weekData, setWeekData] = useState([]);
@@ -165,7 +167,7 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
         if (!day || (day.isFuture && !developerMode) || !day.hasRecord) return;
 
         // Confirm deletion
-        if (!window.confirm(`Delete log entry for ${day.dateLabel}? This will completely remove the record from the database.`)) {
+        if (!window.confirm(`This will completely remove the record for ${day.dateLabel}, not set it to 0 drinks.\n\nAre you sure?`)) {
             return;
         }
 
@@ -230,7 +232,7 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
                     "absolute inset-0 bg-black/60 dark:bg-black/80 backdrop-blur-sm transition-opacity duration-300",
                     isOpen ? "opacity-100" : "opacity-0"
                 )}
-                onClick={onClose}
+                onClick={handleClose}
             />
 
             {/* Modal Content */}
@@ -244,7 +246,7 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
 
                 <header className="flex justify-between items-center mb-4">
                     <h2 className="text-xl font-bold text-slate-800 dark:text-slate-50">Edit History</h2>
-                    <button onClick={onClose} className="p-2 bg-slate-100 dark:bg-slate-700 rounded-full">
+                    <button onClick={handleClose} className="p-2 bg-slate-100 dark:bg-slate-700 rounded-full">
                         <X className="w-5 h-5 text-slate-500 dark:text-slate-400" />
                     </button>
                 </header>
@@ -386,11 +388,11 @@ export const EditHistoricCountModal = ({ isOpen, onClose, onSave, currentDate })
 
                                                 {/* +/- Buttons */}
                                                 <div className="flex gap-2">
-                                                    {developerMode && day.hasRecord && (
+                                                    {day.hasRecord && (
                                                         <button
                                                             onClick={() => handleDeleteLog(day.date)}
                                                             className="w-10 h-10 rounded-lg bg-rose-100 dark:bg-rose-900/30 hover:bg-rose-200 dark:hover:bg-rose-900/50 flex items-center justify-center text-rose-600 dark:text-rose-400 transition-colors active:scale-95"
-                                                            title="Delete log entry (Developer Mode)"
+                                                            title="Delete record"
                                                         >
                                                             <Trash2 className="w-4 h-4" />
                                                         </button>

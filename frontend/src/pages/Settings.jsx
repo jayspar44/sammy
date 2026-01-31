@@ -10,6 +10,7 @@ import { cn } from '../utils/cn';
 import { api } from '../api/services';
 import { logger } from '../utils/logger';
 import { App } from '@capacitor/app';
+import { Capacitor } from '@capacitor/core';
 import { fetchBackendInfo, getBackendInfo } from '../utils/appConfig';
 import { TypicalWeekModal } from '../components/common/TypicalWeekModal';
 import { requestPermissions, scheduleDailyReminder, cancelReminder, scheduleTestNotification, isNotificationSupported } from '../services/notificationService';
@@ -33,7 +34,9 @@ export default function Settings() {
         spoofDb,
         setSpoofDb,
         manualDate,
-        setManualDate
+        setManualDate,
+        swipeNavigationEnabled,
+        setSwipeNavigationEnabled
     } = useUserPreferences();
 
     const [nameInput, setNameInput] = useState('');
@@ -287,6 +290,25 @@ export default function Settings() {
                     {theme === 'system' && (
                         <div className="text-xs text-slate-500 text-center pt-1 dark:text-slate-400">
                             Currently using: <span className="font-semibold">{isDark ? 'Dark' : 'Light'}</span> (system preference)
+                        </div>
+                    )}
+
+                    {/* Swipe Navigation - only show on native */}
+                    {Capacitor.isNativePlatform() && (
+                        <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-700">
+                            <div>
+                                <span className="font-semibold text-slate-700 block text-sm dark:text-slate-200">Swipe Navigation</span>
+                                <span className="text-xs text-slate-400 dark:text-slate-500">Swipe between pages</span>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    className="sr-only peer"
+                                    checked={swipeNavigationEnabled}
+                                    onChange={(e) => setSwipeNavigationEnabled(e.target.checked)}
+                                />
+                                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-900 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-500 dark:peer-checked:bg-indigo-600"></div>
+                            </label>
                         </div>
                     )}
                 </Card>

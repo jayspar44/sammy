@@ -4,6 +4,7 @@ import Button from '../ui/Button';
 import { clsx } from 'clsx';
 import { createPortal } from 'react-dom';
 import { logger } from '../../utils/logger';
+import { useModalBackHandler } from '../../hooks/useModalBackHandler';
 
 const DAYS = [
     { key: 'monday', label: 'Monday' },
@@ -16,6 +17,7 @@ const DAYS = [
 ];
 
 export const TypicalWeekModal = ({ isOpen, onClose, onSave, initialData }) => {
+    const handleClose = useModalBackHandler(isOpen, onClose, 'typicalWeek');
     const [weekData, setWeekData] = useState({
         monday: 0,
         tuesday: 0,
@@ -154,7 +156,7 @@ export const TypicalWeekModal = ({ isOpen, onClose, onSave, initialData }) => {
                 'fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center transition-all duration-300',
                 isOpen ? 'bg-black/40 dark:bg-black/80 backdrop-blur-sm' : 'bg-black/0'
             )}
-            onClick={onClose}
+            onClick={handleClose}
         >
             <div
                 className={clsx(
@@ -177,7 +179,7 @@ export const TypicalWeekModal = ({ isOpen, onClose, onSave, initialData }) => {
                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Set your typical drinking pattern</p>
                     </div>
                     <button
-                        onClick={onClose}
+                        onClick={handleClose}
                         className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
                     >
                         <X className="w-5 h-5 text-slate-500 dark:text-slate-400" />

@@ -4,12 +4,16 @@ import { Navbar } from './Navbar';
 import { TopBar } from './TopBar';
 import { useUserPreferences } from '../../contexts/UserPreferencesContext';
 import { useConnection } from '../../contexts/ConnectionContext';
+import { useSwipeNavigation } from '../../hooks/useSwipeNavigation';
 
 export const Layout = () => {
     const location = useLocation();
     const isCompanionPage = location.pathname === '/companion';
-    const { developerMode, spoofDb } = useUserPreferences();
+    const { developerMode, spoofDb, swipeNavigationEnabled } = useUserPreferences();
     const { isOnline, isApiConnected } = useConnection();
+
+    // Enable swipe navigation between main pages
+    useSwipeNavigation(swipeNavigationEnabled);
 
     return (
         <MobileContainer>

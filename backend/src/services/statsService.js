@@ -1,6 +1,19 @@
 const { db } = require('./firebase');
 
 /**
+ * Formats a Date object to YYYY-MM-DD string in local time.
+ * Avoids timezone issues that occur with toISOString().
+ * @param {Date} date - The date to format
+ * @returns {string} Date string in YYYY-MM-DD format
+ */
+const formatLocalDate = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
+/**
  * Calculates user statistics including trends and insights.
  * @param {string} userId - The user's ID.
  * @param {Date} anchorDate - The date to anchor calculations from (usually "today").
@@ -20,8 +33,8 @@ const calculateStats = async (userId, anchorDate) => {
     // Fetch logs for last 90 days (includes today)
     const ninetyDaysAgo = new Date(anchorDate);
     ninetyDaysAgo.setDate(anchorDate.getDate() - 90);
-    const ninetyDaysAgoStr = ninetyDaysAgo.toISOString().split('T')[0];
-    const todayStr = anchorDate.toISOString().split('T')[0];
+    const ninetyDaysAgoStr = formatLocalDate(ninetyDaysAgo);
+    const todayStr = formatLocalDate(anchorDate);
 
     const logsSnapshot = await userRef.collection('logs')
         .where('date', '>=', ninetyDaysAgoStr)
@@ -72,13 +85,18 @@ const calculateStats = async (userId, anchorDate) => {
         registeredDate.setHours(0, 0, 0, 0);
     }
 
+    // Check if today has been logged - if not, start counting from yesterday
+    // This fixes the issue where dry streak shows 0 instead of 1 when user logs 0 today
+    const hasTodayLog = logsMap[todayStr];
+    const startIndex = hasTodayLog ? 0 : 1;
+
     // Check previous 90 days for streak using loop counter (avoid date mutation)
     // A dry streak requires explicit 0-drink log entries - missing logs break the streak
-    for (let i = 0; i < 90; i++) {
+    for (let i = startIndex; i < 90; i++) {
         const checkDate = new Date(anchorDate);
         checkDate.setDate(anchorDate.getDate() - i);
         checkDate.setHours(0, 0, 0, 0);
-        const dStr = checkDate.toISOString().split('T')[0];
+        const dStr = formatLocalDate(checkDate);
 
         // Stop at registration date boundary
         if (registeredDate && checkDate < registeredDate) {
@@ -105,7 +123,7 @@ const calculateStats = async (userId, anchorDate) => {
     for (let i = 0; i < 90; i++) {
         const d = new Date(anchorDate);
         d.setDate(anchorDate.getDate() - i);
-        const dStr = d.toISOString().split('T')[0];
+        const dStr = formatLocalDate(d);
         const log = logsMap[dStr];
 
         if (typeof log !== 'undefined') {
@@ -258,7 +276,7 @@ const calculateCumulativeStats = async (userId, mode, range, anchorDate) => {
         }
     }
 
-    const startDateStr = startDate.toISOString().split('T')[0];
+    const startDateStr = formatLocalDate(startDate);
 
     // Fetch all logs from start date
     const logsSnapshot = await userRef.collection('logs')
@@ -295,7 +313,7 @@ const calculateCumulativeStats = async (userId, mode, range, anchorDate) => {
     // Iterate from start date to anchor date
     const currentDate = new Date(startDate);
     while (currentDate <= anchorDate) {
-        const dateStr = currentDate.toISOString().split('T')[0];
+        const dateStr = formatLocalDate(currentDate);
         const log = logsMap[dateStr];
 
         let dailySaved = 0;
@@ -381,7 +399,7 @@ const calculateAllTimeStats = async (userId, anchorDate) => {
         startDate.setDate(anchorDate.getDate() - 89);
     }
 
-    const startDateStr = startDate.toISOString().split('T')[0];
+    const startDateStr = formatLocalDate(startDate);
 
     // Fetch all logs from start date
     const logsSnapshot = await userRef.collection('logs')
@@ -414,7 +432,7 @@ const calculateAllTimeStats = async (userId, anchorDate) => {
     // Iterate from start date to anchor date
     const currentDate = new Date(startDate);
     while (currentDate <= anchorDate) {
-        const dateStr = currentDate.toISOString().split('T')[0];
+        const dateStr = formatLocalDate(currentDate);
         const log = logsMap[dateStr];
 
         if (log !== undefined && typicalWeek) {

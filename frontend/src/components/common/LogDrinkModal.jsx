@@ -3,8 +3,10 @@ import { X, Minus, Plus, Beer } from 'lucide-react';
 import { Button } from './Button';
 import { clsx } from 'clsx';
 import { createPortal } from 'react-dom';
+import { useModalBackHandler } from '../../hooks/useModalBackHandler';
 
 export const LogDrinkModal = ({ isOpen, onClose, onConfirm }) => {
+    const handleClose = useModalBackHandler(isOpen, onClose, 'logDrink');
     const [count, setCount] = useState(1);
     const [isVisible, setIsVisible] = useState(false);
 
@@ -27,7 +29,7 @@ export const LogDrinkModal = ({ isOpen, onClose, onConfirm }) => {
                     "absolute inset-0 bg-black/60 dark:bg-black/80 backdrop-blur-sm transition-opacity duration-300",
                     isOpen ? "opacity-100" : "opacity-0"
                 )}
-                onClick={onClose}
+                onClick={handleClose}
             />
 
             {/* Modal Content */}
@@ -41,7 +43,7 @@ export const LogDrinkModal = ({ isOpen, onClose, onConfirm }) => {
 
                 <header className="flex justify-between items-center mb-8">
                     <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-50">Log Drink</h2>
-                    <button onClick={onClose} className="p-2 bg-slate-100 dark:bg-slate-700 rounded-full">
+                    <button onClick={handleClose} className="p-2 bg-slate-100 dark:bg-slate-700 rounded-full">
                         <X className="w-5 h-5 text-slate-500 dark:text-slate-400" />
                     </button>
                 </header>
