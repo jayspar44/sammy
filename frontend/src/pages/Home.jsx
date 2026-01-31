@@ -76,16 +76,14 @@ const WeeklyTrend = ({ data = [], currentDateStr }) => {
                         }
 
                         return (
-                            <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                                {/* Value label - fixed height for alignment */}
-                                {d.val !== null ? (
-                                    <span className="text-[10px] font-bold text-primary h-4 dark:text-sky-400">{d.val}</span>
-                                ) : (
-                                    <span className="h-4" />
-                                )}
-
-                                {/* Bar container - fixed height, bars grow from bottom */}
-                                <div className="flex-1 w-full flex items-end">
+                            <div key={i} className="flex-1 flex flex-col items-center justify-end gap-0">
+                                {/* Bar with label on top */}
+                                <div className="w-full flex flex-col items-center">
+                                    {/* Value label - directly above bar */}
+                                    {d.val !== null && (
+                                        <span className="text-[10px] font-bold text-primary mb-1 dark:text-sky-400">{d.val}</span>
+                                    )}
+                                    {/* Bar */}
                                     <div
                                         className={cn(
                                             "w-full rounded-t-sm transition-all duration-500",
@@ -95,9 +93,9 @@ const WeeklyTrend = ({ data = [], currentDateStr }) => {
                                     />
                                 </div>
 
-                                {/* Day label */}
+                                {/* Day label - at bottom */}
                                 <span className={cn(
-                                    "text-xs font-bold",
+                                    "text-xs font-bold mt-1",
                                     d.isToday ? "text-primary dark:text-sky-400" : "text-slate-400 dark:text-slate-500"
                                 )}>
                                     {d.label}

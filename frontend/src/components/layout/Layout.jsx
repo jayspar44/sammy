@@ -5,6 +5,7 @@ import { TopBar } from './TopBar';
 import { useUserPreferences } from '../../contexts/UserPreferencesContext';
 import { useConnection } from '../../contexts/ConnectionContext';
 import { useSwipeNavigation } from '../../hooks/useSwipeNavigation';
+import { cn } from '../../utils/cn';
 
 export const Layout = () => {
     const location = useLocation();
@@ -13,7 +14,7 @@ export const Layout = () => {
     const { isOnline, isApiConnected } = useConnection();
 
     // Enable swipe navigation between main pages
-    useSwipeNavigation(swipeNavigationEnabled);
+    const swipeState = useSwipeNavigation(swipeNavigationEnabled);
 
     return (
         <MobileContainer>
@@ -64,6 +65,18 @@ export const Layout = () => {
 
             {/* Navbar - absolutely positioned */}
             <Navbar />
+
+            {/* Swipe edge glow overlay */}
+            {swipeState.active && (
+                <div
+                    className={cn(
+                        "fixed inset-y-0 w-20 pointer-events-none z-[60] transition-opacity duration-150",
+                        swipeState.direction === 'left'
+                            ? "right-0 bg-gradient-to-l from-sky-400/30 to-transparent"
+                            : "left-0 bg-gradient-to-r from-sky-400/30 to-transparent"
+                    )}
+                />
+            )}
         </MobileContainer>
     );
 };

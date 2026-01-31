@@ -11,7 +11,9 @@ const NavItem = ({ to, icon: Icon }) => (
         {({ isActive }) => (
             <div className={clsx(
                 "flex items-center justify-center w-12 h-12 rounded-full transition-all duration-300",
-                isActive ? "bg-primary text-white shadow-md ring-4 ring-primary/20 dark:bg-sky-500 dark:ring-sky-900/50" : "text-slate-400 group-hover:bg-slate-50 dark:text-slate-500 dark:group-hover:bg-slate-700"
+                isActive
+                    ? "bg-primary text-white shadow-md ring-2 ring-white ring-offset-2 ring-offset-white dark:ring-offset-slate-800 dark:bg-sky-500"
+                    : "text-slate-400 group-hover:bg-slate-50 dark:text-slate-500 dark:group-hover:bg-slate-700"
             )}>
                 <Icon
                     className="w-6 h-6 transition-all"
@@ -32,7 +34,9 @@ export const Navbar = () => {
                 <NavItem to="/" icon={Home} />
                 <NavLink to="/companion" className={({ isActive }) => clsx(
                     "flex items-center justify-center w-14 h-14 rounded-full shadow-lg transition-transform active:scale-95",
-                    isActive ? "bg-primary text-white ring-4 ring-primary/20 dark:bg-sky-500 dark:ring-sky-900/50" : "bg-white text-primary border border-slate-100 dark:bg-slate-700 dark:text-sky-400 dark:border-slate-600"
+                    isActive
+                        ? "bg-primary text-white ring-2 ring-white ring-offset-2 ring-offset-white dark:ring-offset-slate-800 dark:bg-sky-500"
+                        : "bg-white text-primary border border-slate-100 dark:bg-slate-700 dark:text-sky-400 dark:border-slate-600"
                 )}>
                     <MessageCircle className="w-7 h-7 fill-current" />
                 </NavLink>
