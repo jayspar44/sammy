@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.14.3](https://github.com/jayspar44/sammy/compare/v0.14.2...v0.14.3) (2026-01-31)
+
+
+### Bug Fixes
+
+* use useLayoutEffect for modal history state to prevent race condition ([5ad7a13](https://github.com/jayspar44/sammy/commit/5ad7a13adddd471eb02ab556ef4391dc52d07d3f))
+
 ### [0.14.2](https://github.com/jayspar44/sammy/compare/v0.10.9...v0.14.2) (2026-01-31)
 
 
