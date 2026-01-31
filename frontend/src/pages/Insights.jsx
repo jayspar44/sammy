@@ -55,8 +55,8 @@ export default function Insights() {
 
     // Scroll to top when navigating to this page (handles swipe navigation)
     useEffect(() => {
-        // Find the scroll container (Layout's content area)
-        const scrollContainer = document.querySelector('.overflow-y-auto.custom-scrollbar');
+        // Find the scroll container using data attribute (more robust than class selector)
+        const scrollContainer = document.querySelector('[data-scroll-container]');
         if (scrollContainer) {
             scrollContainer.scrollTo({ top: 0, behavior: 'instant' });
         }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { clsx } from 'clsx';
 import { useModalBackHandler } from '../../hooks/useModalBackHandler';
@@ -8,7 +8,10 @@ import { useModalBackHandler } from '../../hooks/useModalBackHandler';
  * Shows as bottom sheet on mobile, centered modal on desktop.
  */
 const FunFactPopover = ({ isOpen, onClose, title, value, equivalencies, theme = 'emerald' }) => {
-    const handleClose = useModalBackHandler(isOpen, onClose, `funFact-${title}`);
+    // Memoize modalId to prevent issues if title changes while modal is open
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const modalId = useMemo(() => `funFact-${title}`, []);
+    const handleClose = useModalBackHandler(isOpen, onClose, modalId);
     const [isVisible, setIsVisible] = useState(false);
 
     useEffect(() => {

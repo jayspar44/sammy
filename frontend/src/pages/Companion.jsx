@@ -180,10 +180,10 @@ export default function Companion() {
         }
     }, [messages, isTyping]);
 
-    // Reset initial scroll flag when component remounts (e.g., navigation)
+    // Reset initial scroll flag when navigating to this page
     useEffect(() => {
         initialScrollDone.current = false;
-    }, []);
+    }, [location.key]);
 
     const handleSend = async () => {
         if (!input.trim()) return;

@@ -1,8 +1,10 @@
 import { Keyboard } from '@capacitor/keyboard';
 import { Capacitor } from '@capacitor/core';
 import { App } from '@capacitor/app';
+import { logger } from './logger';
 
 let keyboardListeners = [];
+let isSetup = false;
 
 /**
  * Checks if there's an active input element that should keep the keyboard open
@@ -39,9 +41,15 @@ export const setupKeyboardListeners = () => {
     return;
   }
 
+  // Prevent duplicate setup (guards against HMR and multiple calls)
+  if (isSetup) {
+    return () => {};
+  }
+  isSetup = true;
+
   // Set resize mode to native
   Keyboard.setResizeMode({ mode: 'native' }).catch(err => {
-    console.warn('Could not set keyboard resize mode:', err);
+    logger.warn('Could not set keyboard resize mode', err);
   });
 
   // Keyboard will show listener
@@ -63,8 +71,8 @@ export const setupKeyboardListeners = () => {
   // This handles the case where the app is reopened with keyboard space reserved but no active input
   const resumeListener = App.addListener('appStateChange', ({ isActive }) => {
     if (isActive) {
-      // Small delay to let the app fully resume before checking
-      setTimeout(resetKeyboardStateIfNeeded, 100);
+      // Longer delay to let the app fully resume and user potentially focus an input
+      setTimeout(resetKeyboardStateIfNeeded, 250);
     }
   });
 
@@ -73,5 +81,6 @@ export const setupKeyboardListeners = () => {
   return () => {
     keyboardListeners.forEach(listener => listener.remove());
     keyboardListeners = [];
+    isSetup = false;
   };
 };
