@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.14.5](https://github.com/jayspar44/sammy/compare/v0.14.4...v0.14.5) (2026-02-11)
+
+
+### Features
+
+* make Sammy more engaging with coaching-style responses ([0e87aab](https://github.com/jayspar44/sammy/commit/0e87aabb35afde6fa93bee107c4fc755192d29a3))
+
 ### [0.14.4](https://github.com/jayspar44/sammy/compare/v0.14.3...v0.14.4) (2026-01-31)
 
 
