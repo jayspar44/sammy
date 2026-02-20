@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.14.6](https://github.com/jayspar44/sammy/compare/v0.14.5...v0.14.6) (2026-02-20)
+
+
+### Features
+
+* upgrade to Gemini 3 and improve conversational naturalness ([03149f4](https://github.com/jayspar44/sammy/commit/03149f48695cdce52fb7ad323de93e74dd967fac))
+
+
+### Bug Fixes
+
+* enable SystemBars insets handling to fix ghost keyboard ([#33](https://github.com/jayspar44/sammy/issues/33)) ([b35e94e](https://github.com/jayspar44/sammy/commit/b35e94e2d1f7c6d407247fcb1793c68cc14a87e3))
+
 ### [0.14.5](https://github.com/jayspar44/sammy/compare/v0.14.4...v0.14.5) (2026-02-11)
 
 
