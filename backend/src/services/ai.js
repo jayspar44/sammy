@@ -28,10 +28,15 @@ const generateChatResponse = async (systemInstruction, history, message, tools =
 
     try {
         // Create chat session with structured history using correct API
+        // Using Gemini 3 Flash with thinkingLevel: 'low' for optimal chat performance
+        // Temperature kept at default 1.0 per Google's recommendation (lower values cause issues)
         const chat = client.chats.create({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3-flash-preview',
             config: {
                 systemInstruction,
+                thinkingConfig: {
+                    thinkingLevel: 'low'  // Optimized for chat: faster responses, lower cost
+                },
                 tools: tools ? [{ functionDeclarations: tools }] : undefined,
                 toolConfig: tools ? {
                     functionCallingConfig: {
